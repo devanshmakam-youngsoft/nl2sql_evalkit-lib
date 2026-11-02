@@ -1,0 +1,66 @@
+"""Signing in and out."""
+import asyncio
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+
+from nl2sql_evalkit.core.config import Config
+from nl2sql_evalkit.core.security import check_password, make_token, parse_users
+from nl2sql_evalkit.routers.dependencies import current_user, get_config
+from nl2sql_evalkit.schemas.sign_in import Acknowledged, LoginBody, SignedInUser
+
+router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+FAILED_LOGIN_DELAY_SECONDS = 0.6      # slows down password guessing
+
+
+def _secure(request: Request) -> bool:
+    return request.headers.get("x-forwarded-proto", request.url.scheme) == "https"
+
+
+@router.post("/login")
+async def login(body: LoginBody, request: Request, response: Response, cfg: Config = Depends(get_config)) -> SignedInUser:
+    """Sign in with a username and password and start a session.
+
+    On success a session cookie is set and the signed-in username is returned. When the server runs without
+    login, no password is checked and the name given is used as a label (an empty one becomes ``anonymous``).
+    Answers 401 for a wrong username or password.
+    """
+    if cfg.require_login:
+        user = check_password(parse_users(cfg.eval_users), body.username, body.password)
+        if user is None:
+            await asyncio.sleep(FAILED_LOGIN_DELAY_SECONDS)
+            raise HTTPException(status_code=401, detail="Invalid username or password")
+    else:
+        # Guest mode: the name is only a label, so it is tidied rather than checked
+        user = body.username.strip().lower() or "anonymous"
+    ttl = cfg.session_hours * 3600
+    response.set_cookie(
+        cfg.session_cookie,
+        make_token(cfg.eval_secret, user, ttl),
+        max_age=ttl,
+        httponly=True,
+        samesite="lax",
+        secure=_secure(request),
+        path="/",
+    )
+    return {"username": user}
+
+
+@router.post("/logout")
+def logout(response: Response, cfg: Config = Depends(get_config)) -> Acknowledged:
+    """Sign out by clearing the session cookie. Always succeeds, even when nobody was signed in."""
+    response.delete_cookie(cfg.session_cookie, path="/")
+    return {"ok": True}
+
+
+@router.get("/me")
+def me(request: Request) -> SignedInUser:
+    """Tell who is signed in, from the session cookie.
+
+    Answers 401 when nobody is, so it also serves as a session check.
+    """
+    # Always require a session cookie: login is always shown first
+    user = current_user(request)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Not signed in")
+    return {"username": user}

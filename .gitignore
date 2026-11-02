@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Local config / secrets
+.env
+
+# Eval output (created by serve() in whatever directory it runs from)
+nl2sql_evalkit_data/
+
+# Claude Code local files
+.claude/
+
+# Frontend build artifacts
+node_modules/
+frontend/dist/

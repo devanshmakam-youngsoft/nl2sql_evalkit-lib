@@ -1,0 +1,15 @@
+"""The HTTP routes, one file per area. Routers are listed in the order they are registered: the more specific
+``/api/test-cases/import`` comes before ``/api/test-cases/{tc_id}``."""
+from nl2sql_evalkit.routers.app_info import guide, health, info
+from nl2sql_evalkit.routers.evaluation import recommendation, runs, versions
+from nl2sql_evalkit.routers.sign_in import login
+from nl2sql_evalkit.routers.testcase_generator import generation
+from nl2sql_evalkit.routers.testcase_library import datasets, groups, imports, testcases
+
+DASHBOARD_ROUTERS = [
+    login.router, generation.router, imports.router, runs.router, versions.router, recommendation.router,
+    testcases.router, groups.router, datasets.router, guide.router, info.router,
+]
+HEALTH_ROUTER = health.router
+
+__all__ = ["DASHBOARD_ROUTERS", "HEALTH_ROUTER"]

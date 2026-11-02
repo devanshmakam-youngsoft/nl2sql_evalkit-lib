@@ -1,1 +1,302 @@
-# nl2sql_evalkit-lib
+# nl2sql_evalkit
+
+Evaluate any RAG pipeline, chatbot or agent. You give nl2sql_evalkit a Python function; it replays your test questions through it, scores every answer with an AI judge and text metrics, and shows the versions of your pipeline side by side in a dashboard.
+
+- Score each version: answer quality, context quality, response time, and how long each step takes
+- A test case library: groups (labels), bulk import from Excel/CSV, and test cases written from your own documents
+- A recommendation of which version to ship, computed on the test cases the versions share
+- Plain-language findings for every run: each watch-out paired with what to do about it
+- Excel export, optional login, and one JSON file for storage (TinyDB), so there is nothing to set up
+
+**More:** the dashboard's **Help** page is the full guide, with runnable examples for the common setups (function shapes, steps, LangGraph, bots without retrieval, your own judge) and a troubleshooting section. The same page is in the repository at [nl2sql_evalkit/web/guide/developer-guide.html](nl2sql_evalkit/web/guide/developer-guide.html), and its code is in [examples/](examples/).
+
+---
+
+## Installation
+
+```bash
+pip install git+https://github.com/devanshmakam-youngsoft/nl2sql_evalkit-lib.git
+```
+
+To pin a release, add a tag, for example `@v0.1.3` (tags: `v0.1.0` to `v0.1.4`). `v0.1.4` is the first release with the backend layout described below and the `data_dir` option in place of `store_path` and `log_dir`; code written for an earlier tag that passes those two options needs the one change.
+
+The meaning-similarity score needs a small local model, which brings PyTorch (a very large download), so it is optional:
+`pip install "nl2sql_evalkit[semantic] @ git+https://github.com/devanshmakam-youngsoft/nl2sql_evalkit-lib.git"`. Without it everything else
+works and that one score is left blank.
+
+In `requirements.txt`:
+
+```
+git+https://github.com/devanshmakam-youngsoft/nl2sql_evalkit-lib.git
+```
+
+> **Windows:** run `pip install` from **Git Bash** if `git` is not in your PowerShell PATH.
+
+**Dependencies are pinned for safety.** `litellm` is held to `>=1.104,<1.107`: version 1.107.0 (21 Oct 2026) and 1.82.7/1.82.8 (Mar 2026) were published with credential-stealing malware. Raise the upper bound only after checking that a newer release is clean.
+
+---
+
+## Quick Start
+
+### 1. Start the evaluation server
+
+`serve()` takes **your pipeline function**. Anything that turns a question into an answer works:
+
+```python
+import nl2sql_evalkit
+
+def my_rag(question: str) -> str:
+    return pipeline.run(question)
+
+nl2sql_evalkit.serve(my_rag, port=8002, require_login=False)
+```
+
+The dashboard opens at `http://localhost:8002` (the default port is `8001`). A `.env` file next to your script is read, so `GROQ_API_KEY`, `OPENAI_API_KEY` and the like are picked up for the judge.
+
+Your function can also take history or a session id, return a dict, or be `async`; nl2sql_evalkit adapts to its parameter names (see the guide). To show what happens *inside* the pipeline, mark its steps:
+
+```python
+with nl2sql_evalkit.step("retrieval") as s:
+    docs = vector_db.search(query)
+    s.material = "\n\n".join(d.text for d in docs)   # the retrieved text: this is what "context quality" scores
+    s.sources = [d.source for d in docs]               # which documents: checked against expected_sources
+
+with nl2sql_evalkit.step("llm"):                           # timing only: its output is not treated as context
+    answer = llm.generate(query, docs)
+```
+
+Only a step that **declares** its material feeds the judge: set `s.material`, or decorate a function that returns the text with `@nl2sql_evalkit.step("retrieval", material=True)`. Steps may run in threads you start (a thread pool searching several indexes, say); they still belong to the question being evaluated.
+
+### 2. Add test cases
+
+Open **Test Cases**. You can add one case with **+ New test case**, bring many in with **Import** (Excel/CSV or pasted rows), or write them from your documents with **Generate from documents**. Only the question is required for an import; each case has a `chat_id`, `turn_no`, `type`, `question`, `expected_answer` and an optional `expected_sources` (see [Source Verification](#source-verification)).
+
+### 3. Run an evaluation
+
+Click **Execute session**, name the version, pick groups and/or individual test cases, add an optional note, and run. For each test case nl2sql_evalkit calls your function, scores the answer with the judge, and computes text metrics.
+
+### 4. Read the results
+
+The **Dashboard** shows every version with its average scores and a recommendation. Open a version for the score distribution, the timing of each step, watch-outs with suggestions, and every question's answer. Download an Excel report from the version page.
+
+---
+
+## Configuration
+
+The most used `serve()` parameters (the full list, with every default, is in the `serve()` docstring and the developer guide):
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `fn` | required | Your pipeline function |
+| `port` | `8001` | Port for the dashboard |
+| `data_dir` | `"nl2sql_evalkit_data"` | The one folder everything is written to: `store.json`, `logs/`, `uploads/` |
+| `show_guide` | `True` | Show the guide on the dashboard's Help page; `False` hides the link and stops serving it |
+| `require_login` | `True` | Show the login page; `False` lets anyone in as a guest |
+| `users` | `"admin:admin123"` | `"user:password"` pairs, comma separated |
+| `judge_model` | `"groq/openai/gpt-oss-120b"` | Any LiteLLM model string for the judge |
+| `judge_api_key` | `None` | Otherwise LiteLLM reads the provider's environment variable |
+| `generator_model` | `None` | Model that writes test cases from documents; defaults to `judge_model` |
+| `answer_weight` / `material_weight` | `0.6` / `0.4` | How the recommendation weighs answer and context quality |
+| `recommendation_tolerance` | `0.25` | Versions this close to the best count as tied; the fastest wins |
+| `max_response_time` | `None` | Leave out versions slower than this (seconds) when recommending |
+| `source_check_mode` | `"keyword"` | `"keyword"`, `"llm"` or `"off"` |
+| `summary_prompt` | `None` | Changes what the AI-written findings look for |
+| `eval_env` | `"dev"` | `"prod"` turns the dashboard and every eval route off |
+
+---
+
+## Test cases and groups
+
+Test cases are the unit of the library. A **group** is just a label you put on test cases: one case can carry any number of labels, and you can add or remove them from the Test Cases page (tick rows → *Add to group…*) or from a case's detail panel.
+
+You can run:
+
+- one or more **groups** (a case that is in several selected groups runs once), or
+- any **hand-picked test cases** — tick rows on the Test Cases page and choose *Run*, or use *Pick test cases* in the Execute dialog.
+
+Follow-up questions need the turns before them, so by default a run also includes the earlier turns of each selected case's conversation; the Execute dialog shows exactly how many cases will run and lets you turn this off. Chat ID and turn number can be edited on any test case.
+
+**Deleting a test case removes it for good**, with all its versions and group labels. Past versions keep their own copy of the question and the answer, and mark that row *Test case deleted*. **Deleting a group** only hides it (its labels stay, so past versions still read correctly); open *Deleted groups* on the Groups page to restore or remove one. Deleting a **version** removes it and its results from the store for good. To take a test case out of runs without deleting it, mark it *inactive*.
+
+## Generating test cases from documents
+
+**Test Cases → Generate from documents** writes test cases from your own documents (PDF, Word `.docx`, TXT or Markdown; up to 5 files, 50 MB each). By default it writes 3 questions in each of four categories and puts them in a group per category:
+
+| Category | What it is |
+|---|---|
+| **Direct** | The answer is stated plainly in one place. |
+| **Indirect** | The answer is in the document, but the question uses everyday words or describes a situation rather than the document's own wording. |
+| **Multi-part** | One question with several parts, answered from different places in the document. |
+| **Multi-turn** | A short conversation (3 turns by default). Each follow-up is what a person would type *next* ("and what happens if I miss that?"): it refers back to the earlier answer and cannot be understood alone. Every follow-up records what it builds on, shown during review. |
+
+- **Type.** Every generated test case has the type `rag` (its answer has to come from the documents); the category is the group it is in.
+- **Questions per category** is shared across the files you upload; change it (1–10) and which categories to write in the dialog.
+- **Every answer comes with evidence.** The writer sees each passage as numbered sentences and cites the sentences that prove its answer; nl2sql_evalkit stores the document's own wording of them, with file and page, so evidence can never be invented. A question whose evidence does not point at real sentences is rejected and rewritten, and a rejected conversation is sent back naming the turn that failed. Evidence is shown during review and later on the test case ("Written from your document"), and the file name becomes the case's `expected_sources`.
+- **Saved as it goes, approved by you.** Questions are saved on the server while they are being written, so closing the browser or losing the network loses nothing; a banner on the Test Cases page brings you back. They only become test cases when you press *Add*; you can edit or remove any of them first. Anything not added within 24 hours (`batch_ttl_hours`) is deleted.
+- **Nothing of the upload is kept** — only the questions, answers and evidence snippets.
+- **Which model writes them:** `serve(generator_model=...)`, defaulting to `judge_model`. The text of your documents is sent to that model, so pick one you are allowed to send them to (a local `ollama/...` model works). Scanned PDFs (no selectable text), password-protected files and old `.doc` files are reported with a clear message (save `.doc` as `.docx`).
+
+## Test case types: rag and non-rag
+
+Each test case has a type. **`rag`** (the default) means the answer has to come from your documents, so the retrieved material is scored too. **`non-rag`** is for greetings, small talk and anything else where no retrieval is expected: it is graded on the answer only, like the `conversational` type. Older values such as `query` keep working and count as rag. Pick the type in the test case form, in a `type` column when importing, or leave it blank for `rag`.
+
+## Importing test cases in bulk
+
+**Test Cases → Import** takes an Excel or CSV file, or rows pasted from a spreadsheet, in three steps: pick the file, check what will happen, then choose where the cases go. Nothing is saved until the last step.
+
+- **Check first.** You see how many rows are new, will be updated, are already there, or can't be imported — with the row number and reason for each one that can't — before anything is saved. Nothing is silently corrected: a turn of "abc" is reported, not turned into 1.
+- **Only the question column is required.** Without a chat column every question becomes its own chat; without a turn column turns are numbered in file order within each chat. Common header names (`query`, `gold_answer`, `tags`…) are recognised, and the dialog lets you point any column at the right field.
+- **Groups are optional.** The default is *No group*. Pick existing groups or a new one for the whole file, and/or add a `groups` column (`Billing; Refunds`) to label rows individually — missing groups are created.
+- **Safe to repeat.** Importing the same file again changes nothing; an edited answer becomes a new version of the existing case. If a row has the same chat and turn as an existing case but a different question you can add it as a new case or update the existing one.
+- **Fix and re-import.** The rows that couldn't be imported can be downloaded with the reason next to each. A template (with a short guide) is available in the dialog.
+
+## Which version should ship?
+
+The dashboard's recommendation is computed by the server (`GET /api/recommendation`) every time, from the saved scores of every run that is **not archived** — archive or delete a version and the recommendation, trend charts, deltas and group history update straight away.
+
+**Versions are compared on the test cases they share.** Each run saves its score for every test case, so adding a test case (or running an extra group) in a later version no longer hides it: it is judged on the cases the others also ran, and the dashboard says so ("Compared on the 10 test cases every compared version ran; v4 ran 20"). A case only counts as the same if its question and expected answer are unchanged. If the shared cases are only a thin slice (fewer than half of a typical version's cases, e.g. a 2-question smoke test next to 10-question runs) that version is left out and the reason is shown. Versions that were stopped early, or failed on a shared case, are left out too. The *overall score* is answer quality and context quality weighted by `answer_weight` / `material_weight` from `serve()` (default 60/40); versions within the tie tolerance of the best are tied and the fastest wins. If context quality was not graded for every compared version, all are compared on answer quality alone and the dashboard says so. Changes (the ± figures) and BEST marks use the same shared cases.
+
+Each run's summary also has *Watch-outs & suggestions*: AI-written findings, each pairing one thing that needs attention with the next step that answers it (it does not repeat the headline scores). The reply is checked: a finding without its suggestion is sent back to the model, and if one is still missing it is filled in from the run's own numbers. `serve(summary_prompt=...)` changes what it looks for; the JSON reply format is added automatically.
+
+Each run also saves a detailed `scores` block (score tiers, per-question-type averages, response-time spread, source-check results) on its summary.
+
+---
+
+## Logs and problems
+
+Everything is written to one data folder (`nl2sql_evalkit_data/` by default, `data_dir` moves it): the store, the logs and the uploads.
+
+```
+nl2sql_evalkit_data/
+├── store.json     results, test cases, groups, review batches
+├── logs/          server.log, runs/, generation/
+└── uploads/       spreadsheets uploaded for a run
+```
+
+The log files:
+
+| File | Contents |
+|---|---|
+| `logs/server.log` | The library's own log lines; unexpected API errors with a reference number and the full traceback |
+| `logs/runs/<time>_<version>.log` | One file per run: every question with its result and time, every problem with its traceback, how the run ended |
+| `logs/generation/<batch>.log` | The same for test cases written from documents |
+
+The dashboard reports problems in plain words and keeps the technical detail one click away: a problem count while a run is going, a *Problems during this run* section and a *Download log* button on each version, the reason on every question that could not be answered or graded, and a message with a reference number for server errors. A failing pipeline function never stops a run: that question is marked failed, the reason is recorded, and the run goes on. API keys and passwords are hidden before anything is written or shown.
+
+---
+
+## Source Verification
+
+Add an `expected_sources` column to your dataset to track which documents the RAG should retrieve.
+
+### Format
+
+| Separator | Meaning | Example |
+|-----------|---------|---------|
+| `\|` | AND — every group must be retrieved | `doc_a.pdf \| doc_b.pdf` |
+| `,` | OR — any one alternative satisfies the group | `doc_a.pdf , doc_a_v2.pdf` |
+
+Combined: `doc_a.pdf , doc_a_v2.pdf | policy_2025.pdf`  
+→ (doc_a.pdf **or** doc_a_v2.pdf) **and** policy_2025.pdf must both be retrieved.
+
+Single-source rows (`doc_a.pdf`) work as before.
+
+### Modes
+
+Control the check with `source_check_mode` in `serve()`:
+
+| Mode | Behaviour |
+|------|-----------|
+| `"keyword"` | Fast substring match — case-insensitive, ignores path prefix and extension (default) |
+| `"llm"` | LLM judge call — understands capitalisation/extension differences; strict about year/version differences; adds `source_score` (0–10) and `source_comment` to results |
+| `"off"` | Skip source verification entirely |
+
+```python
+serve(..., source_check_mode="llm")
+```
+
+Results always include `matched_sources`, `missing_sources`, and `source_match` (True only when every required group was retrieved).
+
+---
+
+## Versioning
+
+When you release a new version of your RAG app, run the evaluator against the same test cases and give it a new version name (e.g. `v2`). The dashboard tracks all versions so you can compare quality over time.
+
+---
+
+## Development
+
+### Layout
+
+In the repository:
+
+```
+nl2sql_evalkit-lib/
+├── README.md, pyproject.toml
+├── nl2sql_evalkit/        the BACKEND: the Python package (everything in it is installed)
+├── frontend/          the dashboard's source (React + Vite); builds into nl2sql_evalkit/web/dashboard
+├── tests/             mirrors nl2sql_evalkit/ folder by folder, plus architecture/, examples/, guides/
+├── docs/guide/        the guide's source: shell.html and one file per page in pages/
+├── examples/          the runnable code the guide shows; every file is run by tests/examples
+└── scripts/           build_guide.py, rename_library.py
+```
+
+Inside the backend, each folder is a layer that only reaches downwards (`routers -> services -> core, schemas, utils`; `services/db_services` is the only code that knows the JSON store's format; inside services, `evaluation` may use `testcases`, and `testcases` may use neither `evaluation` nor anything above it;
+`tests/architecture` enforces both).
+
+A folder is used through its `__init__`: code outside `services/db_services/` writes
+`from nl2sql_evalkit.services.db_services import EvalStore`, never `...db_services.store`. Files inside a folder import each other
+directly, and each `__init__` lists what the folder offers in `__all__` (`tests/architecture` checks this too). The folders:
+
+```
+nl2sql_evalkit/
+├── __init__.py          public API: serve, step, note, errors
+├── main.py              builds the web app
+├── launcher.py          serve(): checks options, starts the server
+├── core/                config/ (settings by topic), constants/ (library.py holds the names), exceptions/ (+ handlers),
+│                        diagnostics/ (log files, plain-language problems), security/ (sign-in)
+├── routers/             one folder per area, each file thin: evaluation/, testcase_library/, testcase_generator/, sign_in/, app_info/
+├── schemas/             the shape of every request and response, same area folders; internal/ for shapes services share
+├── services/            what the product does
+│   ├── evaluation/      evaluation_runner, answer_judge, step_recorder, run_summarizer, version_recommender
+│   ├── testcases/       testcase_library, testcase_import, testcase_generator, document_reader, spreadsheet_loader
+│   ├── db_services/     reads and writes the TinyDB JSON store (store.py and one file per kind of record)
+│   ├── llm_client/      one safe way to call any AI model
+│   ├── text_metrics/    key words, BM25, meaning similarity (used by both groups)
+│   └── app_info/        the guide page and which dashboard features are on
+├── prompts/             the instructions sent to AI models, one file each: answer_judge/, testcase_generator/
+├── utils/               small shared helpers
+└── web/                 generated, do not edit: dashboard/ (built from frontend/) and guide/ (built from docs/guide/)
+```
+
+What `pip install` puts on a machine is only the `nl2sql_evalkit/` folder: no tests, docs, examples, frontend source or scripts.
+The folder a running server writes is `nl2sql_evalkit_data/` (`data_dir=` moves it): `store.json`, `logs/`, `uploads/`.
+
+**The library's name** is written in one file, `nl2sql_evalkit/core/constants/library.py`; the data folder, the sign-in cookie, the loggers and
+the API title are derived from it. To rename the library everywhere (folder, imports, `pyproject`, docs and that file) run
+`python scripts/rename_library.py NEW_NAME` for a dry run, and add `--apply` to do it.
+
+### The guide
+
+`nl2sql_evalkit/web/guide/developer-guide.html` is built from `docs/guide/` (a shell and one file per page). Its code comes from the files in
+`examples/` (run by `tests/examples`) and its `serve()` reference comes from the function's own signature and docstring, so
+it cannot drift. After changing the template, an example or `serve()`, rebuild it:
+
+```bash
+python scripts/build_guide.py
+```
+
+`tests/guides` fails when the built guide is out of date.
+
+### Dashboard
+
+The dashboard source lives in `frontend/` (React + Vite) and builds straight into `nl2sql_evalkit/web/dashboard/`. To rebuild it:
+
+```bash
+cd frontend
+npm ci
+npm run build
+```
+
+The build replaces `nl2sql_evalkit/web/dashboard/`, which is committed so that `pip install` from git works without Node. Backend tests: `pip install -e .[dev]` then `pytest`.

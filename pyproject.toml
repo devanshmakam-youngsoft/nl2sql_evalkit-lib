@@ -1,0 +1,76 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nl2sql_evalkit"
+version = "0.1.4"
+description = "A generic RAG / LLM evaluation toolkit with a React dashboard"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [{ name = "Youngsoft" }]
+keywords = ["rag", "llm", "evaluation", "benchmark", "chatbot", "ai"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "python-multipart>=0.0.9",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.4",
+    "tinydb>=4.8",
+    # 1.107.0 (21 Oct 2026) and 1.82.7/1.82.8 (Mar 2026) were published with credential-stealing malware. This range holds
+    # versions we have tested; raise the upper bound only after checking a newer release is clean.
+    "litellm>=1.104,<1.107",
+    "pandas>=2.2",
+    "openpyxl>=3.1",
+    "pypdf>=4.0",
+    "python-docx>=1.1",
+]
+
+[project.optional-dependencies]
+# The meaning-similarity score runs a small local model. sentence-transformers brings PyTorch, a very large download,
+# so it is opt-in: pip install "nl2sql_evalkit[semantic]"
+semantic = ["sentence-transformers>=3.0"]
+dev = ["pytest", "httpx", "pytest-asyncio", "ruff"]
+
+[project.urls]
+Repository = "https://github.com/devanshmakam-youngsoft/nl2sql_evalkit-lib"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["nl2sql_evalkit*"]
+
+[tool.setuptools.package-data]
+nl2sql_evalkit = ["web/**/*", "py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+# D10x: every module, class, function and method of the package has a docstring.
+# ANN201/ANN202: every function says what it returns.
+select = ["E4", "E7", "E9", "F", "I", "D100", "D101", "D102", "D103", "D104", "ANN201", "ANN202"]
+ignore = ["E701", "E702", "E731"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D", "ANN"]
+"examples/**" = ["D", "ANN"]
+"scripts/**" = ["ANN"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["nl2sql_evalkit"]
+known-local-folder = ["shared_pipeline", "production_app"]
