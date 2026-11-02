@@ -56,7 +56,7 @@ def recommend_on_totals(active: list[dict], *, group, sql_weight, schema_weight,
     for v in result["not_comparable"]:
         result["not_comparable_detail"][v] = "ran a different number of test cases"
         own = next(x for x in views if x["version"] == v)
-        result["not_comparable_scores"][v] = {"answer": own["answer"], "material": own["material"], "time": own["time"], "cases": own["rows"]}
+        result["not_comparable_scores"][v] = {"answer": own["answer"], "schema_use": own["schema_use"], "time": own["time"], "cases": own["rows"]}
     result["excluded"] = [x["version"] for x in views if x["rows"] == rows and not complete(x)]
     eligible = [x for x in views if complete(x)]
     result["_all"] = views

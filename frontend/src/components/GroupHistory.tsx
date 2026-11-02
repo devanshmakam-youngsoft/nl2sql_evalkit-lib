@@ -19,7 +19,7 @@ function Figure({ label, run, children }: { label: string; run: GroupRunStat | n
             <span className="text-xs text-muted">{fmtDate(run.date)}</span>
           </div>
           <div className="mono mt-1.5 text-xs text-muted">
-            answer {fmt(run.avg_sql_marks)} · context {fmt(run.avg_schema_marks)} · {fmtSeconds(run.avg_total_time)}
+            answer {fmt(run.avg_sql_marks)} · tables and columns {fmt(run.avg_schema_marks)} · {fmtSeconds(run.avg_total_time)}
           </div>
           {children}
         </>

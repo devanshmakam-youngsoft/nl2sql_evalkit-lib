@@ -30,7 +30,6 @@ def serve(
     record_mode: str = "eval",
     record_detail: str = "all",
     max_step_value_chars: int = 1000,
-    max_material_chars: int = 20000,
     # --- judge (LLM or custom) ---
     judge_model: str = "groq/openai/gpt-oss-120b",
     judge_api_key: str | None = None,
@@ -98,15 +97,12 @@ def serve(
             records steps only during eval runner calls. ``"off"`` disables step
             recording entirely even during eval (eval still runs, just no step data).
         record_detail: Controls how much detail each step captures. ``"all"`` (default)
-            records inputs, outputs, material, sources, and timing. ``"selected"``
-            records only steps where the developer explicitly set ``.material`` or
-            ``.sources``. ``"off"`` records only step name and elapsed time.
+            records inputs, outputs, and timing. ``"selected"`` records only steps that
+            produced an output (a decorated function, or ``s.output = ...``). ``"off"``
+            records only step name and elapsed time.
         max_step_value_chars: How much of a step's inputs, output and ``note()`` values is kept for display
             (default 1000). A longer value ends with "… (+N more characters)"; a long list of numbers, such as
             an embedding, is shown as ``[N numbers]``.
-        max_material_chars: How much retrieved text the judge reads per question (default 20000), cut with the
-            same kind of marker. Material comes from steps that declare it (``s.material = …`` or
-            ``@step("retrieval", material=True)``).
         judge_model: LiteLLM model string. Examples: ``"groq/llama-3.3-70b-versatile"``,
             ``"gemini/gemini-1.5-pro"``, ``"openai/gpt-4o"``, ``"ollama/llama3"``.
         judge_api_key: Explicit API key for the judge. If omitted, LiteLLM reads the
@@ -218,7 +214,6 @@ def serve(
         record_mode=record_mode,
         record_detail=record_detail,
         step_value_chars=max_step_value_chars,
-        material_chars=max_material_chars,
         judge_model=judge_model,
         judge_api_key=judge_api_key or "",
         judge_prompt_override=judge_prompt or "",

@@ -20,7 +20,6 @@ from nl2sql_evalkit.services.evaluation.evaluation_runner.function_adapter impor
     format_history,
     parameter_name_for,
 )
-from nl2sql_evalkit.services.evaluation.evaluation_runner.material import select_material
 from nl2sql_evalkit.services.evaluation.evaluation_runner.run import Run, light_row
 from nl2sql_evalkit.services.evaluation.run_summarizer import build_group_stats, build_summary
 from nl2sql_evalkit.services.evaluation.sql_checks import check_sql, gate, schema_use_marks
@@ -87,7 +86,7 @@ class RunManager:
         self._history_fmt   = config.history_format
         self._record_detail = config.record_detail
         self._record_mode   = config.record_mode
-        step_recorder.configure(max_step_value_chars=config.step_value_chars, max_material_chars=config.material_chars)
+        step_recorder.configure(max_step_value_chars=config.step_value_chars)
 
         # Detect once at startup — inspection is expensive; cache the result.
         self._sig = detect_call_style(fn, self._s_aliases, self._h_aliases)
@@ -167,9 +166,8 @@ class RunManager:
 
     def _call_fn(
         self, question: str, history: list[dict], session_id: str
-    ) -> tuple[str, float, dict, str, list, dict, dict, dict]:
-        """Call the developer's function; return (answer, elapsed, node_timings,
-        material, sources, step_inputs, step_outputs, flags)."""
+    ) -> tuple[str, float, dict, dict, dict, dict]:
+        """Call the developer's function; return (answer, elapsed, node_timings, step_inputs, step_outputs, flags)."""
         _recording_active = self._record_mode != "off"
         if _recording_active:
             step_recorder.begin_question(detail=self._record_detail)
@@ -213,11 +211,9 @@ class RunManager:
         node_timings: dict[str, float] = {}
         for s in steps:
             node_timings[s["name"]] = round(node_timings.get(s["name"], 0.0) + s["elapsed"], 3)
-        material = select_material(steps)
-        sources      = list(dict.fromkeys(src for s in steps for src in (s.get("sources") or [])))   # each once, in order
         step_inputs  = {s["name"]: s.get("inputs", {}) for s in steps}
         step_outputs = {s["name"]: s.get("output",  "") for s in steps}
-        return answer, elapsed, node_timings, material, sources, step_inputs, step_outputs, flags
+        return answer, elapsed, node_timings, step_inputs, step_outputs, flags
 
     def _grade_sql(self, row, out: dict, case_type: str, run: Run, where: str) -> dict:
         """The SQL score of one reply with the reason and a suggestion: 0 for a failed question or a reply that fails a basic
@@ -273,14 +269,12 @@ class RunManager:
                 out[col_n] = getattr(row, col_n)
 
         try:
-            answer, elapsed, node_timings, material, sources, step_inputs, step_outputs, flags = \
+            answer, elapsed, node_timings, step_inputs, step_outputs, flags = \
                 self._call_fn(row.question, history, session_id)
             out.update(
                 generated_answer=answer,
                 total_time_taken=elapsed,
                 node_timings=node_timings,
-                material=material,
-                sources=sources,
                 step_inputs=step_inputs,
                 step_outputs=step_outputs,
             )
@@ -294,8 +288,6 @@ class RunManager:
                 error_message=issue.message,
                 error_detail=issue.technical,
                 generated_answer=None,
-                material="",
-                sources=[],
                 node_timings={},
                 step_inputs={},
                 step_outputs={},
@@ -380,7 +372,7 @@ class RunManager:
                 rows.append(result)
                 run.done += 1
                 run.log.info(
-                    "Question %d of %d | chat %s turn %s | %s | answer %s, material %s | %ss",
+                    "Question %d of %d | chat %s turn %s | %s | answer %s, tables and columns %s | %ss",
                     run.done, run.total, row.chat_id, row.turn_no, result["status"],
                     result.get("sql_marks"), result.get("schema_marks"), result.get("total_time_taken", "-"),
                 )

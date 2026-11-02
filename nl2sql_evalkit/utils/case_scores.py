@@ -15,7 +15,7 @@ def case_key(chat_id, turn_no, question, expected_sql, expected_tables="", expec
 
 def build_case_scores(rows: list[dict]) -> list[dict]:
     """The compact per-case scores of one run, saved on its summary so any two versions can later be
-    compared on the cases they share: {k: case key, a: answer marks, m: material marks, t: seconds,
+    compared on the cases they share: {k: case key, a: answer marks, m: schema_use marks, t: seconds,
     ok: answered and graded, g: the groups the case belonged to when it ran}."""
     out = []
     for r in rows:

@@ -60,7 +60,7 @@ export default function VersionDetail() {
     const summarise = (rs: ResultRow[]) => ({
       cases: rs.length,
       answer: avg(rs.map((r) => r.sql_marks)),
-      material: avg(rs.map((r) => r.schema_marks)),
+      schema_use: avg(rs.map((r) => r.schema_marks)),
       time: avg(rs.map((r) => r.total_time_taken)),
     });
     const list = names.map((name) => ({ key: name, name, ...summarise(rows.filter((r) => r.groups?.includes(name))) }));
@@ -222,7 +222,7 @@ export default function VersionDetail() {
                     <td className="px-5 py-2.5 font-medium">{g.name}</td>
                     <td className="mono px-3 py-2.5 text-xs">{g.cases}</td>
                     <td className="mono px-3 py-2.5">{fmt(g.answer)}</td>
-                    <td className="mono px-3 py-2.5">{fmt(g.material)}</td>
+                    <td className="mono px-3 py-2.5">{fmt(g.schema_use)}</td>
                     <td className="mono px-3 py-2.5">{fmtSeconds(g.time)}</td>
                   </tr>
                 ))}
@@ -450,7 +450,7 @@ function Block({ title, children, mono = false }: { title: string; children: Rea
 /**
  * One question's result, in the order a reviewer reads it: the question, how it scored at a glance,
  * what was answered against what was expected, why it scored that way, then the supporting evidence
- * (sources, retrieved text) and the technical detail last.
+ * (the checks on the SQL) and the technical detail last.
  */
 function RowDrawer({ row, onClose }: { row: ResultRow; onClose: () => void }) {
   useEffect(() => {
@@ -523,21 +523,8 @@ function RowDrawer({ row, onClose }: { row: ResultRow; onClose: () => void }) {
           </div>
         )}
 
-        {/* 5. What the checks found in the SQL, then what the pipeline recorded */}
+        {/* 5. What the checks found in the SQL, then the time spent in each step */}
         {row.sql_checks && <CheckDetails checks={row.sql_checks} type={row.type} />}
-        {(row.sources?.length ?? 0) > 0 && (
-          <div className="mt-5 whitespace-pre-wrap rounded bg-surface-2 p-3 text-xs leading-relaxed text-muted">
-            <span className="font-medium text-fg">Sources the pipeline reported:</span>{"\n"}{row.sources.join("\n")}
-          </div>
-        )}
-        {row.material && (
-          <details className="mt-5 rounded border border-line">
-            <summary className="cursor-pointer select-none px-3.5 py-2.5 text-sm font-medium hover:bg-surface-2">
-              Retrieved text <span className="font-normal text-muted">· the passages the assistant was given ({row.material.length.toLocaleString()} characters)</span>
-            </summary>
-            <div className="max-h-72 overflow-auto whitespace-pre-wrap border-t border-line bg-surface-2 p-3.5 font-mono text-xs leading-relaxed">{row.material}</div>
-          </details>
-        )}
 
         <div className="mt-5">
           <div className="label mb-1.5"><Term k="steps" /> · {fmtSeconds(row.total_time_taken)} total</div>

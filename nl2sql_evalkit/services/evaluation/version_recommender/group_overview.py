@@ -24,7 +24,7 @@ def _own_stats(summary: dict, group: str) -> dict | None:
             return None
         return {
             "rows": len(entries), "failed": sum(1 for e in entries if not e.get("ok")),
-            "answer": mean_of_present(e.get("a") for e in entries), "material": mean_of_present(e.get("m") for e in entries),
+            "answer": mean_of_present(e.get("a") for e in entries), "schema_use": mean_of_present(e.get("m") for e in entries),
             "time": mean_of_present(e.get("t") for e in entries),
         }
     return version_view(summary, group)
@@ -59,7 +59,7 @@ def group_overview(
         version = str(summary["version"])
         history.append({
             "version": version, "date": summary.get("date"), "total_rows": stats["rows"], "failed_rows": stats["failed"],
-            "avg_sql_marks": stats["answer"], "avg_schema_marks": stats["material"], "avg_total_time": stats["time"],
+            "avg_sql_marks": stats["answer"], "avg_schema_marks": stats["schema_use"], "avg_total_time": stats["time"],
             "quality": qualities.get(version), "stopped": bool(summary.get("stopped")),
         })
     by_version = {h["version"]: h for h in history}

@@ -1,23 +1,23 @@
-"""nl2sql_evalkit — evaluate any RAG pipeline, chatbot, or multi-agent system.
+"""nl2sql_evalkit — evaluate any text-to-SQL assistant. The SQL is read and checked, never run.
 
 Quickstart::
 
     import nl2sql_evalkit
 
-    def my_rag(question):
-        return pipeline.run(question)
+    def my_text_to_sql(question):
+        return pipeline.run(question)       # SQL, or a message when it asks back or declines
 
-    nl2sql_evalkit.serve(my_rag)
+    nl2sql_evalkit.serve(my_text_to_sql, dialect="postgres")
 
-With step recording::
+With step timing::
 
-    @nl2sql_evalkit.step("retriever")
-    def retrieve(query):
-        return vector_db.search(query)
+    @nl2sql_evalkit.step("pick_tables")
+    def pick_tables(question):
+        return schema_search(question)
 
-    with nl2sql_evalkit.step("llm") as s:
-        answer = llm.generate(query)
-        s.material = retrieved_context
+    with nl2sql_evalkit.step("write_sql") as s:
+        sql = llm.generate(prompt)
+        s.output = sql
 """
 from nl2sql_evalkit.core.exceptions import (
     ConfigError,

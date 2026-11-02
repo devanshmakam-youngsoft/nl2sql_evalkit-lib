@@ -82,7 +82,7 @@ class VersionSummary(ApiResponse):
     total_rows: int | None = None     # questions asked
     failed_rows: int | None = None    # questions that could not be answered or graded
     avg_sql_marks: float | None = None    # mean answer score, 0 to 10
-    avg_schema_marks: float | None = None  # mean score of the retrieved context, 0 to 10; null when none was graded
+    avg_schema_marks: float | None = None  # mean tables-and-columns score, 0 to 10; null when none was graded
     avg_total_time: float | None = None      # mean response time per question, in seconds
     archived: bool | None = None      # true when hidden from the default listing
     stopped: bool | None = None       # true when stopped early; such a run is never recommended or compared
@@ -113,14 +113,12 @@ class ResultRow(ApiResponse):
     generated_answer: str | None = None  # what the assistant returned: SQL, or a message when it asked back or declined
     generated_sql: str | None = None    # the SQL in the reply, empty when there is none
     sql_checks: dict | None = None      # what the checks on the SQL found (nothing is run); see check_sql
-    material: str | None = None         # the retrieved context the answer was judged against
-    sources: list[str] | None = None    # the sources the pipeline reported using
     total_time_taken: float | None = None  # seconds
     node_timings: dict[str, float] | None = None  # seconds spent in each recorded step
     sql_marks: int | None = None     # 0 to 10
     sql_remarks: str | None = None
     sql_suggestion: str | None = None   # the one change the judge suggests
-    schema_marks: int | None = None   # 0 to 10; null when no retrieval was expected or it was not graded
+    schema_marks: int | None = None   # 0 to 10; null when the test case expects no tables or columns
     schema_remarks: str | None = None
     groups: list[str] | None = None     # the groups the test case belonged to when the run happened
     case_deleted: bool | None = None    # true when the test case has been deleted since
@@ -140,7 +138,7 @@ class LatestVersusBest(ApiResponse):
 
     version: str                      # the newest run
     answer: float | None = None       # negative means the newest run scored lower
-    material: float | None = None
+    schema_use: float | None = None
     time: float | None = None         # seconds; positive means the newest run was slower
     quality: float | None = None
 
@@ -173,11 +171,11 @@ class Recommendation(ApiResponse):
     budget_miss: bool                 # true when no version answered within ``max_time``
     basis: str                        # "weighted" (answer and context) or "answer_only"
     basis_note: str                   # why the basis is answer-only, when it is
-    weights: dict[str, float]         # {answer, material}, as used (scaled to add up to 1)
+    weights: dict[str, float]         # {answer, schema_use}, as used (scaled to add up to 1)
     tolerance: float                  # versions within this many points (0 to 10) of the top count as tied
     max_time: float | None = None     # response-time ceiling in seconds; null for none
     qualities: dict[str, float | None]  # overall score (0 to 10) per version; null without answer scores
     considered: int                   # versions looked at
     compared_cases: int | None = None  # test cases compared; null when runs were compared on whole-run totals
     partial: list[dict[str, Any]]     # {version, ran, compared}: versions that ran more cases than were compared
-    scores: dict[str, dict[str, Any]]  # per version on the compared cases: answer, material, time, cases, quality
+    scores: dict[str, dict[str, Any]]  # per version on the compared cases: answer, schema_use, time, cases, quality

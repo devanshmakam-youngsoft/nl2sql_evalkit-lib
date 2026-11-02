@@ -11,11 +11,11 @@ from nl2sql_evalkit.services.evaluation.run_summarizer import build_scores, buil
 from nl2sql_evalkit.services.evaluation.version_recommender import group_overview, recommend
 
 
-def run(version, answer, material, time, *, rows=8, failed=0, archived=False, stopped=False, groups=None):
+def run(version, answer, schema_use, time, *, rows=8, failed=0, archived=False, stopped=False, groups=None):
     r = {
         "version": str(version), "date": f"2026-01-{int(version):02d}T00:00:00+00:00",
         "total_rows": rows, "failed_rows": failed, "avg_sql_marks": answer,
-        "avg_schema_marks": material, "avg_total_time": time, "archived": archived, "stopped": stopped,
+        "avg_schema_marks": schema_use, "avg_total_time": time, "archived": archived, "stopped": stopped,
     }
     if groups:
         r["group_stats"] = groups
@@ -27,7 +27,7 @@ def test_quality_beats_speed_and_speed_breaks_a_near_tie():
     assert recommend([run(1, 9.3, 10, 2.0), run(2, 9.2, 10, 1.2)])["best"] == "2"
 
 
-def test_a_high_answer_with_poor_material_loses_to_a_balanced_run():
+def test_a_high_answer_with_poor_schema_marks_loses_to_a_balanced_run():
     assert recommend([run(1, 9.5, 5, 0.8), run(2, 9.0, 9.5, 1.6)])["best"] == "2"
 
 
@@ -41,11 +41,11 @@ def test_archiving_the_recommended_version_changes_the_recommendation():
 
 
 def test_a_run_with_no_schema_marks_cannot_win_by_skipping_them():
-    # v2 never had material graded; it must not beat v1 just because its quality is "answer only"
+    # v2 never had tables and columns graded; it must not beat v1 just because its quality is "answer only"
     result = recommend([run(1, 8, 9, 1.0), run(2, 8.5, None, 1.0)])
     assert result["basis"] == "answer_only" and "v2" in result["basis_note"]
     assert result["qualities"]["1"] == 8 and result["qualities"]["2"] == 8.5   # compared like for like
-    # when every version has material, it counts
+    # when every version has schema_use, it counts
     assert recommend([run(1, 8, 9, 1.0), run(2, 8.5, 6, 1.0)])["basis"] == "weighted"
 
 
@@ -61,7 +61,7 @@ def test_time_budget_and_weights_come_from_the_caller():
     versions = [run(1, 8, 8, 5.0), run(2, 9, 9, 1.0)]
     over_budget = recommend(versions, max_time=0.5)
     assert over_budget["best"] is None and over_budget["budget_miss"] is True
-    # all weight on material flips the winner
+    # all weight on schema_use flips the winner
     flipped = recommend([run(1, 9, 5, 1), run(2, 7, 9, 1)], sql_weight=0.0, schema_weight=1.0, tolerance=0)
     assert flipped["best"] == "2"
 
@@ -122,7 +122,7 @@ def test_api_recommendation_uses_serve_weights_and_skips_archived(client):
     store.write("2", run(2, 7, 9, 1), [])
     reco = client.get("/api/recommendation", params={"tolerance": 0}).json()
     assert reco["best"] == "2"                            # serve(schema_weight=1.0) is honoured
-    assert reco["weights"] == {"answer": 0.0, "material": 1.0}
+    assert reco["weights"] == {"answer": 0.0, "schema_use": 1.0}
     client.patch("/api/runs/2/archive")
     assert client.get("/api/recommendation").json()["best"] == "1"
     assert client.get("/api/recommendation", params={"tolerance": -1}).status_code == 422

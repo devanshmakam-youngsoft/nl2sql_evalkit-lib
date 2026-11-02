@@ -12,12 +12,11 @@ class RecordingSettings(Settings):
     record_mode: str = "eval"
 
     # Recording detail level (controls HOW MUCH is captured per step)
-    # "all"      — inputs, outputs, material, sources, timing (default)
-    # "selected" — only steps where developer explicitly set .material or .sources
+    # "all"      — inputs, outputs, timing (default)
+    # "selected" — only steps that produced an output (decorated, or `s.output = ...`)
     # "off"      — only step name + elapsed time (no content captured)
     record_detail: str = "all"
 
-    # How much of a step is kept. Shown inputs, outputs and notes are cut at step_value_chars; the material the
-    # judge reads is cut at material_chars. A cut always ends with a marker saying how much was left out.
+    # How much of a step is kept. Shown inputs, outputs and notes are cut at step_value_chars; a cut always ends
+    # with a marker saying how much was left out.
     step_value_chars: int = 1000
-    material_chars: int = 20000

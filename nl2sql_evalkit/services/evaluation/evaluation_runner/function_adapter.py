@@ -29,7 +29,7 @@ def parameter_name_for(fn: Callable, aliases: set[str]) -> str:
 
 def answer_text_of(result, answer_keys: list[str]) -> str:
     """
-    Turn any RAG function return value into a plain string.
+    Turn any text-to-SQL function's return value into a plain string.
     Handles str, dict (tries answer_keys in order), pydantic model, or any object.
     """
     keys = answer_keys

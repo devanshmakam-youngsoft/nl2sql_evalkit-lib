@@ -44,14 +44,12 @@ def build_results_workbook(data: dict) -> bytes:
     JUDGE_COLS = ["sql_marks", "sql_remarks", "sql_suggestion", "schema_marks", "schema_remarks"]
     # What the checks found in the SQL (kept on each row as ``sql_checks``)
     CHECK_COLS = ["syntax_ok", "read_only", "tables_missing", "columns_missing", "joins_match"]
-    # Retrieved context and sources
-    CTX_COLS  = ["retrieved_context", "sources"]
     # Timing
     TIME_COLS = ["total_time_taken", *[f"node_{n}" for n in nodes]]
     # Optional: anything the run flagged
     OPT_PRESENT = [c for c in OPTIONAL_RECEIPT_COLUMNS if any(r.get(c) is not None for r in rows)]
     # Anything else logged that isn't already covered
-    _covered = set(ID_COLS + QA_COLS + JUDGE_COLS + CHECK_COLS + ["material", "sql_checks", "generated_sql"] + CTX_COLS +
+    _covered = set(ID_COLS + QA_COLS + JUDGE_COLS + CHECK_COLS + ["sql_checks", "generated_sql"] +
                    ["total_time_taken"] + OPT_PRESENT +
                    ["session_id", "tc_id", "step_inputs", "step_outputs", "node_timings", "version"])
     extra: list[str] = []
@@ -60,7 +58,7 @@ def build_results_workbook(data: dict) -> bytes:
             if k not in _covered and k not in extra:
                 extra.append(k)
 
-    columns = [*ID_COLS, *QA_COLS, *JUDGE_COLS, *CHECK_COLS, *CTX_COLS,
+    columns = [*ID_COLS, *QA_COLS, *JUDGE_COLS, *CHECK_COLS,
                *TIME_COLS, *OPT_PRESENT, *extra]
 
     records = []
@@ -75,9 +73,6 @@ def build_results_workbook(data: dict) -> bytes:
         checks = r.get("sql_checks") or {}
         for c in CHECK_COLS:
             rec[c] = cell_value(checks.get(c))
-        # "material" stored internally → rename to "retrieved_context" for clarity
-        rec["retrieved_context"] = cell_value(r.get("material"))
-        rec["sources"] = cell_value(r.get("sources"))
         rec["total_time_taken"] = cell_value(r.get("total_time_taken"))
         nt = r.get("node_timings") or {}
         for n in nodes:
@@ -110,11 +105,11 @@ def build_results_workbook(data: dict) -> bytes:
         df_results = pd.DataFrame(records, columns=columns)
         df_results.to_excel(xw, sheet_name="Results", index=False)
 
-        # Formatting: auto-width columns, wrap text in answer/context cells
+        # Formatting: auto-width columns, wrap text in answer and remark cells
         from openpyxl.styles import Alignment, Font, PatternFill
         from openpyxl.utils import get_column_letter
         WRAP_COLS = {"question", "expected_sql", "generated_answer",
-                     "sql_remarks", "schema_remarks", "retrieved_context"}
+                     "sql_remarks", "schema_remarks"}
         HEADER_FILL = PatternFill("solid", fgColor="1A5276")
         HEADER_FONT = Font(bold=True, color="FFFFFF")
 

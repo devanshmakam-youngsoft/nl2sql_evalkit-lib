@@ -24,7 +24,7 @@ class CaseImportRepository(StoreBase):
         """Add or update test cases from parsed rows (see nl2sql_evalkit.importing.parse_rows).
 
         Each row is one of: ``new``; ``update`` (a case with the same chat, turn and question exists but its
-        answer, sources or type differ: saved as a new version, keeping the case's chat/turn and status);
+        expected SQL, tables, columns or type differ: saved as a new version, keeping the case's chat/turn and status);
         ``unchanged``. Importing the same file twice therefore changes nothing the second time. A case that
         was deleted is simply gone, so a row for it is new again.
 

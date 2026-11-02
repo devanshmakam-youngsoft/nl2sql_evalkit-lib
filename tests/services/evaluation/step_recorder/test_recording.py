@@ -1,6 +1,5 @@
-"""Step recording: steps from any thread, material that is declared, and the limits on what is kept."""
+"""Step recording: steps from any thread, what each step keeps, and the limits on what is kept."""
 import asyncio
-import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -9,7 +8,6 @@ import pytest
 from nl2sql_evalkit.core.config import Config
 from nl2sql_evalkit.main import create_app
 from nl2sql_evalkit.services.evaluation import step_recorder
-from nl2sql_evalkit.services.evaluation.evaluation_runner.material import select_material
 
 
 def run_question(body, detail="all"):
@@ -25,17 +23,15 @@ def run_question(body, detail="all"):
 @pytest.fixture(autouse=True)
 def default_limits(monkeypatch):
     monkeypatch.setitem(step_recorder.LIMITS, "value", 1000)
-    monkeypatch.setitem(step_recorder.LIMITS, "material", 20000)
 
 
 # ---- steps and notes from any thread --------------------------------------------------------------------
 
-def test_steps_started_in_a_thread_pool_are_recorded_with_their_material_and_sources():
+def test_steps_started_in_a_thread_pool_are_recorded_with_their_outputs():
     def search(name, delay):
         with step_recorder.step(name) as s:
             time.sleep(delay)
-            s.material = f"text from {name}"
-            s.sources = [f"{name}.pdf"]
+            s.output = f"text from {name}"
 
     def body():
         with ThreadPoolExecutor(2) as pool:
@@ -44,8 +40,7 @@ def test_steps_started_in_a_thread_pool_are_recorded_with_their_material_and_sou
     got = run_question(body)
     steps = {s["name"]: s for s in got["steps"]}
     assert set(steps) == {"index_a", "index_b"}
-    assert steps["index_a"]["elapsed"] >= 0.05 and steps["index_b"]["sources"] == ["index_b.pdf"]
-    assert select_material(got["steps"]).count("text from") == 2
+    assert steps["index_a"]["elapsed"] >= 0.05 and steps["index_b"]["output"] == "text from index_b"
 
 
 def test_notes_from_a_thread_reach_the_question():
@@ -93,7 +88,7 @@ def test_async_steps_run_together_are_all_recorded():
 
 def test_nothing_is_recorded_outside_an_evaluation_run():
     with step_recorder.step("outside") as s:
-        s.material = "x"
+        s.output = "x"
     step_recorder.note("k", "v")
     assert step_recorder.collect_question() == {"steps": [], "flags": {}}
 
@@ -103,76 +98,30 @@ def test_detail_modes_keep_what_they_promise():
         with step_recorder.step("quiet"):
             pass
         with step_recorder.step("loud") as s:
-            s.material = "retrieved"
+            s.output = "written"
 
     assert {s["name"] for s in run_question(body, "selected")["steps"]} == {"loud"}
     off = run_question(body, "off")["steps"]
     assert {s["name"] for s in off} == {"quiet", "loud"} and all(set(s) == {"name", "elapsed"} for s in off)
 
 
-# ---- what counts as the retrieved text ------------------------------------------------------------------
+# ---- what a step keeps ---------------------------------------------------------------------------------
 
-@step_recorder.step("rewrite")
-def rewrite(q):
-    return "rewritten " + q
+def test_a_decorated_step_keeps_its_inputs_and_its_return_value():
+    @step_recorder.step("pick_tables")
+    def pick_tables(question):
+        return "orders, customers"
 
-
-@step_recorder.step("retrieval", material=True)
-def retrieve(q):
-    return "DOCUMENT TEXT " * 100              # 1,400 characters: far more than the old 400-character cut
-
-
-@step_recorder.step("llm")
-def generate(q):
-    return "THE ANSWER ITSELF"
+    entry = run_question(lambda: pick_tables("Who ordered?"))["steps"][0]
+    assert entry["inputs"] == {"question": "Who ordered?"} and entry["output"] == "orders, customers"
 
 
-def test_only_the_step_that_declares_material_supplies_it_in_full():
+def test_a_context_manager_keeps_the_output_it_is_given():
     def body():
-        rewrite("q"), retrieve("q"), generate("q")
+        with step_recorder.step("write_sql") as s:
+            s.output = "SELECT 1"
 
-    steps = run_question(body)["steps"]
-    material = select_material(steps)
-    assert material == "DOCUMENT TEXT " * 100            # whole, not cut at 400
-    assert "THE ANSWER" not in material and "rewritten" not in material
-
-
-def test_a_context_manager_that_sets_material_also_counts_as_declared():
-    def body():
-        generate("q")
-        with step_recorder.step("search") as s:
-            s.material = "from the search"
-
-    assert select_material(run_question(body)["steps"]) == "from the search"
-
-
-def test_when_nothing_is_declared_decorated_outputs_are_still_used_and_the_log_explains(caplog, monkeypatch):
-    import nl2sql_evalkit.services.evaluation.evaluation_runner.material as material_module
-    monkeypatch.setattr(material_module, "_warned_undeclared_material", False)
-
-    @step_recorder.step("search")
-    def search(q):
-        return "found text"
-
-    steps = run_question(lambda: (search("q"), generate("q")))["steps"]
-    with caplog.at_level(logging.WARNING, logger="nl2sql_evalkit.services.evaluation.evaluation_runner.material"):
-        assert select_material(steps) == "found text\n\nTHE ANSWER ITSELF"        # how earlier versions behaved
-        select_material(steps)
-    warnings = [r.getMessage() for r in caplog.records if "No step declared its material" in r.getMessage()]
-    assert len(warnings) == 1 and "material=True" in warnings[0] and "search, llm" in warnings[0]
-
-
-def test_a_single_undeclared_step_is_taken_as_the_retriever_without_a_warning(caplog, monkeypatch):
-    import nl2sql_evalkit.services.evaluation.evaluation_runner.material as material_module
-    monkeypatch.setattr(material_module, "_warned_undeclared_material", False)
-
-    @step_recorder.step("search")
-    def search(q):
-        return "found text"
-
-    with caplog.at_level(logging.WARNING, logger="nl2sql_evalkit.services.evaluation.evaluation_runner.material"):
-        assert select_material(run_question(lambda: search("q"))["steps"]) == "found text"
-    assert not caplog.records
+    assert run_question(body)["steps"][0]["output"] == "SELECT 1"
 
 
 # ---- the limits ----------------------------------------------------------------------------------------
@@ -187,23 +136,12 @@ def test_shown_values_are_cut_with_a_marker_saying_how_much_is_missing():
     assert steps[0]["inputs"]["text"].endswith("(+500 more characters)")
 
 
-def test_material_is_cut_at_its_own_larger_limit(monkeypatch):
-    monkeypatch.setitem(step_recorder.LIMITS, "material", 50)
-
-    def body():
-        with step_recorder.step("search") as s:
-            s.material = "m" * 80
-
-    material = select_material(run_question(body)["steps"])
-    assert material == "m" * 50 + "… (+30 more characters)"
-
-
-def test_the_limits_can_be_set():
-    step_recorder.configure(max_step_value_chars=7, max_material_chars=9)
+def test_the_limit_can_be_set():
+    step_recorder.configure(max_step_value_chars=7)
     try:
-        assert step_recorder.LIMITS == {"value": 7, "material": 9}
+        assert step_recorder.LIMITS == {"value": 7}
     finally:
-        step_recorder.configure(max_step_value_chars=1000, max_material_chars=20000)
+        step_recorder.configure(max_step_value_chars=1000)
 
 
 def test_a_vector_is_summarised_not_stored():
@@ -233,17 +171,17 @@ def test_a_step_that_ran_several_times_has_its_time_added_up(tmp_path):
     def _timed_search():
         with step_recorder.step("search") as s:
             time.sleep(0.05)
-            s.material = "chunk"
+            s.output = "chunk"
 
-    answer, elapsed, timings, material, sources, _, _, _ = make_manager(tmp_path, fn)._call_fn("q", [], "s1")
+    answer, elapsed, timings, _, outputs, _ = make_manager(tmp_path, fn)._call_fn("q", [], "s1")
     assert answer == "answer" and list(timings) == ["search", "llm"]
     assert timings["search"] >= 0.1 and timings["llm"] >= 0.01        # both searches counted, not just the last
-    assert material == "chunk\n\nchunk"
+    assert outputs["search"] == "chunk"
 
 
 def test_the_runner_applies_the_configured_limits(tmp_path):
-    config = Config(data_dir=tmp_path / "data", require_login=False, eval_secret="s", step_value_chars=30, material_chars=40)
+    config = Config(data_dir=tmp_path / "data", require_login=False, eval_secret="s", step_value_chars=30)
     app = create_app(config, fn=lambda q: "a", generation_llm=lambda m: "{}")
-    assert step_recorder.LIMITS == {"value": 30, "material": 40}
-    step_recorder.configure(max_step_value_chars=1000, max_material_chars=20000)
+    assert step_recorder.LIMITS == {"value": 30}
+    step_recorder.configure(max_step_value_chars=1000)
     del app

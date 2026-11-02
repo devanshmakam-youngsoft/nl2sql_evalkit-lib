@@ -64,7 +64,7 @@ export interface RecoResult {
   runner_up: string | null;
   latest_gap: { version: string; gap: number } | null;
   /** The newest run against the recommended one (null when the newest run is the recommended one, or was not compared). */
-  latest_vs_best: { version: string; answer: number | null; material: number | null; time: number | null; quality: number | null } | null;
+  latest_vs_best: { version: string; answer: number | null; schema_use: number | null; time: number | null; quality: number | null } | null;
   /** What was recommended before the newest run. */
   previous_best: string | null;
   /** Nothing reached `min_quality`: no recommendation, but the best so far is named. */
@@ -73,16 +73,16 @@ export interface RecoResult {
   best_so_far: { version: string; quality: number } | null;
   not_comparable: string[];
   /** What each version that could not be compared scored on its own test cases. */
-  not_comparable_scores: Record<string, { answer: number | null; material: number | null; time: number | null; cases: number }>;
+  not_comparable_scores: Record<string, { answer: number | null; schema_use: number | null; time: number | null; cases: number }>;
   /** Why each version in `not_comparable` was left out. */
   not_comparable_detail: Record<string, string>;
   excluded: string[];
   excluded_detail: Record<string, string>;
   budget_miss: boolean;
-  /** "weighted" = answer + material; "answer_only" = material was not graded for every version. */
+  /** "weighted" = answer + tables and columns; "answer_only" = tables and columns were not graded for every version. */
   basis: "weighted" | "answer_only";
   basis_note: string;
-  weights: { answer: number; material: number };
+  weights: { answer: number; schema_use: number };
   tolerance: number;
   max_time: number | null;
   qualities: Record<string, number | null>;
@@ -92,7 +92,7 @@ export interface RecoResult {
   /** Versions that ran more test cases than were compared (judged on the shared ones only). */
   partial: { version: string; ran: number; compared: number }[];
   /** Each compared version's scores on the shared test cases. */
-  scores: Record<string, { answer: number | null; material: number | null; time: number | null; cases: number; quality: number | null }>;
+  scores: Record<string, { answer: number | null; schema_use: number | null; time: number | null; cases: number; quality: number | null }>;
 }
 
 /** One group's scores in one run. */
@@ -130,8 +130,6 @@ export interface ResultRow {
   expected_columns?: string;
   intent: string | null;
   generated_answer: string | null;
-  material: string | null;
-  sources: string[];
   status: string;
   total_time_taken: number | null;
   /** Seconds per node for this question, in execution order. */

@@ -24,13 +24,11 @@ WHY end_question() is in a finally block in runner.py
 If fn() raises an exception the finally block still closes the recorder, so the next question's
 begin_question() starts with a clean slate rather than accumulating stale steps from a failed call.
 
-WHAT BECOMES "MATERIAL" (the retrieved text the judge scores)
--------------------------------------------------------------
-Only a step that DECLARES its material: ``s.material = ...`` inside ``with step(...)``, or
-``@step("retrieval", material=True)`` which takes the decorated function's return value. If no step declares
-anything, the output of decorated steps is used (how earlier versions behaved), and a warning says how to be
-explicit. Material is cut at ``max_material_chars`` (default 20,000) with a visible marker, and the displayed
-inputs, outputs and notes at ``max_step_value_chars`` (default 1,000).
+WHAT IS KEPT OF A STEP
+----------------------
+Its name and time, its inputs and its output: a decorated function's return value, or ``s.output = ...`` inside
+``with step(...)``. Displayed inputs, outputs and notes are cut at ``max_step_value_chars`` (default 1,000) with a
+visible marker saying how much was left out.
 
 SECRET BLANKING
 ---------------
@@ -40,13 +38,12 @@ Any step input parameter whose name contains a secret-related keyword
 
 RECORDING DETAIL LEVELS
 ------------------------
-"all"      — capture inputs, outputs, material, sources, timing (default)
-"selected" — only emit steps where developer explicitly set .material or .sources
+"all"      — capture inputs, outputs, timing (default)
+"selected" — only emit steps that produced an output (decorated, or ``s.output = ...``)
 "off"      — only record step name + elapsed time (no content)
 """
 from nl2sql_evalkit.services.evaluation.step_recorder.limits import (
     LIMITS,
-    clip_material,
     configure,
     display_text,
 )
@@ -59,6 +56,5 @@ from nl2sql_evalkit.services.evaluation.step_recorder.recorder import (
 from nl2sql_evalkit.services.evaluation.step_recorder.steps import step
 
 __all__ = [
-    "LIMITS", "begin_question", "clip_material", "collect_question", "configure", "display_text",
-    "end_question", "note", "step",
+    "LIMITS", "begin_question", "collect_question", "configure", "display_text", "end_question", "note", "step",
 ]

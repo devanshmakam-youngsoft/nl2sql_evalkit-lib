@@ -9,8 +9,8 @@ from nl2sql_evalkit.services.evaluation.version_recommender import group_overvie
 from nl2sql_evalkit.utils import build_case_scores, case_key
 
 
-def entry(key, answer, material=8.0, time=1.0, ok=True, groups=()):
-    return {"k": key, "a": answer, "m": material, "t": time, "ok": ok, "g": list(groups)}
+def entry(key, answer, schema_use=8.0, time=1.0, ok=True, groups=()):
+    return {"k": key, "a": answer, "m": schema_use, "t": time, "ok": ok, "g": list(groups)}
 
 
 def version(n, entries, **extra):
@@ -79,9 +79,9 @@ def test_stopped_runs_are_left_out():
 
 
 def test_context_quality_is_only_counted_when_every_compared_version_has_it():
-    result = recommend([version(1, CORE(9.0, material=9.0)), version(2, CORE(8.5, material=None))])
+    result = recommend([version(1, CORE(9.0, schema_use=9.0)), version(2, CORE(8.5, schema_use=None))])
     assert result["basis"] == "answer_only" and "v2" in result["basis_note"]
-    assert recommend([version(1, CORE(9.0, material=9.0)), version(2, CORE(8.5, material=6.0))])["basis"] == "weighted"
+    assert recommend([version(1, CORE(9.0, schema_use=9.0)), version(2, CORE(8.5, schema_use=6.0))])["basis"] == "weighted"
 
 
 def test_the_overall_score_and_speed_tie_break_still_decide_between_compared_versions():

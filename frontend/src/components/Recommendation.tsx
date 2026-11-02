@@ -25,7 +25,7 @@ function scoresOf(v: VersionSummary, group: string | null) {
   const g = group ? v.group_stats?.[group] : undefined;
   return {
     answer: g ? g.avg_sql_marks : v.avg_sql_marks,
-    material: g ? g.avg_schema_marks : v.avg_schema_marks,
+    schema_use: g ? g.avg_schema_marks : v.avg_schema_marks,
     time: (g ? g.avg_total_time : null) ?? v.avg_total_time,
   };
 }
@@ -33,8 +33,8 @@ function scoresOf(v: VersionSummary, group: string | null) {
 /** A version's scores as compared: on the shared test cases when the server compared on them. */
 const describe = (v: VersionSummary, group: string | null, reco: RecoResult | null) => {
   const shared = reco?.scores[String(v.version)];
-  const s = shared ? { answer: shared.answer, material: shared.material, time: shared.time } : scoresOf(v, group);
-  return `answer ${fmt(s.answer)}, context ${fmt(s.material)}, ${fmtSeconds(s.time)}`;
+  const s = shared ? { answer: shared.answer, schema_use: shared.schema_use, time: shared.time } : scoresOf(v, group);
+  return `answer ${fmt(s.answer)}, tables and columns ${fmt(s.schema_use)}, ${fmtSeconds(s.time)}`;
 };
 
 function Side({ title, v, group, reco }: { title: string; v: VersionSummary; group: string | null; reco: RecoResult | null }) {
@@ -51,10 +51,10 @@ const pct = (n: number) => Math.round(n * 100);
 
 const signed = (n: number | null, digits = 1) => (n == null ? "–" : `${n > 0 ? "+" : n < 0 ? "−" : "±"}${Math.abs(n).toFixed(digits)}`);
 
-/** How the latest run differs from the recommended one, in words: "answer −0.4 · context +0.1 · 1.2s slower". */
-function changeText(d: { answer: number | null; material: number | null; time: number | null }) {
+/** How the latest run differs from the recommended one, in words: "answer −0.4 · tables and columns +0.1 · 1.2s slower". */
+function changeText(d: { answer: number | null; schema_use: number | null; time: number | null }) {
   const parts = [`answer ${signed(d.answer)}`];
-  if (d.material != null) parts.push(`context ${signed(d.material)}`);
+  if (d.schema_use != null) parts.push(`tables and columns ${signed(d.schema_use)}`);
   if (d.time != null && Math.abs(d.time) >= 0.05) parts.push(`${Math.abs(d.time).toFixed(1)}s ${d.time > 0 ? "slower" : "faster"}`);
   return parts.join(" · ");
 }
@@ -77,7 +77,7 @@ export function Recommendation({ reco, versions, archivedCount, overrides, onCha
   const own = best ? scoresOf(best, groupName) : null;
   const shared = best && reco ? reco.scores[String(best.version)] : undefined;
   // the numbers the recommendation was based on (the shared test cases), falling back to the run's own
-  const bestScores = own ? { answer: shared?.answer ?? own.answer, material: shared ? shared.material : own.material, time: shared?.time ?? own.time } : null;
+  const bestScores = own ? { answer: shared?.answer ?? own.answer, schema_use: shared ? shared.schema_use : own.schema_use, time: shared?.time ?? own.time } : null;
   const ranCases = best ? (groupName ? best.group_stats?.[groupName]?.total_rows ?? best.total_rows : best.total_rows) : 0;
   const ranGroups = best && !groupName ? best.group_names ?? [] : [];
   const alone = !reco?.runner_up;     // the only version that could be compared
@@ -85,7 +85,7 @@ export function Recommendation({ reco, versions, archivedCount, overrides, onCha
 
   const weightsText = !reco ? "" : reco.basis === "answer_only"
     ? "Overall score = SQL score only."
-    : `Overall score = ${pct(reco.weights.answer)}% ${GLOSSARY.answer.label.toLowerCase()} + ${pct(reco.weights.material)}% ${GLOSSARY.context.label.toLowerCase()}.`;
+    : `Overall score = ${pct(reco.weights.answer)}% ${GLOSSARY.answer.label.toLowerCase()} + ${pct(reco.weights.schema_use)}% ${GLOSSARY.context.label.toLowerCase()}.`;
 
   return (
     <section className="card mt-4 overflow-hidden" style={{ borderLeft: "5px solid var(--brand)" }}>
@@ -119,7 +119,7 @@ export function Recommendation({ reco, versions, archivedCount, overrides, onCha
           <div>
             <div className="flex flex-wrap gap-x-8 gap-y-3">
               {figure(<Term k="answer" />, fmt(bestScores.answer), "/10", "var(--hl-good)")}
-              {reco.basis === "weighted" && figure(<Term k="context" />, fmt(bestScores.material), "/10", "var(--hl)")}
+              {reco.basis === "weighted" && figure(<Term k="context" />, fmt(bestScores.schema_use), "/10", "var(--hl)")}
               {figure(<Term k="time" />, fmtSeconds(bestScores.time), "", "var(--hl-bad)")}
             </div>
             {/* with nothing to compare against there is nothing to explain */}
@@ -175,7 +175,7 @@ export function Recommendation({ reco, versions, archivedCount, overrides, onCha
             return (
               <div key={`n${id}`} className="text-xs text-muted">
                 Not compared: <Link to={`/v/${id}`} className="mono text-brand hover:underline">v{id}</Link>
-                {own && <> (answer {fmt(own.answer)}, context {fmt(own.material)})</>} {reco.not_comparable_detail[id] ?? "ran different test cases"}.
+                {own && <> (answer {fmt(own.answer)}, tables and columns {fmt(own.schema_use)})</>} {reco.not_comparable_detail[id] ?? "ran different test cases"}.
                 {" "}Run the same test cases on both versions to compare them.
               </div>
             );

@@ -1,15 +1,13 @@
-"""How much of a step is kept: displayed values and the material the judge reads."""
+"""How much of a step is kept: displayed inputs, outputs and notes."""
 import json
 
-LIMITS = {"value": 1000, "material": 20000}
+LIMITS = {"value": 1000}
 
 
-def configure(max_step_value_chars: int | None = None, max_material_chars: int | None = None) -> None:
-    """Set how much is kept: shown step inputs/outputs/notes, and the material the judge reads."""
+def configure(max_step_value_chars: int | None = None) -> None:
+    """Set how much is kept of the shown step inputs, outputs and notes."""
     if max_step_value_chars:
         LIMITS["value"] = int(max_step_value_chars)
-    if max_material_chars:
-        LIMITS["material"] = int(max_material_chars)
 
 
 def _clip(text: str, limit: int) -> str:
@@ -17,11 +15,6 @@ def _clip(text: str, limit: int) -> str:
     if len(text) <= limit:
         return text
     return f"{text[:limit]}\u2026 (+{len(text) - limit} more characters)"
-
-
-def clip_material(text: str) -> str:
-    """Cut the retrieved material to the configured limit (``max_material_chars``) before the judge reads it."""
-    return _clip(text, LIMITS["material"])
 
 
 def _is_number_list(v) -> bool:

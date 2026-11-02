@@ -75,7 +75,7 @@ def recommend_on_shared_cases(active: list[dict], *, group, sql_weight, schema_w
         result["not_comparable"].append(v["version"])
         entries = list(v["cases"].values())
         result["not_comparable_scores"][v["version"]] = {      # what it scored on its own cases, so a good one is not hidden
-            "answer": mean_of_present(e.get("a") for e in entries), "material": mean_of_present(e.get("m") for e in entries),
+            "answer": mean_of_present(e.get("a") for e in entries), "schema_use": mean_of_present(e.get("m") for e in entries),
             "time": mean_of_present(e.get("t") for e in entries), "cases": v["ran"],
         }
         result["not_comparable_detail"][v["version"]] = (
@@ -86,7 +86,7 @@ def recommend_on_shared_cases(active: list[dict], *, group, sql_weight, schema_w
     for v in pool:
         entries = [v["cases"][k] for k in shared]
         v["answer"] = mean_of_present(e.get("a") for e in entries)
-        v["material"] = mean_of_present(e.get("m") for e in entries)
+        v["schema_use"] = mean_of_present(e.get("m") for e in entries)
         v["time"] = mean_of_present(e.get("t") for e in entries)
         v["cases"] = len(entries)
         v["failed"] = sum(1 for e in entries if not e.get("ok"))

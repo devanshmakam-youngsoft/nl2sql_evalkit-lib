@@ -14,7 +14,7 @@ import { GLOSSARY, Hint, Term } from "../components/Hint";
 import { Pager, usePaging } from "../components/Pager";
 import { type RecoResult, type VersionSummary } from "../api/types";
 
-type SortKey = "version" | "date" | "questions" | "answer" | "material" | "time";
+type SortKey = "version" | "date" | "questions" | "answer" | "schema_use" | "time";
 
 /** Tolerance / time-ceiling the user typed in. null = use the server's defaults from serve(). */
 interface RecoOverrides { tolerance: number | null; maxTime: number | null }
@@ -122,7 +122,7 @@ export default function Dashboard() {
         case "date": return Date.parse(v.date);
         case "questions": return v.total_rows;
         case "answer": return v.avg_sql_marks;
-        case "material": return v.avg_schema_marks;
+        case "schema_use": return v.avg_schema_marks;
         case "time": return v.avg_total_time;
       }
     };
@@ -145,14 +145,14 @@ export default function Dashboard() {
       const vals = ok.map((v) => scoreOf(v, key)).filter((x): x is number => x != null);
       return vals.length > 1 ? fn(...vals) : null;
     };
-    return { answer: pick("avg_sql_marks", Math.max), material: pick("avg_schema_marks", Math.max), time: pick("avg_total_time", Math.min) };
+    return { answer: pick("avg_sql_marks", Math.max), schema_use: pick("avg_schema_marks", Math.max), time: pick("avg_total_time", Math.min) };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeVersions, groupFilter]);
   const latest = activeVersions[activeVersions.length - 1];
 
   // Changes and BEST marks are measured on the test cases the compared versions share, so a version that
   // ran extra cases is never judged on questions the others did not answer.
-  type Metric = "answer" | "material" | "time";
+  type Metric = "answer" | "schema_use" | "time";
   const hasShared = !!reco && Object.keys(reco.scores).length > 0;
   const sharedScore = (v: VersionSummary, key: Metric) => reco?.scores[String(v.version)]?.[key] ?? null;
   const partialOf = (v: VersionSummary) => reco?.partial.find((p) => p.version === String(v.version));
@@ -266,7 +266,7 @@ export default function Dashboard() {
             value={<><Mark color="var(--hl-good)">{fmt(scoreOf(latest, "avg_sql_marks"))}</Mark><span className="mono text-xs text-muted">/10</span><Delta {...deltaProps(latest, "answer", "avg_sql_marks")} /></>}
             sub="average score out of 10, how well the SQL answers the questions" />
           <Stat label={<Term k="context" />} accent="var(--sun)"
-            value={<><Mark color="var(--hl)">{fmt(scoreOf(latest, "avg_schema_marks"))}</Mark><span className="mono text-xs text-muted">/10</span><Delta {...deltaProps(latest, "material", "avg_schema_marks")} /></>}
+            value={<><Mark color="var(--hl)">{fmt(scoreOf(latest, "avg_schema_marks"))}</Mark><span className="mono text-xs text-muted">/10</span><Delta {...deltaProps(latest, "schema_use", "avg_schema_marks")} /></>}
             sub="did it find the information it needed?" />
           <Stat label={<>Avg response time<Hint text={GLOSSARY.time.hint} /></>} accent="var(--coral)"
             value={<><Mark color="var(--hl-bad)">{fmtSeconds(scoreOf(latest, "avg_total_time"))}</Mark><Delta {...deltaProps(latest, "time", "avg_total_time")} invert digits={2} unit="s" /></>}
@@ -280,7 +280,7 @@ export default function Dashboard() {
         <section className="mt-3 grid gap-3 lg:grid-cols-2">
           <div className="card p-5">
             <h3 className="label">Quality trend{latest && (
-              <> <span className="mono normal-case tracking-normal">· latest v{latest.version} · answer {fmt(scoreOf(latest, "avg_sql_marks"))} · context {fmt(scoreOf(latest, "avg_schema_marks"))}</span></>
+              <> <span className="mono normal-case tracking-normal">· latest v{latest.version} · answer {fmt(scoreOf(latest, "avg_sql_marks"))} · tables and columns {fmt(scoreOf(latest, "avg_schema_marks"))}</span></>
             )}</h3>
             <p className="mb-3 mt-1 text-xs text-muted">Average score out of 10 for each version</p>
             <div className="h-56">
@@ -348,7 +348,7 @@ export default function Dashboard() {
                 <SortTh k="date" cur={sort} onSort={toggleSort}>Executed</SortTh>
                 <SortTh k="questions" cur={sort} onSort={toggleSort}>Questions</SortTh>
                 <SortTh k="answer" cur={sort} onSort={toggleSort}><Term k="answer" avg /></SortTh>
-                <SortTh k="material" cur={sort} onSort={toggleSort}><Term k="context" avg /></SortTh>
+                <SortTh k="schema_use" cur={sort} onSort={toggleSort}><Term k="context" avg /></SortTh>
                 <SortTh k="time" cur={sort} onSort={toggleSort}><Term k="time" avg /></SortTh>
                 <th className="px-3 py-3 font-medium"><Term k="steps" /></th>
                 <th className="px-3 py-3 font-medium">Actions</th>
@@ -396,7 +396,7 @@ export default function Dashboard() {
                     </td>
                     <td className="mono px-3 py-4">{v.total_rows}</td>
                     <td className="px-3 py-4"><div className="flex flex-col items-start gap-1"><ScorePill value={scoreOf(v, "avg_sql_marks")} /><Delta {...deltaProps(v, "answer", "avg_sql_marks")} />{sharedNote(v, "answer", isBestFor(v, "answer", "avg_sql_marks", bests.answer))}{!partialOf(v) && isBestFor(v, "answer", "avg_sql_marks", bests.answer) && <BestTag />}</div></td>
-                    <td className="px-3 py-4"><div className="flex flex-col items-start gap-1"><ScorePill value={scoreOf(v, "avg_schema_marks")} /><Delta {...deltaProps(v, "material", "avg_schema_marks")} />{sharedNote(v, "material", isBestFor(v, "material", "avg_schema_marks", bests.material))}{!partialOf(v) && isBestFor(v, "material", "avg_schema_marks", bests.material) && <BestTag />}</div></td>
+                    <td className="px-3 py-4"><div className="flex flex-col items-start gap-1"><ScorePill value={scoreOf(v, "avg_schema_marks")} /><Delta {...deltaProps(v, "schema_use", "avg_schema_marks")} />{sharedNote(v, "schema_use", isBestFor(v, "schema_use", "avg_schema_marks", bests.schema_use))}{!partialOf(v) && isBestFor(v, "schema_use", "avg_schema_marks", bests.schema_use) && <BestTag />}</div></td>
                     <td className="px-3 py-4"><div className="flex flex-col items-start gap-1"><div className="mono">{fmtSeconds(scoreOf(v, "avg_total_time"))}</div><Delta {...deltaProps(v, "time", "avg_total_time")} invert digits={2} unit="s" />{sharedNote(v, "time", isBestFor(v, "time", "avg_total_time", bests.time))}{!partialOf(v) && isBestFor(v, "time", "avg_total_time", bests.time) && <BestTag />}</div></td>
                     <td className="px-3 py-4"><NodeTimings v={v} compact /></td>
                     <td className="px-3 py-4 align-middle" onClick={(e) => e.stopPropagation()}>

@@ -6,8 +6,8 @@ from nl2sql_evalkit.services.db_services import EvalStore
 from nl2sql_evalkit.services.evaluation.version_recommender import recommend
 
 
-def entry(key, answer, material=None, time=1.0):
-    return {"k": key, "a": answer, "m": material if material is not None else answer, "t": time, "ok": True, "g": []}
+def entry(key, answer, schema_use=None, time=1.0):
+    return {"k": key, "a": answer, "m": schema_use if schema_use is not None else answer, "t": time, "ok": True, "g": []}
 
 
 def version(n, entries):
@@ -36,14 +36,14 @@ def test_a_good_version_on_different_test_cases_is_shown_not_hidden():
     # the reported case: v1 and v2 ran 5 cases and scored 0; v3 ran 2 other cases and scored 10
     result = recommend([version(1, cases("old", 5, 0.0)), version(2, cases("old", 5, 0.0)), version(3, cases("new", 2, 10.0))])
     assert result["not_comparable"] == ["3"]
-    assert result["not_comparable_scores"]["3"] == {"answer": 10.0, "material": 10.0, "time": 1.0, "cases": 2}
+    assert result["not_comparable_scores"]["3"] == {"answer": 10.0, "schema_use": 10.0, "time": 1.0, "cases": 2}
     assert result["best"] is None and result["best_so_far"]["version"] in {"1", "2"}
 
 
 def test_the_latest_run_is_compared_with_the_recommended_one():
     result = recommend([version(1, cases("c", 5, 9.0, time=1.0)), version(2, cases("c", 5, 8.0, time=3.0))], tolerance=0.1)
     assert result["best"] == "1"
-    assert result["latest_vs_best"] == {"version": "2", "answer": -1.0, "material": -1.0, "time": 2.0, "quality": -1.0}
+    assert result["latest_vs_best"] == {"version": "2", "answer": -1.0, "schema_use": -1.0, "time": 2.0, "quality": -1.0}
 
 
 def test_there_is_no_comparison_when_the_latest_run_is_the_recommended_one():

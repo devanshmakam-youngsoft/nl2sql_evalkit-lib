@@ -1,10 +1,10 @@
-"""``step()``: time a stage of your pipeline and say what it retrieved."""
+"""``step()``: time a stage of your pipeline and record what went in and came out."""
 import inspect
 import time as _time
 from functools import wraps
 from typing import Any
 
-from nl2sql_evalkit.services.evaluation.step_recorder.limits import display_text, text_of
+from nl2sql_evalkit.services.evaluation.step_recorder.limits import display_text
 from nl2sql_evalkit.services.evaluation.step_recorder.recorder import current_recorder
 from nl2sql_evalkit.services.evaluation.step_recorder.redaction import is_secret_name
 
@@ -17,60 +17,35 @@ class StepContext:
       • context manager  → developer controls timing manually with `with`
       • decorator        → wraps a function; timing + I/O captured automatically
 
-    Public attributes (readable/writable in context-manager mode):
-      .material  — the retrieved text this step returned (sent to the judge)
-      .sources   — list of source identifiers (doc IDs, URLs, etc.)
+    Public attribute (readable/writable in context-manager mode):
+      .output  — what this step produced, shown in the results
 
-    Setting .material or .sources explicitly marks the step as "selected",
-    so it is always recorded even in record_detail="selected" mode.
+    Setting .output marks the step as "selected", so it is always recorded even in record_detail="selected" mode.
+    A decorated function's return value is its output.
     """
 
-    def __init__(self, name: str, material: bool = False):
+    def __init__(self, name: str):
         self.name = name
-        self._returns_material = material     # decorator: the return value is the retrieved text
-        self._material: str = ""
-        self._material_explicit: bool = False
-        self._sources: list = []
-        self._sources_explicit: bool = False
+        self._output: str = ""
+        self._output_explicit: bool = False
         self.inputs: dict = {}    # only populated when used as a decorator
-        self.output: str = ""     # only populated when used as a decorator
         self._start: float = 0.0
         # take hold of the question's recorder now, so the step still belongs to it if it ends in another thread
         self._rec = current_recorder()
         self._seq = self._rec.next_seq() if self._rec is not None else 0
 
     @property
-    def material(self) -> str:
-        """The retrieved text this step produced, which the judge reads as the answer's context.
+    def output(self) -> str:
+        """What this step produced, as shown in the results (cut to the display limit).
 
         Assigning to it marks the step as selected, so it is kept even when ``record_detail="selected"``.
         """
-        return self._material
+        return self._output
 
-    @material.setter
-    def material(self, value: str) -> None:
-        self._material = value
-        self._material_explicit = True
-
-    @property
-    def sources(self) -> list:
-        """Identifiers of the sources behind the retrieved material (document IDs, URLs, ...).
-
-        Assigning to it marks the step as selected, so it is kept even when ``record_detail="selected"``.
-        """
-        return self._sources
-
-    @sources.setter
-    def sources(self, value: list) -> None:
-        self._sources = value
-        self._sources_explicit = True
-
-    def _finish_decorated(self, result) -> None:
-        """What a decorated function returned: shown (cut), and offered as material (declared or not)."""
-        self.output = display_text(result)
-        if not self._material_explicit:
-            self._material = text_of(result) if result is not None else ""
-            self._material_explicit = self._returns_material      # declared only with material=True
+    @output.setter
+    def output(self, value) -> None:
+        self._output = display_text(value)
+        self._output_explicit = True
 
     def _emit(self, elapsed: float) -> None:
         rec = self._rec
@@ -82,14 +57,11 @@ class StepContext:
             # Only record name and timing; skip all content.
             entry = {"name": self.name, "elapsed": elapsed}
         else:
-            if detail == "selected" and not self._material_explicit and not self._sources_explicit:
-                return        # only steps where the developer provided material or sources
+            if detail == "selected" and not self._output_explicit:
+                return        # only steps that produced an output (decorated, or `s.output = ...`)
             entry = {
                 "name":     self.name,
                 "elapsed":  elapsed,
-                "material": self._material or "",         # cut once, where the steps are joined (runner._material_of)
-                "material_declared": self._material_explicit,
-                "sources":  self.sources,
                 "inputs":   self.inputs  if detail == "all" else {},
                 "output":   self.output  if detail == "all" else "",
             }
@@ -99,7 +71,7 @@ class StepContext:
     # --- context manager ---
     def __enter__(self):
         self._start = _time.perf_counter()
-        return self  # `as s` → developer can set s.material, s.sources
+        return self  # `as s` → developer can set s.output
 
     def __exit__(self, *_):
         # Runs even if the body raised — timing is always recorded.
@@ -130,7 +102,7 @@ class StepContext:
         if inspect.iscoroutinefunction(fn):
             @wraps(fn)
             async def async_wrapper(*args, **kwargs) -> Any:
-                ctx = StepContext(self.name, self._returns_material)
+                ctx = StepContext(self.name)
                 ctx.inputs = _capture_inputs(args, kwargs)
                 ctx._start = _time.perf_counter()
                 result = None
@@ -138,13 +110,13 @@ class StepContext:
                     result = await fn(*args, **kwargs)
                     return result
                 finally:
-                    ctx._finish_decorated(result)
+                    ctx.output = result
                     ctx._emit(round(_time.perf_counter() - ctx._start, 3))
             return async_wrapper
 
         @wraps(fn)
         def wrapper(*args, **kwargs) -> Any:
-            ctx = StepContext(self.name, self._returns_material)
+            ctx = StepContext(self.name)
             ctx.inputs = _capture_inputs(args, kwargs)
             ctx._start = _time.perf_counter()
             result = None
@@ -152,32 +124,28 @@ class StepContext:
                 result = fn(*args, **kwargs)
                 return result
             finally:
-                ctx._finish_decorated(result)
+                ctx.output = result
                 ctx._emit(round(_time.perf_counter() - ctx._start, 3))
         return wrapper
 
 
-def step(name: str, *, material: bool = False) -> StepContext:
+def step(name: str) -> StepContext:
     """
-    Record a named pipeline step's execution time (and optionally its retrieved material).
+    Record a named pipeline step's execution time, inputs and output.
 
     As a decorator::
 
-        @nl2sql_evalkit.step("retrieval", material=True)    # the return value is the retrieved text
-        def retrieve(query): ...
-
-        @nl2sql_evalkit.step("rewrite")                     # timing and inputs/outputs only
-        def rewrite(query): ...
+        @nl2sql_evalkit.step("schema_lookup")       # timing, inputs and the return value
+        def pick_tables(question): ...
 
     As a context manager::
 
-        with nl2sql_evalkit.step("retrieval") as s:
-            docs = vector_db.search(query)
-            s.material = "\\n".join(d.text for d in docs)
-            s.sources = [d.id for d in docs]
+        with nl2sql_evalkit.step("write_sql") as s:
+            sql = llm.generate(prompt)
+            s.output = sql
 
     Works from any thread (a step run in a thread pool still belongs to the question being evaluated).
     No-op when called outside an active eval run (zero overhead in production).
     Secret-named parameters (password, token, key, etc.) are auto-redacted.
     """
-    return StepContext(name, material)
+    return StepContext(name)
