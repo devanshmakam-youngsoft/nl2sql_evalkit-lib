@@ -9,7 +9,7 @@ def my_pipeline(question: str) -> str:
     return '{"status": "shipped", "eta": "2 days"}'
 
 
-def contains_expected_answer(question: str, expected: str, generated: str, material: str) -> dict:
+def contains_expected_sql(question: str, expected: str, generated: str, material: str) -> dict:
     """The simplest judge: full marks when the expected answer appears in the generated one."""
     found = expected.strip().lower() in (generated or "").lower()
     return {

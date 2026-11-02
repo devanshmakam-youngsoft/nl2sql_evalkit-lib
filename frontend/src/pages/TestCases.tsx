@@ -28,6 +28,13 @@ const STATUS_COLORS: Record<string, string> = {
   inactive: "text-muted",
 };
 
+/** The one line shown under a question: the expected SQL, or else the tables and columns the SQL has to use. */
+function expectationSummary(tc: TestCase): string {
+  if (tc.expected_sql) return tc.expected_sql;
+  const parts = [tc.expected_tables && `tables: ${tc.expected_tables}`, tc.expected_columns && `columns: ${tc.expected_columns}`];
+  return parts.filter(Boolean).join(" · ");
+}
+
 export default function TestCases() {
   const { groupId: routeGroupId } = useParams();
   const [searchParams] = useSearchParams();
@@ -85,7 +92,7 @@ export default function TestCases() {
     if (!q) return rows;
     return rows.filter((c) =>
       c.question.toLowerCase().includes(q) ||
-      c.expected_answer.toLowerCase().includes(q) ||
+      (c.expected_sql ?? "").toLowerCase().includes(q) ||
       c.chat_id.toLowerCase().includes(q) ||
       c.groups.some((g) => g.name.toLowerCase().includes(q)));
   }, [cases, query, groupId]);
@@ -326,7 +333,7 @@ export default function TestCases() {
                       <td className="mono px-3 py-3.5 text-xs text-muted">{tc.turn_no}</td>
                       <td className="max-w-[380px] px-3 py-3.5">
                         <div className="line-clamp-2 font-medium">{tc.question}</div>
-                        <div className="mt-1 line-clamp-1 text-xs text-muted">{tc.expected_answer}</div>
+                        <div className="mono mt-1 line-clamp-1 text-xs text-muted">{expectationSummary(tc)}</div>
                       </td>
                       <td className="px-3 py-3.5"><GroupChips groups={tc.groups} /></td>
                       <td className="px-3 py-3.5">
@@ -414,8 +421,9 @@ function TestCaseDrawer({ tc, groups, onClose, onChanged, onDeleted }: {
     chat_id: tc.chat_id,
     turn_no: String(tc.turn_no),
     question: tc.question,
-    expected_answer: tc.expected_answer,
-    expected_sources: tc.expected_sources ?? "",
+    expected_sql: tc.expected_sql,
+    expected_tables: tc.expected_tables ?? "",
+    expected_columns: tc.expected_columns ?? "",
     type: tc.type,
   });
   const [history, setHistory] = useState<TestCase[] | null>(null);
@@ -449,8 +457,9 @@ function TestCaseDrawer({ tc, groups, onClose, onChanged, onDeleted }: {
       if (form.chat_id.trim() !== tc.chat_id) updates.chat_id = form.chat_id.trim();
       if (turn !== tc.turn_no) updates.turn_no = turn;
       if (form.question !== tc.question) updates.question = form.question;
-      if (form.expected_answer !== tc.expected_answer) updates.expected_answer = form.expected_answer;
-      if (form.expected_sources !== (tc.expected_sources ?? "")) updates.expected_sources = form.expected_sources;
+      if (form.expected_sql !== tc.expected_sql) updates.expected_sql = form.expected_sql;
+      if (form.expected_tables !== (tc.expected_tables ?? "")) updates.expected_tables = form.expected_tables;
+      if (form.expected_columns !== (tc.expected_columns ?? "")) updates.expected_columns = form.expected_columns;
       if (form.type !== tc.type) updates.type = form.type;
       if (Object.keys(updates).length === 0) { setEditing(false); return; }
       await api.editTestCase(tc.tc_id, updates);
@@ -535,14 +544,18 @@ function TestCaseDrawer({ tc, groups, onClose, onChanged, onDeleted }: {
                 onChange={(e) => setForm((f) => ({ ...f, question: e.target.value }))}
                 className="w-full rounded border border-line bg-surface-2 p-2.5 text-sm outline-none focus:border-brand" />
             </Field>
-            <Field label="Expected answer">
-              <textarea value={form.expected_answer} rows={4}
-                onChange={(e) => setForm((f) => ({ ...f, expected_answer: e.target.value }))}
+            <Field label="Expected SQL">
+              <textarea value={form.expected_sql} rows={4}
+                onChange={(e) => setForm((f) => ({ ...f, expected_sql: e.target.value }))}
                 className="w-full rounded border border-line bg-surface-2 p-2.5 text-sm outline-none focus:border-brand" />
             </Field>
-            <Field label="Expected sources (| = AND, , = OR)">
-              <input value={form.expected_sources} placeholder="doc_a.pdf|doc_b.pdf"
-                onChange={(e) => setForm((f) => ({ ...f, expected_sources: e.target.value }))} className={input} />
+            <Field label="Expected tables (comma-separated)">
+              <input value={form.expected_tables} placeholder="orders, customers"
+                onChange={(e) => setForm((f) => ({ ...f, expected_tables: e.target.value }))} className={input} />
+            </Field>
+            <Field label="Expected columns (comma-separated)">
+              <input value={form.expected_columns} placeholder="region, amount"
+                onChange={(e) => setForm((f) => ({ ...f, expected_columns: e.target.value }))} className={input} />
             </Field>
             {err && <p className="text-xs text-bad">{err}</p>}
             <div className="flex gap-2 pt-1">
@@ -559,8 +572,9 @@ function TestCaseDrawer({ tc, groups, onClose, onChanged, onDeleted }: {
         ) : (
           <div className="mt-5 space-y-4">
             <ReadField label="Question">{tc.question}</ReadField>
-            <ReadField label="Expected answer">{tc.expected_answer}</ReadField>
-            {tc.expected_sources && <ReadField label="Expected sources">{tc.expected_sources}</ReadField>}
+            {tc.expected_sql && <ReadField label="Expected SQL">{tc.expected_sql}</ReadField>}
+            {tc.expected_tables && <ReadField label="Expected tables">{tc.expected_tables}</ReadField>}
+            {tc.expected_columns && <ReadField label="Expected columns">{tc.expected_columns}</ReadField>}
             {tc.origin?.kind === "generated" && (
               <div>
                 <div className="label mb-1">
@@ -672,10 +686,11 @@ function NewTestCaseModal({
     group_id: defaultGroupId,
     chat_id: "",
     turn_no: "1",
-    type: "rag",
+    type: "answer",
     question: "",
-    expected_answer: "",
-    expected_sources: "",
+    expected_sql: "",
+    expected_tables: "",
+    expected_columns: "",
   });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
@@ -687,8 +702,12 @@ function NewTestCaseModal({
   }, [onClose]);
 
   const save = async () => {
-    if (!form.chat_id.trim() || !form.question.trim() || !form.expected_answer.trim()) {
-      setErr("Chat ID, question, and expected answer are required.");
+    if (!form.chat_id.trim() || !form.question.trim()) {
+      setErr("Chat ID and question are required.");
+      return;
+    }
+    if (form.type === "answer" && !form.expected_sql.trim() && !form.expected_tables.trim() && !form.expected_columns.trim()) {
+      setErr("An answer question needs at least one of expected SQL, tables or columns.");
       return;
     }
     const turn = Number(form.turn_no);
@@ -702,10 +721,11 @@ function NewTestCaseModal({
         group_id: form.group_id || undefined,
         chat_id: form.chat_id.trim(),
         turn_no: turn,
-        type: form.type || "rag",
+        type: form.type || "answer",
         question: form.question.trim(),
-        expected_answer: form.expected_answer.trim(),
-        expected_sources: form.expected_sources.trim(),
+        expected_sql: form.expected_sql.trim(),
+        expected_tables: form.expected_tables.trim(),
+        expected_columns: form.expected_columns.trim(),
       });
       onSaved();
     } catch (e: unknown) {
@@ -755,12 +775,16 @@ function NewTestCaseModal({
             <textarea value={form.question} onChange={set("question")} rows={3}
               className="w-full rounded border border-line bg-surface-2 p-2.5 text-sm outline-none focus:border-brand" />
           </Field>
-          <Field label="Expected answer">
-            <textarea value={form.expected_answer} onChange={set("expected_answer")} rows={3}
+          <Field label="Expected SQL">
+            <textarea value={form.expected_sql} onChange={set("expected_sql")} rows={3}
               className="w-full rounded border border-line bg-surface-2 p-2.5 text-sm outline-none focus:border-brand" />
           </Field>
-          <Field label="Expected sources (optional; | = AND, , = OR)">
-            <input value={form.expected_sources} onChange={set("expected_sources")} placeholder="doc_a.pdf|doc_b.pdf"
+          <Field label="Expected tables (comma-separated)">
+            <input value={form.expected_tables} onChange={set("expected_tables")} placeholder="orders, customers"
+              className="w-full rounded border border-line bg-surface-2 px-3 py-2 text-sm outline-none focus:border-brand" />
+          </Field>
+          <Field label="Expected columns (comma-separated)">
+            <input value={form.expected_columns} onChange={set("expected_columns")} placeholder="region, amount"
               className="w-full rounded border border-line bg-surface-2 px-3 py-2 text-sm outline-none focus:border-brand" />
           </Field>
           {err && <p className="text-xs text-bad">{err}</p>}

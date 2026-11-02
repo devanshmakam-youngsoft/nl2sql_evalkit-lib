@@ -24,6 +24,3 @@ class FunctionAdapterSettings(Settings):
     # "openai" → [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]
     history_format: str = "dict"
 
-    # Rows whose `type` value (lowercased) is in this set are treated as conversational:
-    # they skip material scoring and text metrics.
-    conversational_types: list[str] = ["conversational"]

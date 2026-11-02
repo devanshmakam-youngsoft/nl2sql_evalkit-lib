@@ -102,16 +102,16 @@ class FakeLLM:
         import json
         if "ONE direct question" in system:
             return json.dumps({"question": f"What is the rule about {topic(passages[0], n)}?",
-                               "expected_answer": "Claims follow the stated deadline.", "evidence": [quote(passages[0], n)]})
+                               "expected_sql": "Claims follow the stated deadline.", "evidence": [quote(passages[0], n)]})
         if "ONE indirect question" in system:
             asks = ["Suppose a colleague is late with paperwork, what happens next?", "How soon must a manager react when someone sends a request?",
                     "A person came back from a trip last week, what are they supposed to do now?", "What is the deadline for reimbursing someone who travelled?",
                     "Who gets to decide when somebody wants money back for a journey?", "Is a late request still accepted after a month away?"]
-            return json.dumps({"question": asks[n % len(asks)], "expected_answer": "They must follow the stated deadline.",
+            return json.dumps({"question": asks[n % len(asks)], "expected_sql": "They must follow the stated deadline.",
                                "evidence": [quote(passages[0], n)]})
         if "multi-part question" in system:
             return json.dumps({"question": f"What is the rule about {topic(passages[0], n)}, and what is the rule about {topic(passages[1], n + 1)}?",
-                               "expected_answer": "Both rules are stated.", "evidence": [quote(passages[0], n), quote(passages[1], n)]})
+                               "expected_sql": "Both rules are stated.", "evidence": [quote(passages[0], n), quote(passages[1], n)]})
         turns = int(re.search(r"exactly (\d+) turns", system).group(1))
         follow_ups = [("And what happens if I miss that by {n} days?", "the deadline given in the previous answer"),
                       ("Who has to sign off on it when it is {n} dollars?", "the amount mentioned earlier"),
@@ -120,7 +120,7 @@ class FakeLLM:
         def turn(t):
             question, needs = (f"What is the rule about {topic(passages[0], n)}?", "") if t == 0 else (
                 follow_ups[(t - 1) % 3][0].format(n=n * 10 + t), follow_ups[(t - 1) % 3][1])
-            return {"question": question, "expected_answer": f"Answer {t + 1}.", "evidence": [quote(passages[0], n + t)], "depends_on": needs}
+            return {"question": question, "expected_sql": f"Answer {t + 1}.", "evidence": [quote(passages[0], n + t)], "depends_on": needs}
 
         return json.dumps({"turns": [turn(t) for t in range(turns)]})
 
@@ -212,7 +212,7 @@ def task(category="direct", chunks=None):
 
 
 def reply(**kw):
-    base = {"question": "Within how many days must travel expenses be submitted?", "expected_answer": "Within thirty days of travel.",
+    base = {"question": "Within how many days must travel expenses be submitted?", "expected_sql": "Within thirty days of travel.",
             "evidence": ["Employees must submit expense claims within thirty days of travel."]}
     return {**base, **kw}
 
@@ -228,7 +228,7 @@ def test_a_valid_item_passes_and_keeps_its_evidence_with_the_page():
     ({"evidence": ["too short"]}, "does not point at any sentence"),
     ({"question": "According to the document, what is the deadline?"}, "stand on its own"),
     ({"question": "Why?"}, "between 12 and 400"),
-    ({"expected_answer": ""}, "expected answer"),
+    ({"expected_sql": ""}, "expected answer"),
 ])
 def test_rejects_items_that_break_the_rules(changes, expected):
     turns, reason = validate(task(), reply(**changes), turns=3, avoid=[])
@@ -260,10 +260,10 @@ def test_multipart_needs_evidence_from_both_passages():
 
 
 def test_multiturn_needs_the_right_number_of_turns_and_only_the_first_must_stand_alone():
-    follow = {"question": "And what about the ones above that amount?", "expected_answer": "Managers approve them within five working days.",
+    follow = {"question": "And what about the ones above that amount?", "expected_sql": "Managers approve them within five working days.",
               "evidence": ["Managers approve claims above five hundred dollars within five working days."],
               "depends_on": "the filing deadline given in the first answer"}
-    first = {"question": "How long do I have to submit an expense claim?", "expected_answer": "Thirty days.",
+    first = {"question": "How long do I have to submit an expense claim?", "expected_sql": "Thirty days.",
              "evidence": ["Employees must submit expense claims within thirty days of travel."]}
     ok, reason = validate(task("multiturn"), {"turns": [first, follow]}, turns=2, avoid=[])
     assert reason == "" and len(ok) == 2
@@ -358,7 +358,7 @@ def test_review_then_approve_adds_cases_labelled_by_category_with_their_evidence
     assert client.delete(f"/api/generate/{bid}/items/{drop['item_id']}").status_code == 200
     keep = batch["items"][1]
     edited = client.patch(f"/api/generate/{bid}/items/{keep['item_id']}",
-                          json={"turns": [{"question": "How many days do I have to file my travel expenses?", "expected_answer": "Ten days."}] * len(keep["turns"])})
+                          json={"turns": [{"question": "How many days do I have to file my travel expenses?", "expected_sql": "Ten days."}] * len(keep["turns"])})
     assert edited.status_code == 200
     assert client.patch(f"/api/generate/{bid}/items/{keep['item_id']}", json={"turns": []}).status_code == 422
 
@@ -367,9 +367,9 @@ def test_review_then_approve_adds_cases_labelled_by_category_with_their_evidence
     cases = client.get("/api/test-cases").json()
     assert len(cases) == done["cases"] == sum(len(i["turns"]) for i in batch["items"]) - len(drop["turns"])
     assert {g["name"] for c in cases for g in c["groups"]} == {"Direct", "Indirect", "Multi-part", "Multi-turn"}
-    assert {c["type"] for c in cases} == {"rag"}                                 # the type is rag; the category is the group
+    assert {c["type"] for c in cases} == {"answer"}                              # the type is answer; the category is the group
     sample = next(c for c in cases if c["origin"]["category"] == "multiturn" and c["turn_no"] == 2)
-    assert sample["origin"]["needs_context"] and sample["expected_sources"] == "policy.txt" and sample["origin"]["kind"] == "generated" and sample["origin"]["evidence"][0]["quote"]
+    assert sample["origin"]["needs_context"] and sample["expected_tables"] == "policy.txt" and sample["origin"]["kind"] == "generated" and sample["origin"]["evidence"][0]["quote"]
     assert client.get(f"/api/generate/{bid}").status_code == 404                # the batch is gone once approved
     assert client.post(f"/api/generate/{bid}/approve", json={}).status_code == 404
 

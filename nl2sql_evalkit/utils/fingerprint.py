@@ -8,7 +8,7 @@ def compute_fingerprint(df: pd.DataFrame) -> str:
     """12-char SHA-256 fingerprint of the question set (stable across identical uploads)."""
     content = "\n".join(
         sorted(
-            f"{r.chat_id}:{r.turn_no}:{r.question}:{r.expected_answer}"
+            f"{r.chat_id}:{r.turn_no}:{r.question}:{r.expected_sql}:{getattr(r, 'expected_tables', '')}:{getattr(r, 'expected_columns', '')}"
             for r in df.itertuples(index=False)
         )
     )

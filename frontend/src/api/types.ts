@@ -110,7 +110,9 @@ export interface ResultRow {
   turn_no: number;
   type: string;
   question: string;
-  expected_answer: string;
+  expected_sql: string;
+  expected_tables?: string;
+  expected_columns?: string;
   intent: string | null;
   generated_answer: string | null;
   material: string | null;
@@ -132,7 +134,7 @@ export interface ResultRow {
   error_detail?: string;
   /** Free-form notes attached via nl2sql_evalkit.note() during the pipeline run. */
   flags?: Record<string, string>;
-  /** Whether recorded sources matched expected_sources from the dataset. */
+  /** Whether recorded sources matched expected_tables from the dataset. */
   source_match?: boolean | null;
   matched_sources?: string[];
   missing_sources?: string[];
@@ -214,8 +216,9 @@ export interface TestCase {
   chat_id: string;
   turn_no: number;
   question: string;
-  expected_answer: string;
-  expected_sources?: string;
+  expected_sql: string;
+  expected_tables?: string;
+  expected_columns?: string;
   type: string;
   status: "active" | "inactive";
   version: number;
@@ -243,7 +246,7 @@ export interface GenLimits {
 }
 
 export interface GenEvidence { quote: string; file: string; page: string; passage?: string }
-export interface GenTurn { question: string; expected_answer: string; evidence: GenEvidence[]; needs_context?: string }
+export interface GenTurn { question: string; expected_sql: string; evidence: GenEvidence[]; needs_context?: string }
 export interface GenItem { item_id: string; category: string; file: string; number: number; turns: GenTurn[] }
 
 export interface GenBatch {
@@ -290,7 +293,7 @@ export interface ImportPreview {
   total_rows: number;
   counts: { new: number; update: number; unchanged: number; problem: number };
   slot_conflicts: number;
-  sample: { row: number; chat_id: string; turn_no: number; question: string; expected_answer: string; groups: string[]; outcome: string }[];
+  sample: { row: number; chat_id: string; turn_no: number; question: string; expected_sql: string; groups: string[]; outcome: string }[];
   problems: ImportProblem[];
   group_names_in_file: string[];
   new_group_names: string[];

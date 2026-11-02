@@ -19,9 +19,10 @@ class LibraryTestCase(ApiResponse):
     chat_id: str | None = None        # the conversation the question belongs to
     turn_no: int | None = None        # position in the chat, starting at 1
     question: str
-    expected_answer: str | None = None
-    expected_sources: str | None = None  # files the answer should come from: "|" joins required files, "," alternatives
-    type: str | None = None           # "rag" or "non-rag"
+    expected_sql: str | None = None   # the gold query
+    expected_tables: str | None = None  # the tables the SQL must use, separated by commas
+    expected_columns: str | None = None  # the columns the SQL must use, separated by commas (table.column or just column)
+    type: str | None = None           # "answer", "clarify" or "refuse"
     status: str | None = None         # "active", or "inactive" (inactive cases do not run)
     created_at: str | None = None     # ISO 8601 UTC
     updated_at: str | None = None     # ISO 8601 UTC

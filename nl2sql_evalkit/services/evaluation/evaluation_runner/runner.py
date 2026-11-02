@@ -8,7 +8,7 @@ from typing import Callable
 import pandas as pd
 
 from nl2sql_evalkit.core.config import Config
-from nl2sql_evalkit.core.constants import is_non_rag
+from nl2sql_evalkit.core.constants import is_declining
 from nl2sql_evalkit.core.diagnostics import EventLog
 from nl2sql_evalkit.core.exceptions import JudgeError, RunBusy
 from nl2sql_evalkit.services.db_services import EvalStore
@@ -46,7 +46,7 @@ class RunManager:
 
     * ``extra_metrics: dict[str, Callable[[str, str], float]]``
         Additional metrics run alongside built-ins.
-        Each callable receives ``(expected_answer, generated_answer)``
+        Each callable receives ``(expected_sql, generated_answer)``
         and should return a float.  Example::
 
             extra_metrics={"rouge_1": compute_rouge1, "bleu": compute_bleu}
@@ -87,7 +87,6 @@ class RunManager:
         self._answer_keys   = list(config.answer_keys)
         self._s_aliases     = set(config.session_params)
         self._h_aliases     = set(config.history_params)
-        self._conv_types    = {t.strip().lower() for t in config.conversational_types}
         self._history_fmt   = config.history_format
         self._record_detail = config.record_detail
         self._record_mode   = config.record_mode
@@ -113,8 +112,7 @@ class RunManager:
         return self._llm_judge
 
     def _is_conversational(self, row_type: str) -> bool:
-        t = row_type.strip().lower()
-        return t in self._conv_types or t.startswith("conv") or is_non_rag(t)
+        return is_declining(row_type)
 
     def active(self) -> Run | None:
         """Return the run that is currently going, or None. Only one run may be active at a time."""
@@ -266,7 +264,7 @@ class RunManager:
             "turn_no":         row.turn_no,
             "type":            row.type,
             "question":        row.question,
-            "expected_answer": row.expected_answer,
+            "expected_sql": row.expected_sql,
             "session_id":      session_id,
             "status":          "ok",
         }
@@ -276,6 +274,10 @@ class RunManager:
         groups = getattr(row, "groups", None)
         if groups is not None:
             out["groups"] = list(groups)  # the groups this case belonged to when it ran
+        for field in ("expected_tables", "expected_columns"):
+            value = str(getattr(row, field, "") or "").strip()
+            if value and value.lower() != "nan":
+                out[field] = value
 
         # Carry any extra columns from the row into the receipt
         for col in self.config.extra_columns:
@@ -298,13 +300,13 @@ class RunManager:
             if flags:
                 out["flags"] = flags
 
-            # Source check — only if the dataset row has expected_sources
-            expected_sources = str(getattr(row, "expected_sources", "") or "").strip()
-            if expected_sources and expected_sources.lower() != "nan":
+            # Source check — only if the dataset row has expected_tables
+            expected_tables = str(getattr(row, "expected_tables", "") or "").strip()
+            if expected_tables and expected_tables.lower() != "nan":
                 mode = self.config.source_check_mode
                 if mode == "llm":
                     try:
-                        result = self.judge.check_sources(parse_source_groups(expected_sources), sources)
+                        result = self.judge.check_sources(parse_source_groups(expected_tables), sources)
                         out.update(
                             source_match=result.source_match,
                             matched_sources=result.matched_sources,
@@ -314,9 +316,9 @@ class RunManager:
                         )
                     except Exception as e:
                         run.log.issue("source_check", e, where, severity="warning")
-                        out.update(check_sources_by_keyword(expected_sources, sources))
+                        out.update(check_sources_by_keyword(expected_tables, sources))
                 elif mode != "off":
-                    out.update(check_sources_by_keyword(expected_sources, sources))
+                    out.update(check_sources_by_keyword(expected_tables, sources))
 
         except Exception as e:
             issue = run.log.issue("answer", e, where)
@@ -339,7 +341,7 @@ class RunManager:
             gen = out.get("generated_answer", "")
             for name, fn in self._extra_metrics.items():
                 try:
-                    out[name] = call_sync(fn, row.expected_answer, gen)
+                    out[name] = call_sync(fn, row.expected_sql, gen)
                 except Exception as e:
                     run.log.issue("metric", e, f"{where}, {name}", severity="warning")
                     out[name] = None
@@ -347,7 +349,7 @@ class RunManager:
         # Grading (LLM judge or custom judge_fn)
         try:
             grade = self._grade(
-                row.question, row.expected_answer,
+                row.question, row.expected_sql,
                 out.get("generated_answer"), out.get("material", ""),
                 not conversational, run, where,
             )

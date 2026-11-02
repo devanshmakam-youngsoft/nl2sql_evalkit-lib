@@ -21,7 +21,7 @@ def store(tmp_path):
 
 
 def _df(rows):
-    return pd.DataFrame(rows, columns=["chat_id", "turn_no", "type", "question", "expected_answer"])
+    return pd.DataFrame(rows, columns=["chat_id", "turn_no", "type", "question", "expected_sql"])
 
 
 def _overlapping(store):

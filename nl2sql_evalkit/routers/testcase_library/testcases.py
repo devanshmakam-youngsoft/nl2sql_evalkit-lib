@@ -92,8 +92,8 @@ def get_test_case_history(tc_id: str, store: EvalStore = Depends(get_store)) -> 
 def update_test_case(tc_id: str, body: TestCaseUpdate, store: EvalStore = Depends(get_store)) -> LibraryTestCase:
     """Edit a test case: creates a new version record. Old versions are preserved.
 
-    Send only the fields to change (``chat_id``, ``turn_no``, ``question``, ``expected_answer``,
-    ``expected_sources``, ``type``); the rest keep their values. The test case keeps its id, groups and status.
+    Send only the fields to change (``chat_id``, ``turn_no``, ``question``, ``expected_sql``,
+    ``expected_tables``, ``type``); the rest keep their values. The test case keeps its id, groups and status.
     Answers 404 when it does not exist or no field was sent, and 422 for an empty ``chat_id`` or ``question``
     or a ``turn_no`` below 1.
     """

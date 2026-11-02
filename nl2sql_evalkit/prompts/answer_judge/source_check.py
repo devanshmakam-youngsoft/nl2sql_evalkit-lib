@@ -3,7 +3,7 @@
 
 source_check_prompt = """You are verifying whether a RAG system retrieved the right source documents.
 
-Expected sources: documents the system SHOULD have retrieved to answer the question correctly.
+Expected tables: documents the system SHOULD have retrieved to answer the question correctly.
 Retrieved sources: documents the system ACTUALLY retrieved.
 
 For each expected source, decide if it was retrieved. A match requires the retrieved source to be

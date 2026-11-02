@@ -11,7 +11,7 @@ class DatasetSettings(Settings):
     default_dataset: Path | None = None          # file shown in the dashboard without an upload
 
     # Map the developer's xlsx column names → internal names.
-    # Example: {"user_query": "question", "gold_answer": "expected_answer"}
+    # Example: {"user_query": "question", "gold_answer": "expected_sql"}
     column_map: dict[str, str] = {}
     # Extra xlsx columns to carry through into every result receipt.
     extra_columns: list[str] = []

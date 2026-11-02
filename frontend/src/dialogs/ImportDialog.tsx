@@ -162,7 +162,7 @@ export function ImportDialog({ groups, initialGroupId, onClose, onDone }: {
               ) : (
                 <>
                   <textarea value={pasted} onChange={(e) => setPasted(e.target.value)} rows={9} spellCheck={false}
-                    placeholder={"question\texpected_answer\nWhat is the refund window?\t30 days"}
+                    placeholder={"question\texpected_tables\nTotal sales per region\torders, customers"}
                     className="mono w-full rounded border border-line bg-surface-2 p-3 text-xs outline-none focus:border-brand" />
                   <p className="mt-1.5 text-xs text-muted">Copy cells from Excel or Google Sheets and paste them here. The first line holds the column names.</p>
                   <button onClick={() => check(fromPaste())} disabled={busy || !pasted.trim()}

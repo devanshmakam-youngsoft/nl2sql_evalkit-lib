@@ -6,11 +6,11 @@ import pandas as pd
 from nl2sql_evalkit.core.exceptions import DatasetError
 from nl2sql_evalkit.utils import compute_fingerprint
 
-REQUIRED_COLUMNS = ["chat_id", "turn_no", "type", "question", "expected_answer"]
+REQUIRED_COLUMNS = ["chat_id", "turn_no", "type", "question"]
 
 
 # Optional: kept automatically if present in the file (no extra_columns config needed).
-OPTIONAL_COLUMNS = ["expected_sources"]
+OPTIONAL_COLUMNS = ["expected_sql", "expected_tables", "expected_columns"]
 
 
 def load_dataset(
@@ -23,7 +23,7 @@ def load_dataset(
     Load a dataset file into a normalised DataFrame.
 
     The returned DataFrame always contains REQUIRED_COLUMNS, plus any
-    OPTIONAL_COLUMNS present in the file (e.g. ``expected_sources``), plus
+    OPTIONAL_COLUMNS present in the file (e.g. ``expected_tables``), plus
     any columns the developer listed in ``extra_columns``.
 
     A fingerprint of the question set is stored in ``df.attrs["fingerprint"]``
@@ -33,7 +33,7 @@ def load_dataset(
         path: Path to an .xlsx or .csv file.
         sheet: Sheet name (xlsx only). Falls back to the first sheet if not found.
         column_map: Rename columns before validation, e.g.
-            ``{"user_query": "question", "gold_answer": "expected_answer"}``.
+            ``{"user_query": "question", "gold_answer": "expected_sql"}``.
             Keys are matched case-insensitively after stripping whitespace.
         extra_columns: Additional columns to carry through (e.g. ``["difficulty", "topic"]``).
             Missing ones are silently ignored.
@@ -82,10 +82,9 @@ def load_dataset(
 
     df["turn_no"] = pd.to_numeric(df["turn_no"], errors="coerce").fillna(1).astype(int)
     df["chat_id"] = df["chat_id"].astype(str)
-    df["type"] = df["type"].fillna("rag").astype(str)
-    df["expected_answer"] = df["expected_answer"].fillna("").astype(str)
-    if "expected_sources" in df.columns:
-        df["expected_sources"] = df["expected_sources"].fillna("").astype(str)
+    df["type"] = df["type"].fillna("answer").astype(str)
+    for column in OPTIONAL_COLUMNS:
+        df[column] = df[column].fillna("").astype(str) if column in df.columns else ""
 
     df = df.sort_values(["chat_id", "turn_no"], kind="stable").reset_index(drop=True)
     df.attrs["fingerprint"] = compute_fingerprint(df)

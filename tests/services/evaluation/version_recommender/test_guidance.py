@@ -62,7 +62,7 @@ def test_a_run_is_labelled_with_the_groups_that_had_test_cases_in_it(tmp_path):
     store = EvalStore(tmp_path / "store.json")
     try:
         full, empty = store.create_group("Direct"), store.create_group("Multi-turn")
-        store.import_into_group(full, pd.DataFrame([("c1", 1, "rag", "q", "a")], columns=["chat_id", "turn_no", "type", "question", "expected_answer"]))
+        store.import_into_group(full, pd.DataFrame([("c1", 1, "rag", "q", "a")], columns=["chat_id", "turn_no", "type", "question", "expected_sql"]))
         selection = store.resolve_selection([full, empty])
         assert selection.group_names == ["Direct"] and selection.total == 1
     finally:

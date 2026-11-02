@@ -60,8 +60,6 @@ def serve(
     history_params: list[str] | None = None,
     session_params: list[str] | None = None,
     history_format: str = "dict",
-    # --- type / conversational detection ---
-    conversational_types: list[str] | None = None,
     # --- source verification ---
     source_check_mode: str = "keyword",
     # --- hooks ---
@@ -134,13 +132,13 @@ def serve(
 
                 extra_metrics={"rouge_1": lambda exp, gen: rouge(exp, gen)}
 
-            Each callable receives ``(expected_answer, generated_answer)`` and returns a float.
+            Each callable receives ``(expected_sql, generated_answer)`` and returns a float.
         users: Comma-separated ``"name:password"`` pairs, e.g. ``"alice:pw1,bob:pw2"``.
         secret: Cookie signing secret. Auto-generated (random) if omitted.
         require_login: Set to ``False`` to disable the login screen entirely (useful locally).
         default_dataset: Path to a default ``.xlsx`` or ``.csv`` dataset shown in the dashboard.
         column_map: Rename xlsx columns before validation, e.g.
-            ``{"user_query": "question", "gold_answer": "expected_answer"}``.
+            ``{"user_query": "question", "gold_answer": "expected_sql"}``.
         extra_columns: Extra xlsx columns to carry into every result receipt, e.g.
             ``["difficulty", "topic"]``.
         answer_keys: Keys tried (in order) when ``fn()`` returns a dict. Default covers the
@@ -152,9 +150,7 @@ def serve(
         history_format: Format of the history list passed to ``fn()``.
             ``"dict"`` (default) → ``[{"question": …, "answer": …}]``;
             ``"openai"`` → ``[{"role": "user", …}, {"role": "assistant", …}]``.
-        conversational_types: Row ``type`` values (case-insensitive) that skip material
-            scoring, e.g. ``["conversational", "greeting"]``.
-        source_check_mode: How to verify retrieved sources against ``expected_sources`` in
+        source_check_mode: How to verify retrieved sources against ``expected_tables`` in
             the dataset. ``"keyword"`` (default) uses substring matching — separate AND-groups
             with ``|`` and OR-alternatives within a group with ``,`` (e.g.
             ``"doc_a | doc_b.pdf,doc_c"`` requires doc_a AND either doc_b or doc_c).
@@ -207,8 +203,6 @@ def serve(
         cfg_extra["history_params"] = history_params
     if session_params is not None:
         cfg_extra["session_params"] = session_params
-    if conversational_types is not None:
-        cfg_extra["conversational_types"] = conversational_types
     if column_map is not None:
         cfg_extra["column_map"] = column_map
     if extra_columns is not None:

@@ -53,7 +53,7 @@ class GeneratedItem(ApiResponse):
     category: str                     # a category key such as "direct"
     file: str | None = None           # the document it was written from
     number: int | None = None         # 1-based position within its category
-    turns: list[dict[str, Any]]       # {question, expected_answer, evidence} per turn; evidence quotes the document
+    turns: list[dict[str, Any]]       # {question, expected_sql, evidence} per turn; evidence quotes the document
 
 
 class BatchDetail(ApiResponse):

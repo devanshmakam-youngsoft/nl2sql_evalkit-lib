@@ -1,4 +1,4 @@
-"""expected_sources: '|' = every group required, ',' = any alternative within a group."""
+"""expected_tables: '|' = every group required, ',' = any alternative within a group."""
 from types import SimpleNamespace
 
 import pytest

@@ -14,7 +14,7 @@ class Grade(BaseModel):
 
 
 class SourceCheckResult(BaseModel):
-    """Outcome of an LLM source check, resolved against the AND/OR groups in expected_sources."""
+    """Outcome of an LLM source check, resolved against the AND/OR groups in expected_tables."""
     source_match: bool
     matched_sources: list[str] = []   # one retrieved alternative per satisfied group
     missing_sources: list[str] = []   # the full group string for each unsatisfied group

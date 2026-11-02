@@ -17,7 +17,7 @@ def store(tmp_path):
 
 
 def _df(rows):
-    return pd.DataFrame(rows, columns=["chat_id", "turn_no", "type", "question", "expected_answer"])
+    return pd.DataFrame(rows, columns=["chat_id", "turn_no", "type", "question", "expected_sql"])
 
 
 def _seed(store):
@@ -99,10 +99,10 @@ def test_cases_an_older_version_only_hid_are_removed_when_the_store_opens(tmp_pa
     from nl2sql_evalkit.services.db_services import EvalStore
     path = tmp_path / "old.json"
     first = EvalStore(path)
-    first.import_cases([{"row": 2, "chat_id": "c1", "turn_no": 1, "type": "rag", "question": "q1", "expected_answer": "a",
-                         "expected_sources": "", "groups": ["G"]},
-                        {"row": 3, "chat_id": "c2", "turn_no": 1, "type": "rag", "question": "q2", "expected_answer": "a",
-                         "expected_sources": "", "groups": ["G"]}])
+    first.import_cases([{"row": 2, "chat_id": "c1", "turn_no": 1, "type": "rag", "question": "q1", "expected_sql": "a",
+                         "expected_tables": "", "groups": ["G"]},
+                        {"row": 3, "chat_id": "c2", "turn_no": 1, "type": "rag", "question": "q2", "expected_sql": "a",
+                         "expected_tables": "", "groups": ["G"]}])
     hidden = first.list_test_cases()[0]["tc_id"]
     first.test_cases.update({"status": "deleted"}, Query().tc_id == hidden)       # how an older version deleted a case
     first.db.close()
@@ -180,7 +180,7 @@ def test_reimporting_the_original_file_does_not_revert_an_edited_chat_or_turn(st
     store.import_into_group(billing, _df([("c2", 1, "rag", "q4", "changed answer")]))
     latest = next(c for c in store.list_test_cases() if c["tc_id"] == cases["q4"])
     assert (latest["chat_id"], latest["turn_no"]) == ("c7", 4)
-    assert latest["expected_answer"] == "changed answer"
+    assert latest["expected_sql"] == "changed answer"
 
 
 def test_cases_sort_naturally_by_chat(store):
@@ -225,7 +225,7 @@ def test_api_preview_edit_and_bulk_label_flow(client):
     gid = client.post("/api/groups", json={"name": "smoke"}).json()["group_id"]
     for turn in (1, 2):
         r = client.post("/api/test-cases", json={
-            "chat_id": "c1", "turn_no": turn, "question": f"q{turn}", "expected_answer": "a", "group_id": gid,
+            "chat_id": "c1", "turn_no": turn, "question": f"q{turn}", "expected_sql": "a", "group_id": gid,
         })
         assert r.status_code == 201
     cases = client.get("/api/test-cases").json()

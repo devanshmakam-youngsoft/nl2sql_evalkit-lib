@@ -106,8 +106,10 @@ class ResultRow(ApiResponse):
     turn_no: int | None = None
     question: str | None = None
     status: str | None = None           # "ok", "generation_failed" (no answer) or "grading_failed"
-    type: str | None = None             # the kind of test case, for example "rag"
-    expected_answer: str | None = None
+    type: str | None = None             # what the assistant should do: "answer", "clarify" or "refuse"
+    expected_sql: str | None = None
+    expected_tables: str | None = None
+    expected_columns: str | None = None
     generated_answer: str | None = None
     material: str | None = None         # the retrieved context the answer was judged against
     sources: list[str] | None = None    # the sources the pipeline reported using

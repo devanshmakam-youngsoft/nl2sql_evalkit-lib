@@ -13,11 +13,11 @@ def pipeline(question: str) -> str:
     with nl2sql_evalkit.step("retrieval") as s:
         found = {name: text for name, text in DOCUMENTS.items() if any(word in text.lower() for word in words)}
         s.material = "\n".join(found.values())
-        s.sources = list(found)          # what the check compares with the test case's expected_sources
+        s.sources = list(found)          # what the check compares with the test case's expected_tables
     return next(iter(found.values()), "I could not find that.")
 
 
-# In the test case's expected_sources column:
+# In the test case's expected_tables column:
 #   refunds.pdf                    that document must be retrieved
 #   shipping.pdf | tracking.pdf    BOTH are needed ("|" means AND)
 #   tracking.pdf , tracking_v2.pdf EITHER is enough ("," means OR)

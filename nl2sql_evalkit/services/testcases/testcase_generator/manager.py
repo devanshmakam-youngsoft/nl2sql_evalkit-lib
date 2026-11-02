@@ -6,7 +6,7 @@ A *review batch* (stored in ``store.batches``) looks like::
      options: {per_category, categories, turns}, model, files: [{name, pages, passages, error}],
      total_tasks, done_tasks, errors: [{category, file, reason}], error,
      items: [{item_id, category, file, number,
-              turns: [{question, expected_answer, evidence: [{quote, file, page, passage}], needs_context}]}]}
+              turns: [{question, expected_sql, evidence: [{quote, file, page, passage}], needs_context}]}]}
 
 It is saved after every item, so nothing is lost if the browser goes away; it only becomes test cases when approved.
 """
@@ -250,11 +250,11 @@ class GenerationManager:
         if len(turns) != len(item["turns"]):
             raise InvalidInput("The number of turns cannot change")
         for turn, new in zip(item["turns"], turns):
-            question, answer = str(new.get("question", "")).strip(), str(new.get("expected_answer", "")).strip()
+            question, answer = str(new.get("question", "")).strip(), str(new.get("expected_sql", "")).strip()
             problem = check_text(question, answer, standalone=False)
             if problem:
                 raise InvalidInput(problem[0].upper() + problem[1:])
-            turn["question"], turn["expected_answer"] = question, answer
+            turn["question"], turn["expected_sql"] = question, answer
         self.store.save_batch(batch)
         return item
 
@@ -305,8 +305,8 @@ class GenerationManager:
             for turn_no, turn in enumerate(item["turns"], start=1):
                 rows.append({
                     "row": len(rows) + 2, "chat_id": chat_ids[item["item_id"]], "turn_no": turn_no, "type": CASE_TYPE,
-                    "question": turn["question"], "expected_answer": turn["expected_answer"],
-                    "expected_sources": item["file"], "groups": [CATEGORY_LABELS[item["category"]]],
+                    "question": turn["question"], "expected_sql": turn["expected_sql"],
+                    "expected_tables": item["file"], "groups": [CATEGORY_LABELS[item["category"]]],
                     "origin": {
                         "kind": "generated", "category": item["category"], "file": item["file"],
                         "evidence": turn["evidence"], "model": batch.get("model", ""),

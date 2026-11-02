@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from nl2sql_evalkit.core.exceptions import GroupNotFound
 from nl2sql_evalkit.services.db_services.base import StoreBase
-from nl2sql_evalkit.utils import case_id_for, clean_expected_sources, latest_versions
+from nl2sql_evalkit.utils import case_id_for, clean_cell, latest_versions
 
 logger = logging.getLogger(__name__)
 
@@ -83,9 +83,10 @@ class CaseImportRepository(StoreBase):
                 tc_id = case_id_for(r["chat_id"], r["turn_no"], r["question"])
                 fields = {
                     "question": r["question"],
-                    "expected_answer": r["expected_answer"],
-                    "expected_sources": clean_expected_sources(r.get("expected_sources", "")),
-                    "type": r.get("type") or "rag",
+                    "expected_sql": r["expected_sql"],
+                    "expected_tables": clean_cell(r.get("expected_tables", "")),
+                    "expected_columns": clean_cell(r.get("expected_columns", "")),
+                    "type": r.get("type") or "answer",
                 }
                 target: str | None = tc_id
                 existing = latest.get(tc_id)

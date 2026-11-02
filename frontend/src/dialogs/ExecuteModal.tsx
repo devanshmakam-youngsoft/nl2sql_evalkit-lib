@@ -348,7 +348,7 @@ export function ExecuteModal({ onClose, initial }: { onClose: () => void; initia
                   onClick={() => input.current?.click()}
                   className={`mt-3 flex cursor-pointer flex-col items-center gap-1 rounded border-2 border-dashed p-4 text-center text-sm transition ${drag ? "border-brand bg-brand-soft" : "border-line hover:border-brand/60"}`}>
                   <span className="font-medium">Upload a different .xlsx</span>
-                  <span className="text-xs text-muted">Needs: chat_id, turn_no, type, question, expected_answer</span>
+                  <span className="text-xs text-muted">Needs: chat_id, turn_no, type, question</span>
                 </div>
               )}
               <input ref={input} type="file" accept=".xlsx" hidden onChange={(e) => pick(e.target.files?.[0])} />

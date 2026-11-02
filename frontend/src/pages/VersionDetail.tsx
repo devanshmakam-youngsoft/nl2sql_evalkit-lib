@@ -74,7 +74,7 @@ export default function VersionDetail() {
       const tierOk = scoreTier === "all" || (scoreTier === "high" && score >= 8) || (scoreTier === "mid" && score >= 5 && score < 8) || (scoreTier === "low" && score < 5);
       const groupOk = group === ALL || (group === NONE ? !(r.groups?.length) : !!r.groups?.includes(group));
       return (type === "all" || r.type === type) && tierOk && groupOk &&
-        (!query || `${r.question} ${r.generated_answer} ${r.expected_answer}`.toLowerCase().includes(query.toLowerCase()));
+        (!query || `${r.question} ${r.generated_answer} ${r.expected_sql}`.toLowerCase().includes(query.toLowerCase()));
     });
     const k = sort.key;
     if (k !== "order") {
@@ -506,7 +506,9 @@ function RowDrawer({ row, onClose }: { row: ResultRow; onClose: () => void }) {
             <TechnicalDetails text={row.error_detail ?? ""} />
           </div>
         )}
-        <Block title="Expected answer">{row.expected_answer || "—"}</Block>
+        <Block title="Expected SQL">{row.expected_sql || "—"}</Block>
+        {row.expected_tables && <Block title="Expected tables">{row.expected_tables}</Block>}
+        {row.expected_columns && <Block title="Expected columns">{row.expected_columns}</Block>}
 
         {/* 4. Why it scored that way */}
         {hasRemarks && (

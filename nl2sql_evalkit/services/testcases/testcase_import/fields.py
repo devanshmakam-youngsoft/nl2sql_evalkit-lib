@@ -7,7 +7,7 @@ MAX_ROWS = 20_000
 MAX_BYTES = 10 * 1024 * 1024
 
 
-FIELDS = ("chat_id", "turn_no", "type", "question", "expected_answer", "expected_sources", "groups")
+FIELDS = ("chat_id", "turn_no", "type", "question", "expected_sql", "expected_tables", "expected_columns", "groups")
 
 
 FIELD_LABELS = {
@@ -15,8 +15,9 @@ FIELD_LABELS = {
     "turn_no": "Turn number",
     "type": "Type",
     "question": "Question",
-    "expected_answer": "Expected answer",
-    "expected_sources": "Expected sources",
+    "expected_sql": "Expected SQL",
+    "expected_tables": "Expected tables",
+    "expected_columns": "Expected columns",
     "groups": "Groups",
 }
 
@@ -26,8 +27,9 @@ ALIASES: dict[str, tuple[str, ...]] = {
     "chat_id": ("chat_id", "chat", "chatid", "conversation_id", "conversation", "session_id", "session", "thread_id", "thread"),
     "turn_no": ("turn_no", "turn", "turn_number", "turn_num", "turnno", "step", "message_no"),
     "type": ("type", "question_type", "category", "kind"),
-    "question": ("question", "query", "user_query", "user_question", "prompt", "input", "user_input", "utterance"),
-    "expected_answer": ("expected_answer", "expected", "answer", "gold_answer", "reference_answer", "reference", "ground_truth", "expected_response"),
-    "expected_sources": ("expected_sources", "expected_source", "sources", "source", "documents", "expected_documents", "references"),
+    "question": ("question", "user_query", "user_question", "natural_language_question", "prompt", "input", "user_input", "utterance"),
+    "expected_sql": ("expected_sql", "gold_sql", "sql", "expected_query", "gold_query", "reference_sql", "ground_truth_sql", "expected"),
+    "expected_tables": ("expected_tables", "tables", "expected_table", "table", "gold_tables", "required_tables"),
+    "expected_columns": ("expected_columns", "columns", "expected_column", "column", "gold_columns", "required_columns"),
     "groups": ("groups", "group", "tags", "tag", "labels", "label"),
 }

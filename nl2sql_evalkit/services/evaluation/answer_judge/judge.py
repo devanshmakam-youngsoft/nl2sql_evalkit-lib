@@ -117,7 +117,7 @@ class Judge:
         alternatives = list(dict.fromkeys(alt for group in groups for alt in group))
         recorded_str = "\n".join(f"- {r}" for r in recorded) if recorded else "None retrieved."
         expected_str = "\n".join(f"- {e}" for e in alternatives)
-        user = f"Expected sources:\n{expected_str}\n\nRetrieved sources:\n{recorded_str}"
+        user = f"Expected tables:\n{expected_str}\n\nRetrieved sources:\n{recorded_str}"
 
         def _invoke() -> dict:
             raw = self._call(

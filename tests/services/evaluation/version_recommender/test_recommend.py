@@ -131,7 +131,7 @@ def test_api_recommendation_uses_serve_weights_and_skips_archived(client):
 def test_api_groups_list_has_last_and_best_and_deleting_cases_is_for_good(client):
     gid = client.post("/api/groups", json={"name": "G"}).json()["group_id"]
     tc = client.post("/api/test-cases", json={
-        "chat_id": "c", "turn_no": 1, "question": "q", "expected_answer": "a", "group_id": gid,
+        "chat_id": "c", "turn_no": 1, "question": "q", "expected_sql": "a", "group_id": gid,
     }).json()
     stats = {"G": {"avg_answer_marks": 8, "avg_material_marks": 8, "avg_total_time": 1, "total_rows": 1}}
     client.app.state.store.write("1", run(1, 5, 5, 1, groups=stats), [])
@@ -149,8 +149,8 @@ def test_api_groups_list_has_last_and_best_and_deleting_cases_is_for_good(client
 
 
 def test_results_of_a_version_say_which_test_cases_were_deleted_since(client):
-    kept = client.post("/api/test-cases", json={"chat_id": "c1", "turn_no": 1, "question": "q1", "expected_answer": "a"}).json()
-    gone = client.post("/api/test-cases", json={"chat_id": "c2", "turn_no": 1, "question": "q2", "expected_answer": "a"}).json()
+    kept = client.post("/api/test-cases", json={"chat_id": "c1", "turn_no": 1, "question": "q1", "expected_sql": "a"}).json()
+    gone = client.post("/api/test-cases", json={"chat_id": "c2", "turn_no": 1, "question": "q2", "expected_sql": "a"}).json()
     rows = [{"chat_id": "c1", "turn_no": 1, "question": "q1", "tc_id": kept["tc_id"], "generated_answer": "x"},
             {"chat_id": "c2", "turn_no": 1, "question": "q2", "tc_id": gone["tc_id"], "generated_answer": "y"},
             {"chat_id": "c3", "turn_no": 1, "question": "uploaded, never a library case", "generated_answer": "z"}]

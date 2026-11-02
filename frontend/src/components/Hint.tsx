@@ -7,7 +7,7 @@ import { useState } from "react";
 export const GLOSSARY = {
   answer: {
     label: "Answer quality",
-    hint: "How well the assistant's answer matches the expected answer, scored 0–10 by an AI reviewer. Higher is better; below 5 means the answer is mostly wrong or missing the point.",
+    hint: "How well the SQL the assistant wrote answers the question, scored 0–10 by an AI reviewer. Higher is better; below 5 means the answer is mostly wrong or missing the point.",
   },
   context: {
     label: "Context quality",

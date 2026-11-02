@@ -57,7 +57,7 @@ def test_a_version_that_ran_entirely_different_cases_is_not_compared():
     assert result["not_comparable"] == ["3"] and result["compared_cases"] == 10
 
 
-def test_a_case_whose_question_or_expected_answer_changed_is_not_treated_as_the_same_case():
+def test_a_case_whose_question_or_expected_sql_changed_is_not_treated_as_the_same_case():
     old = [entry(case_key("c", 1, f"q{i}", "a"), 9.0) for i in range(10)]
     edited = [entry(case_key("c", 1, f"q{i}", "a" if i else "a CHANGED"), 9.0) for i in range(10)]
     result = recommend([version(1, old), version(2, edited)])
@@ -103,9 +103,9 @@ def test_group_overview_lists_each_run_and_uses_the_shared_cases_for_best():
 # ---- saving and reading per-case scores ------------------------------------------------------
 
 def test_case_scores_are_saved_compactly_with_run_time_groups():
-    rows = [{"chat_id": "c", "turn_no": 1, "question": "q", "expected_answer": "a", "answer_marks": 8,
+    rows = [{"chat_id": "c", "turn_no": 1, "question": "q", "expected_sql": "a", "answer_marks": 8,
              "material_marks": None, "total_time_taken": 1.5, "status": "ok", "groups": ["G"]},
-            {"chat_id": "c", "turn_no": 2, "question": "q2", "expected_answer": "a", "status": "generation_failed"}]
+            {"chat_id": "c", "turn_no": 2, "question": "q2", "expected_sql": "a", "status": "generation_failed"}]
     first, second = build_case_scores(rows)
     assert first == {"k": case_key("c", 1, "q", "a"), "a": 8, "m": None, "t": 1.5, "ok": True, "g": ["G"]}
     assert second["ok"] is False and second["a"] is None
@@ -121,7 +121,7 @@ def client(tmp_path):
 
 def test_older_runs_are_filled_in_from_their_results_and_the_big_list_stays_out_of_the_api(client):
     store: EvalStore = client.app.state.store
-    rows = [{"chat_id": "c", "turn_no": i, "question": f"q{i}", "expected_answer": "a", "answer_marks": 9, "material_marks": 8,
+    rows = [{"chat_id": "c", "turn_no": i, "question": f"q{i}", "expected_sql": "a", "answer_marks": 9, "material_marks": 8,
              "total_time_taken": 1.0, "status": "ok"} for i in range(1, 4)]
     summary = {"version": "1", "date": "2026-01-01T00:00:00+00:00", "total_rows": 3, "failed_rows": 0,
                "avg_answer_marks": 9, "avg_material_marks": 8, "avg_total_time": 1.0}

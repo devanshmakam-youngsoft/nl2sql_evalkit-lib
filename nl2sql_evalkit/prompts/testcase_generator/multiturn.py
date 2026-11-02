@@ -20,4 +20,4 @@ Example of the style (a made-up topic; never reuse it):
 2. "Can I keep them longer than that?" (depends_on: "the three-week loan period")
 3. "And if somebody else is waiting for one of them?" (depends_on: "the books that may be kept longer")
 
-Reply with JSON only: {"turns": [{"question": "...", "expected_answer": "...", "evidence": ["A3"]}, {"question": "...", "expected_answer": "...", "evidence": ["A5"], "depends_on": "..."}, ...]}"""
+Reply with JSON only: {"turns": [{"question": "...", "expected_sql": "...", "evidence": ["A3"]}, {"question": "...", "expected_sql": "...", "evidence": ["A5"], "depends_on": "..."}, ...]}"""

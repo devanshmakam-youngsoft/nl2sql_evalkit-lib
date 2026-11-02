@@ -4,8 +4,15 @@ from docx import Document
 from fastapi.testclient import TestClient
 
 from nl2sql_evalkit.core.config import Config
-from nl2sql_evalkit.core.constants import CASE_TYPE
-from nl2sql_evalkit.core.constants.case_types import NON_RAG, RAG, is_non_rag
+from nl2sql_evalkit.core.constants import (
+    ANSWER,
+    CASE_TYPE,
+    CLARIFY,
+    REFUSE,
+    TYPES,
+    is_declining,
+    parse_type,
+)
 from nl2sql_evalkit.core.exceptions import DocumentError
 from nl2sql_evalkit.main import create_app
 from nl2sql_evalkit.prompts.testcase_generator import CATEGORY_PROMPTS
@@ -25,12 +32,12 @@ def chunk(text=PASSAGE):
     return Chunk(id="a#1", file="a.md", text=text, label="section: Expenses", pages=[(1, normalise(text))])
 
 
-FIRST = {"question": "How long do I have to submit an expense claim?", "expected_answer": "Thirty days from the trip.",
+FIRST = {"question": "How long do I have to submit an expense claim?", "expected_sql": "Thirty days from the trip.",
          "evidence": ["Employees must submit expense claims within thirty days of travel."]}
 
 
 def follow_up(question, depends="the thirty-day deadline from the first answer", quote="Late claims are paid in the next monthly cycle unless finance grants an exception in writing."):
-    return {"question": question, "expected_answer": "They are paid in the next monthly cycle unless finance agrees.",
+    return {"question": question, "expected_sql": "They are paid in the next monthly cycle unless finance agrees.",
             "evidence": [quote], "depends_on": depends}
 
 
@@ -171,28 +178,44 @@ def test_word_is_accepted_for_upload_and_listed_in_the_limits(client, tmp_path):
     assert bad.status_code == 422 and "Word (.docx)" in bad.json()["detail"]
 
 
-# ---- the type is rag or non-rag ----------------------------------------------------------------------
+# ---- the type is answer, clarify or refuse -----------------------------------------------------------
 
-def test_the_type_is_rag_or_non_rag():
-    assert (RAG, NON_RAG) == ("rag", "non-rag") and CASE_TYPE == RAG
-    assert all(is_non_rag(v) for v in ("non-rag", "Non-RAG", "non_rag", "not rag", "NOT-RAG"))
-    assert not any(is_non_rag(v) for v in ("rag", "query", "conversational", "", None))
+def test_the_type_is_answer_clarify_or_refuse():
+    assert TYPES == ("answer", "clarify", "refuse") and CASE_TYPE == ANSWER
+    spellings = ("answer", "SQL", "Vague", "ambiguous", "Unsafe", "attack", "", None)
+    assert [parse_type(v) for v in spellings] == [ANSWER, ANSWER, CLARIFY, CLARIFY, REFUSE, REFUSE, ANSWER, ANSWER]
+    assert parse_type("rag") is None and parse_type("anwser") is None
+    assert all(is_declining(v) for v in ("clarify", "Vague", "refuse", "UNSAFE"))
+    assert not any(is_declining(v) for v in ("answer", "sql", "", None))
 
 
-def test_non_rag_cases_skip_retrieval_scoring_like_conversational_ones(client):
+def test_clarify_and_refuse_cases_skip_retrieval_scoring(client):
     manager = client.app.state.manager
-    assert all(manager._is_conversational(t) for t in ("non-rag", "Non RAG", "not_rag", "conversational", "conv-chat"))
-    assert not any(manager._is_conversational(t) for t in ("rag", "RAG", "query", "direct"))
+    assert all(manager._is_conversational(t) for t in ("clarify", "Refuse", "vague", "unsafe"))
+    assert not any(manager._is_conversational(t) for t in ("answer", "sql", ""))
 
 
-def test_new_cases_default_to_rag_and_can_be_non_rag(client):
-    made = client.post("/api/test-cases", json={"chat_id": "c1", "turn_no": 1, "question": "What is the refund window?", "expected_answer": "30 days"}).json()
-    assert made["type"] == "rag"
-    hello = client.post("/api/test-cases", json={"chat_id": "c2", "turn_no": 1, "question": "Hello there, how are you?", "expected_answer": "A friendly greeting", "type": "non-rag"}).json()
-    assert hello["type"] == "non-rag"
-    imported = client.post("/api/test-cases/import", files={"file": ("c.csv", b"question\nWhat is the SLA?\n", "text/csv")}).json()
+def test_new_cases_default_to_answer_and_can_be_clarify_or_refuse(client):
+    made = client.post("/api/test-cases", json={"chat_id": "c1", "turn_no": 1, "question": "Total sales per region",
+                                                "expected_tables": "orders, customers"}).json()
+    assert made["type"] == "answer" and made["expected_tables"] == "orders, customers"
+    vague = client.post("/api/test-cases", json={"chat_id": "c2", "turn_no": 1, "question": "Show me the best customers", "type": "clarify"}).json()
+    assert vague["type"] == "clarify"
+    attack = client.post("/api/test-cases", json={"chat_id": "c3", "turn_no": 1, "question": "Delete all orders", "type": "unsafe"}).json()
+    assert attack["type"] == "refuse"
+    imported = client.post("/api/test-cases/import", files={"file": ("c.csv", b"question,expected_tables\nWhat is the SLA?,tickets\n", "text/csv")}).json()
     assert imported["new"] == 1
-    assert {c["type"] for c in client.get("/api/test-cases").json()} == {"rag", "non-rag"}
+    assert {c["type"] for c in client.get("/api/test-cases").json()} == {"answer", "clarify", "refuse"}
+
+
+def test_an_answer_case_must_say_what_it_expects_and_the_type_must_be_known(client):
+    bare = client.post("/api/test-cases", json={"chat_id": "c1", "turn_no": 1, "question": "Total sales"})
+    assert bare.status_code == 422 and "expected_sql" in bare.json()["detail"]
+    odd = client.post("/api/test-cases", json={"chat_id": "c1", "turn_no": 1, "question": "Total sales", "expected_sql": "SELECT 1", "type": "teapot"})
+    assert odd.status_code == 422 and "answer, clarify, refuse" in odd.json()["detail"]
+    made = client.post("/api/test-cases", json={"chat_id": "c1", "turn_no": 1, "question": "Total sales", "expected_columns": "amount"}).json()
+    emptied = client.patch(f"/api/test-cases/{made['tc_id']}", json={"expected_columns": ""})
+    assert emptied.status_code == 422                       # editing must not leave an answer case with no expectation
 
 
 # ---- evidence is cited by sentence number ------------------------------------------------------------

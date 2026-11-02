@@ -2,7 +2,7 @@
 
 
 def parse_source_groups(expected: str) -> list[list[str]]:
-    """Parse an ``expected_sources`` cell into AND-groups of OR-alternatives.
+    """Parse an ``expected_tables`` cell into AND-groups of OR-alternatives.
 
     ``"a.pdf , a_v2.pdf | b.pdf"`` -> ``[["a.pdf", "a_v2.pdf"], ["b.pdf"]]``:
     groups are separated by ``|`` (all must be retrieved), alternatives within a
@@ -17,7 +17,7 @@ def parse_source_groups(expected: str) -> list[list[str]]:
 
 
 def check_sources_by_keyword(expected_str: str, recorded: list) -> dict:
-    """Compare expected_sources against recorded sources.
+    """Compare expected_tables against recorded sources.
 
     Format: groups separated by | (ALL must pass);
             alternatives within a group separated by , (ANY ONE satisfies the group).

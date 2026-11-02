@@ -18,7 +18,7 @@ minutes: 6
   <li>Only the <b>question</b> column is required. Common header names (<code>query</code>, <code>gold_answer</code>, <code>tags</code>&hellip;) are recognised, and you can point any column at the right field.</li>
   <li><b>Safe to repeat</b>: importing the same file twice changes nothing; an edited answer becomes a new version of the existing case.</li>
   <li>Rows that could not be imported can be downloaded with the reason next to each, fixed, and imported again.</li>
-  <li>Your own column names everywhere? <code>column_map={"user_query": "question", "gold_answer": "expected_answer"}</code> in <code>serve()</code>.</li>
+  <li>Your own column names everywhere? <code>column_map={"user_query": "question", "gold_answer": "expected_sql"}</code> in <code>serve()</code>.</li>
 </ul>
 
 <h2>Generating from documents</h2>

@@ -8,9 +8,10 @@ class TestCaseUpdate(BaseModel):
     chat_id: str | None = None          # cannot be empty
     turn_no: int | None = None          # position in the chat, 1 or higher
     question: str | None = None         # cannot be empty
-    expected_answer: str | None = None
-    expected_sources: str | None = None  # files the answer should come from: "|" joins required files, "," alternatives
-    type: str | None = None             # "rag" or "non-rag"
+    expected_sql: str | None = None     # the gold query
+    expected_tables: str | None = None  # the tables the SQL must use, separated by commas
+    expected_columns: str | None = None  # the columns the SQL must use, separated by commas (table.column or just column)
+    type: str | None = None             # "answer", "clarify" or "refuse"
 
 
 class TestCaseStatusUpdate(BaseModel):
@@ -44,8 +45,9 @@ class CreateTestCase(BaseModel):
     chat_id: str                    # the conversation this question belongs to; turns of one chat share it
     turn_no: int                    # position in the chat, starting at 1
     question: str
-    expected_answer: str
-    type: str = "rag"               # "rag" (answer must come from the documents) or "non-rag" (no retrieval expected)
-    expected_sources: str = ""      # files the answer should come from: "|" joins required files, "," alternatives
+    expected_sql: str = ""          # the gold query
+    type: str = "answer"            # what the assistant should do: "answer" (return SQL), "clarify" (ask back) or "refuse"
+    expected_tables: str = ""       # the tables the SQL must use, separated by commas
+    expected_columns: str = ""      # the columns the SQL must use, separated by commas (table.column or just column)
     group_id: str | None = None     # also put the test case in this group
     dataset_id: str | None = None  # backward-compat alias

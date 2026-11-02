@@ -4,10 +4,11 @@ from datetime import datetime, timezone
 
 from tinydb import Query
 
+from nl2sql_evalkit.core.constants import ANSWER, TYPES, parse_type
 from nl2sql_evalkit.core.exceptions import GroupNotFound, InvalidInput
 from nl2sql_evalkit.schemas.internal import RunSelection, cases_to_dataframe
 from nl2sql_evalkit.services.db_services.base import StoreBase
-from nl2sql_evalkit.utils import case_id_for, case_order, latest_versions
+from nl2sql_evalkit.utils import case_id_for, case_order, expectation_problem, latest_versions
 
 logger = logging.getLogger(__name__)
 
@@ -111,12 +112,12 @@ class CaseLibraryRepository(StoreBase):
     def edit_test_case(self, tc_id: str, updates: dict, dataset_id: str | None = None) -> dict | None:
         """Create a new version of a test case with the given field updates.
 
-        Editable: question, expected_answer, expected_sources, type, chat_id, turn_no.
+        Editable: question, expected_sql, expected_tables, expected_columns, type, chat_id, turn_no.
         The tc_id never changes, so group labels and history follow the case when its
         chat or turn is edited. Returns the new version record, or None if tc_id is unknown
         or there is nothing to change. Raises ValueError for an invalid value.
         """
-        allowed = {"question", "expected_answer", "expected_sources", "type", "chat_id", "turn_no"}
+        allowed = {"question", "expected_sql", "expected_tables", "expected_columns", "type", "chat_id", "turn_no"}
         updates = {k: v for k, v in updates.items() if k in allowed and v is not None}
         if not updates:
             return None
@@ -133,6 +134,10 @@ class CaseLibraryRepository(StoreBase):
                 raise InvalidInput("Turn number must be 1 or higher")
         if "question" in updates and not str(updates["question"]).strip():
             raise InvalidInput("Question cannot be empty")
+        if "type" in updates:
+            updates["type"] = parse_type(updates["type"])
+            if updates["type"] is None:
+                raise InvalidInput(f"Type must be one of: {', '.join(TYPES)}")
 
         now = datetime.now(timezone.utc).isoformat()
         with self._lock:
@@ -146,6 +151,10 @@ class CaseLibraryRepository(StoreBase):
             new_record["version"] = latest["version"] + 1
             new_record["updated_at"] = now
             new_record.update(updates)
+            problem = expectation_problem(new_record.get("type"), new_record.get("expected_sql"),
+                                         new_record.get("expected_tables"), new_record.get("expected_columns"))
+            if problem:
+                raise InvalidInput(problem)
             self.test_cases.insert(new_record)
 
         return self._with_groups([new_record])[0]
@@ -252,12 +261,18 @@ class CaseLibraryRepository(StoreBase):
         )
 
     def create_test_case(self, chat_id: str, turn_no: int,
-                         question: str, expected_answer: str,
-                         type: str = "rag", expected_sources: str = "",
+                         question: str, expected_sql: str = "",
+                         type: str = ANSWER, expected_tables: str = "", expected_columns: str = "",
                          group_id: str | None = None,
                          # backward-compat: dataset_id accepted but ignored
                          dataset_id: str | None = None) -> dict:
         """Create a new test case manually (without dataset upload)."""
+        type = parse_type(type)
+        if type is None:
+            raise InvalidInput(f"Type must be one of: {', '.join(TYPES)}")
+        problem = expectation_problem(type, expected_sql, expected_tables, expected_columns)
+        if problem:
+            raise InvalidInput(problem)
         now = datetime.now(timezone.utc).isoformat()
         tc_id = case_id_for(chat_id, turn_no, question)
         record = {
@@ -267,8 +282,9 @@ class CaseLibraryRepository(StoreBase):
             "turn_no": turn_no,
             "type": type,
             "question": question,
-            "expected_answer": expected_answer,
-            "expected_sources": expected_sources,
+            "expected_sql": expected_sql,
+            "expected_tables": expected_tables,
+            "expected_columns": expected_columns,
             "status": "active",
             "created_at": now,
             "updated_at": now,

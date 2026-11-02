@@ -11,7 +11,7 @@ minutes: 6
 <p>If no step declares anything, nl2sql_evalkit falls back to the output of decorated steps and writes a warning to the log that says how to be precise.</p>
 
 <h2>Sources</h2>
-<p>Sources are the names of the documents your retrieval used. Set <code>s.sources = [...]</code> in the retrieval step and nl2sql_evalkit compares them with the <code>expected_sources</code> of each test case (<a href="#/source-checks">Source checks</a> shows how). The sources of every step are put together, each document once, so report them in the retrieval step only.</p>
+<p>Sources are the names of the documents your retrieval used. Set <code>s.sources = [...]</code> in the retrieval step and nl2sql_evalkit compares them with the <code>expected_tables</code> of each test case (<a href="#/source-checks">Source checks</a> shows how). The sources of every step are put together, each document once, so report them in the retrieval step only.</p>
 <p>Decorators cannot report sources. Use a <code>with</code> block for the step that retrieves.</p>
 
 <h2>Notes</h2>

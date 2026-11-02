@@ -24,7 +24,7 @@ def pipeline_with_blocks(question: str) -> str:
         passages = search(question)
         context = "\n".join(text for _, text in passages)
         s.material = context                       # the retrieved text: scored as "context quality"
-        s.sources = [name for name, _ in passages]  # the documents: checked against expected_sources
+        s.sources = [name for name, _ in passages]  # the documents: checked against expected_tables
     with nl2sql_evalkit.step("llm"):
         return write_answer(question, context)
 

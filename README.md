@@ -55,7 +55,7 @@ Your function can also take history or a session id, return a dict, or be `async
 with nl2sql_evalkit.step("retrieval") as s:
     docs = vector_db.search(query)
     s.material = "\n\n".join(d.text for d in docs)   # the retrieved text: this is what "context quality" scores
-    s.sources = [d.source for d in docs]               # which documents: checked against expected_sources
+    s.sources = [d.source for d in docs]               # which documents: checked against expected_tables
 
 with nl2sql_evalkit.step("llm"):                           # timing only: its output is not treated as context
     answer = llm.generate(query, docs)
@@ -65,7 +65,7 @@ Only a step that **declares** its material feeds the judge: set `s.material`, or
 
 ### 2. Add test cases
 
-Open **Test Cases**. You can add one case with **+ New test case**, bring many in with **Import** (Excel/CSV or pasted rows), or write them from your documents with **Generate from documents**. Only the question is required for an import; each case has a `chat_id`, `turn_no`, `type`, `question`, `expected_answer` and an optional `expected_sources` (see [Source Verification](#source-verification)).
+Open **Test Cases**. You can add one case with **+ New test case**, bring many in with **Import** (Excel/CSV or pasted rows), or write them from your documents with **Generate from documents**. Only the question is required for an import; each case has a `chat_id`, `turn_no`, `type`, `question`, `expected_sql` and an optional `expected_tables` (see [Source Verification](#source-verification)).
 
 ### 3. Run an evaluation
 
@@ -127,7 +127,7 @@ Follow-up questions need the turns before them, so by default a run also include
 
 - **Type.** Every generated test case has the type `rag` (its answer has to come from the documents); the category is the group it is in.
 - **Questions per category** is shared across the files you upload; change it (1–10) and which categories to write in the dialog.
-- **Every answer comes with evidence.** The writer sees each passage as numbered sentences and cites the sentences that prove its answer; nl2sql_evalkit stores the document's own wording of them, with file and page, so evidence can never be invented. A question whose evidence does not point at real sentences is rejected and rewritten, and a rejected conversation is sent back naming the turn that failed. Evidence is shown during review and later on the test case ("Written from your document"), and the file name becomes the case's `expected_sources`.
+- **Every answer comes with evidence.** The writer sees each passage as numbered sentences and cites the sentences that prove its answer; nl2sql_evalkit stores the document's own wording of them, with file and page, so evidence can never be invented. A question whose evidence does not point at real sentences is rejected and rewritten, and a rejected conversation is sent back naming the turn that failed. Evidence is shown during review and later on the test case ("Written from your document"), and the file name becomes the case's `expected_tables`.
 - **Saved as it goes, approved by you.** Questions are saved on the server while they are being written, so closing the browser or losing the network loses nothing; a banner on the Test Cases page brings you back. They only become test cases when you press *Add*; you can edit or remove any of them first. Anything not added within 24 hours (`batch_ttl_hours`) is deleted.
 - **Nothing of the upload is kept** — only the questions, answers and evidence snippets.
 - **Which model writes them:** `serve(generator_model=...)`, defaulting to `judge_model`. The text of your documents is sent to that model, so pick one you are allowed to send them to (a local `ollama/...` model works). Scanned PDFs (no selectable text), password-protected files and old `.doc` files are reported with a clear message (save `.doc` as `.docx`).
@@ -183,7 +183,7 @@ The dashboard reports problems in plain words and keeps the technical detail one
 
 ## Source Verification
 
-Add an `expected_sources` column to your dataset to track which documents the RAG should retrieve.
+Add an `expected_tables` column to your dataset to track which documents the RAG should retrieve.
 
 ### Format
 

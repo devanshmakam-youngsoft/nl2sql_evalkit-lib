@@ -35,14 +35,14 @@ function timeLeft(iso: string): string {
 function ItemCard({ item, locked, onSave, onRemove }: {
   item: GenItem;
   locked: boolean;
-  onSave: (turns: { question: string; expected_answer: string }[]) => Promise<void>;
+  onSave: (turns: { question: string; expected_sql: string }[]) => Promise<void>;
   onRemove: () => void;
 }) {
-  const [draft, setDraft] = useState(item.turns.map((t) => ({ question: t.question, expected_answer: t.expected_answer })));
+  const [draft, setDraft] = useState(item.turns.map((t) => ({ question: t.question, expected_sql: t.expected_sql })));
   const [state, setState] = useState<"" | "saved" | string>("");
-  useEffect(() => setDraft(item.turns.map((t) => ({ question: t.question, expected_answer: t.expected_answer }))), [item]);
+  useEffect(() => setDraft(item.turns.map((t) => ({ question: t.question, expected_sql: t.expected_sql }))), [item]);
 
-  const dirty = draft.some((d, i) => d.question !== item.turns[i].question || d.expected_answer !== item.turns[i].expected_answer);
+  const dirty = draft.some((d, i) => d.question !== item.turns[i].question || d.expected_sql !== item.turns[i].expected_sql);
   async function save() {
     if (!dirty) return;
     try {
@@ -53,7 +53,7 @@ function ItemCard({ item, locked, onSave, onRemove }: {
       setState((e as Error).message);
     }
   }
-  const set = (i: number, key: "question" | "expected_answer", value: string) =>
+  const set = (i: number, key: "question" | "expected_sql", value: string) =>
     setDraft((d) => d.map((t, j) => (j === i ? { ...t, [key]: value } : t)));
   const box = "w-full resize-y rounded border border-transparent bg-surface-2 px-2.5 py-1.5 text-sm outline-none hover:border-line focus:border-brand";
 
@@ -80,9 +80,9 @@ function ItemCard({ item, locked, onSave, onRemove }: {
             <textarea id={`${item.item_id}-q${i}`} value={draft[i]?.question ?? ""} rows={2} disabled={locked}
               onChange={(e) => set(i, "question", e.target.value)} onBlur={save}
               className={`${box} font-medium`} />
-            <label className="sr-only" htmlFor={`${item.item_id}-a${i}`}>Expected answer</label>
-            <textarea id={`${item.item_id}-a${i}`} value={draft[i]?.expected_answer ?? ""} rows={2} disabled={locked}
-              onChange={(e) => set(i, "expected_answer", e.target.value)} onBlur={save}
+            <label className="sr-only" htmlFor={`${item.item_id}-a${i}`}>Expected SQL</label>
+            <textarea id={`${item.item_id}-a${i}`} value={draft[i]?.expected_sql ?? ""} rows={2} disabled={locked}
+              onChange={(e) => set(i, "expected_sql", e.target.value)} onBlur={save}
               className={`${box} mt-1 text-muted`} />
             <details className="mt-1 text-xs">
               <summary className="cursor-pointer select-none text-brand hover:underline">

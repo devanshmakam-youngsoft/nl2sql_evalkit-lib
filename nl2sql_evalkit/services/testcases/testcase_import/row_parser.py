@@ -7,8 +7,10 @@ from dataclasses import asdict, dataclass
 
 import pandas as pd
 
+from nl2sql_evalkit.core.constants import TYPES, parse_type
 from nl2sql_evalkit.services.testcases.testcase_import.cell_values import cell_text
 from nl2sql_evalkit.services.testcases.testcase_import.fields import FIELDS
+from nl2sql_evalkit.utils import expectation_problem
 
 
 @dataclass
@@ -39,7 +41,7 @@ def parse_rows(df: pd.DataFrame, mapping: dict[str, str | None]) -> tuple[list[d
 
     Missing columns are filled in sensibly rather than rejected: no chat column makes every question its
     own single-turn chat, no turn column numbers the turns of each chat in file order, a blank type
-    becomes "rag". Anything that is *present but wrong* is reported, never altered.
+    becomes "answer". Anything that is *present but wrong* is reported, never altered.
     """
     cols = {f: mapping.get(f) for f in FIELDS}
     rows: list[dict] = []
@@ -102,14 +104,24 @@ def parse_rows(df: pd.DataFrame, mapping: dict[str, str | None]) -> tuple[list[d
             continue
         seen_key[key], seen_slot[slot] = number, number
 
+        case_type = parse_type(get("type"))
+        if case_type is None:
+            problems.append(Problem(number, f"Type '{get('type')}' is not one of: {', '.join(TYPES)}", cells))
+            continue
+        missing = expectation_problem(case_type, get("expected_sql"), get("expected_tables"), get("expected_columns"))
+        if missing:
+            problems.append(Problem(number, missing, cells))
+            continue
+
         rows.append({
             "row": number,
             "chat_id": chat,
             "turn_no": turn,
-            "type": get("type") or "rag",
+            "type": case_type,
             "question": question,
-            "expected_answer": get("expected_answer"),
-            "expected_sources": get("expected_sources"),
+            "expected_sql": get("expected_sql"),
+            "expected_tables": get("expected_tables"),
+            "expected_columns": get("expected_columns"),
             "groups": split_labels(get("groups")),
         })
     return rows, problems

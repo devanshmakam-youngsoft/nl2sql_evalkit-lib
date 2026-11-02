@@ -6,7 +6,7 @@ def my_pipeline(question: str) -> str:
     return "Refunds are allowed within 30 days of purchase."
 
 
-# Extra metrics: each receives (expected_answer, generated_answer) and returns a number. They appear in the results
+# Extra metrics: each receives (expected_sql, generated_answer) and returns a number. They appear in the results
 # next to the built-in scores.
 def word_overlap(expected: str, generated: str) -> float:
     """Share of the expected answer's words that appear in the generated answer (0 to 1)."""
@@ -35,7 +35,7 @@ if __name__ == "__main__":
         my_pipeline,
         extra_metrics={"word_overlap": word_overlap, "length_ratio": length_ratio},
         on_complete=check_quality_gate,
-        column_map={"user_query": "question", "gold_answer": "expected_answer"},   # your column names -> nl2sql_evalkit's
+        column_map={"user_query": "question", "gold_answer": "expected_sql"},   # your column names -> nl2sql_evalkit's
         extra_columns=["difficulty"],                                                # carried into every result
         session_id_fn=lambda chat_id: f"eval-{chat_id}",                             # your own session ids
     )

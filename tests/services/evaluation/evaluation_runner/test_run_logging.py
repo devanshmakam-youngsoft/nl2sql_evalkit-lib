@@ -25,7 +25,7 @@ def store(config):
 def _questions(count):
     return pd.DataFrame(
         [(f"c{n}", 1, "rag", f"question {n}", f"answer {n}") for n in range(count)],
-        columns=["chat_id", "turn_no", "type", "question", "expected_answer"],
+        columns=["chat_id", "turn_no", "type", "question", "expected_sql"],
     )
 
 

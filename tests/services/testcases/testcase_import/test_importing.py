@@ -28,34 +28,47 @@ def mapped(df):
 # ---- reading --------------------------------------------------------------------------
 
 def test_common_header_names_are_recognised():
-    df = table(Conversation=["a"], Turn=[1], User_Query=["q"], Gold_Answer=["x"], Tags=["g"])
+    df = table(Conversation=["a"], Turn=[1], User_Query=["q"], Gold_SQL=["x"], Tags=["g"])
     m = mapped(df)
-    assert (m["chat_id"], m["turn_no"], m["question"], m["expected_answer"], m["groups"]) == (
-        "Conversation", "Turn", "User_Query", "Gold_Answer", "Tags")
+    assert (m["chat_id"], m["turn_no"], m["question"], m["expected_sql"], m["groups"]) == (
+        "Conversation", "Turn", "User_Query", "Gold_SQL", "Tags")
 
 
 def test_the_developers_column_map_wins():
-    m = detect_mapping(["my_q", "my_a"], {"my_q": "question", "my_a": "expected_answer"})
-    assert (m["question"], m["expected_answer"]) == ("my_q", "my_a")
+    m = detect_mapping(["my_q", "my_a"], {"my_q": "question", "my_a": "expected_sql"})
+    assert (m["question"], m["expected_sql"]) == ("my_q", "my_a")
 
 
-def test_a_file_with_only_questions_is_enough():
-    df = table(question=["What is A?", "What is B?", "What is A?"])
+def test_a_file_with_a_question_and_one_expectation_is_enough():
+    df = table(question=["What is A?", "What is B?", "What is A?"], expected_tables=["a", "b", "a"])
     rows, problems = parse_rows(df, mapped(df))
     assert [r["turn_no"] for r in rows] == [1, 1]                      # each question is its own one-turn chat
-    assert rows[0]["chat_id"] != rows[1]["chat_id"] and rows[0]["type"] == "rag"
+    assert rows[0]["chat_id"] != rows[1]["chat_id"] and rows[0]["type"] == "answer"
     assert len(problems) == 1 and "Same question as row 2" in problems[0].reason
 
 
+def test_an_answer_question_with_no_expectation_is_reported_but_clarify_and_refuse_need_none():
+    df = table(question=["Total sales?", "Best customers?", "Delete all orders"], type=["answer", "vague", "unsafe"])
+    rows, problems = parse_rows(df, mapped(df))
+    assert [(r["question"], r["type"]) for r in rows] == [("Best customers?", "clarify"), ("Delete all orders", "refuse")]
+    assert len(problems) == 1 and problems[0].row == 2 and "expected_sql" in problems[0].reason
+
+
+def test_an_unknown_type_is_reported_not_guessed():
+    df = table(question=["q"], type=["rag"], expected_sql=["SELECT 1"])
+    rows, problems = parse_rows(df, mapped(df))
+    assert not rows and "answer, clarify, refuse" in problems[0].reason
+
+
 def test_turns_are_numbered_per_chat_when_the_file_has_no_turn_column():
-    df = table(chat_id=["a", "a", "b"], question=["q1", "q2", "q3"])
+    df = table(chat_id=["a", "a", "b"], question=["q1", "q2", "q3"], expected_sql=["s", "s", "s"])
     rows, _ = parse_rows(df, mapped(df))
     assert [(r["chat_id"], r["turn_no"]) for r in rows] == [("a", 1), ("a", 2), ("b", 1)]
 
 
 @pytest.mark.parametrize("turn, ok", [("2", True), ("2.0", True), ("", True), ("abc", False), ("0", False), ("1.5", False)])
 def test_a_wrong_turn_is_reported_not_silently_changed(turn, ok):
-    df = table(chat_id=["a"], turn_no=[turn], question=["q"])
+    df = table(chat_id=["a"], turn_no=[turn], question=["q"], expected_sql=["s"])
     rows, problems = parse_rows(df, mapped(df))
     assert bool(rows) is ok and bool(problems) is (not ok)
     if not ok:
@@ -63,14 +76,14 @@ def test_a_wrong_turn_is_reported_not_silently_changed(turn, ok):
 
 
 def test_unusable_rows_say_which_row_and_why_and_blank_lines_are_ignored():
-    df = table(chat_id=["a", "", "b", "b", ""], question=["q1", "q2", "", "q4", ""], turn_no=["1", "1", "1", "1", ""])
+    df = table(chat_id=["a", "", "b", "b", ""], question=["q1", "q2", "", "q4", ""], turn_no=["1", "1", "1", "1", ""], expected_sql=["s", "s", "s", "s", ""])
     rows, problems = parse_rows(df, mapped(df))
     assert [r["question"] for r in rows] == ["q1", "q4"]
     assert [(p.row, p.reason) for p in problems] == [(3, "Chat ID is empty"), (4, "Question is empty")]
 
 
 def test_two_questions_for_one_chat_and_turn_in_a_file_are_a_problem():
-    df = table(chat_id=["a", "a"], turn_no=["1", "1"], question=["first", "second"])
+    df = table(chat_id=["a", "a"], turn_no=["1", "1"], question=["first", "second"], expected_sql=["s", "s"])
     rows, problems = parse_rows(df, mapped(df))
     assert len(rows) == 1 and "already used by row 2" in problems[0].reason
 
@@ -86,7 +99,7 @@ def test_the_template_is_a_valid_workbook_that_imports_cleanly():
     assert book.sheetnames == ["dataset", "How to fill"]
     df = pd.read_excel(io.BytesIO(template_workbook()), sheet_name="dataset", dtype=str)
     rows, problems = parse_rows(df, mapped(df))
-    assert len(rows) == 2 and not problems and rows[0]["groups"] == ["Billing", "Refunds"]
+    assert len(rows) == 4 and not problems and rows[0]["groups"] == ["Sales", "Joins"]
 
 
 # ---- importing ------------------------------------------------------------------------
@@ -98,9 +111,9 @@ def store(tmp_path):
     s.close()
 
 
-def row(n, chat, turn, question, answer="a", groups=(), sources="", type_="rag"):
+def row(n, chat, turn, question, answer="a", groups=(), sources="", type_="answer"):
     return {"row": n, "chat_id": chat, "turn_no": turn, "type": type_, "question": question,
-            "expected_answer": answer, "expected_sources": sources, "groups": list(groups)}
+            "expected_sql": answer, "expected_tables": sources, "groups": list(groups)}
 
 
 def counts(r):
@@ -137,7 +150,7 @@ def test_an_edited_answer_becomes_a_new_version_keeping_status_and_labels(store)
     changed = store.import_cases([row(2, "c1", 1, "q1", answer="new", groups=["G"])])
     assert counts(changed) == (0, 1, 0)
     case = store.list_test_cases()[0]
-    assert (case["expected_answer"], case["version"], case["status"]) == ("new", 2, "inactive")
+    assert (case["expected_sql"], case["version"], case["status"]) == ("new", 2, "inactive")
 
 
 def test_a_deleted_case_is_gone_so_importing_it_again_makes_a_new_one(store):
@@ -146,7 +159,7 @@ def test_a_deleted_case_is_gone_so_importing_it_again_makes_a_new_one(store):
     assert store.delete_test_cases([tc]) == 1 and store.list_test_cases() == []
     result = store.import_cases([row(2, "c1", 1, "q1", answer="changed")])
     case = store.list_test_cases()[0]
-    assert counts(result) == (1, 0, 0) and (case["expected_answer"], case["version"], case["groups"]) == ("changed", 1, [])
+    assert counts(result) == (1, 0, 0) and (case["expected_sql"], case["version"], case["groups"]) == ("changed", 1, [])
 
 
 def test_same_chat_and_turn_with_a_different_question_is_reported_and_added_by_default(store):
@@ -190,7 +203,7 @@ def csv_file(text, name="cases.csv"):
 
 
 def test_api_preview_then_import_a_pasted_tab_separated_table(client):
-    pasted = "User Query\tGold Answer\tTags\nWhat is X?\tX is 1\tBilling; FAQ\nWhat is Y?\tY is 2\t\n\t\t\n"
+    pasted = "User Query\tGold SQL\tTags\nWhat is X?\tSELECT 1\tBilling; FAQ\nWhat is Y?\tSELECT 2\t\n\t\t\n"
     preview = client.post("/api/test-cases/import/preview", files=csv_file(pasted, "pasted.tsv")).json()
     assert preview["mapping"]["question"] == "User Query" and preview["mapping"]["groups"] == "Tags"
     assert preview["counts"] == {"new": 2, "update": 0, "unchanged": 0, "problem": 0}
@@ -207,7 +220,7 @@ def test_api_a_wrong_column_can_be_remapped_and_bad_rows_come_back_for_fixing(cl
     text = "when,ask,reply\n1,Q one,A one\nx,Q two,A two\n"
     first = client.post("/api/test-cases/import/preview", files=csv_file(text)).json()
     assert first["question_missing"] is True
-    mapping = json.dumps({"question": "ask", "expected_answer": "reply", "turn_no": "when", "chat_id": None})
+    mapping = json.dumps({"question": "ask", "expected_sql": "reply", "turn_no": "when", "chat_id": None})
     second = client.post("/api/test-cases/import/preview", files=csv_file(text), data={"mapping": mapping}).json()
     assert second["counts"]["new"] == 1 and second["counts"]["problem"] == 1
     assert second["problems"][0]["row"] == 3 and second["problems"][0]["cells"]["ask"] == "Q two"

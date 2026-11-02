@@ -1,6 +1,13 @@
 """Fixed values: the library's names, defaults, limits and the kinds of things it knows about (case types, question categories)."""
 
-from nl2sql_evalkit.core.constants.case_types import is_non_rag
+from nl2sql_evalkit.core.constants.case_types import (
+    ANSWER,
+    CLARIFY,
+    REFUSE,
+    TYPES,
+    is_declining,
+    parse_type,
+)
 from nl2sql_evalkit.core.constants.document_reading import (
     MAX_PAGES,
     MAX_UNPACKED_BYTES,
@@ -45,5 +52,6 @@ __all__ = [
     "DEFAULT_TURNS", "DISPLAY_NAME", "LIBRARY_NAME", "LOGGER_NAME", "LOGS_DIR_NAME", "MAX_PAGES",
     "MAX_TURNS", "MAX_UNPACKED_BYTES", "MIN_SHARED_SHARE", "MIN_TEXT_CHARS", "MIN_TURNS",
     "MIN_USABLE_CHARS", "SESSION_COOKIE_NAME", "STORE_FILE_NAME", "SUPPORTED_MESSAGE",
-    "SUPPORTED_SUFFIXES", "TARGET_CHARS", "TEMP_FOLDER_PREFIX", "UPLOADS_DIR_NAME", "is_non_rag"
+    "SUPPORTED_SUFFIXES", "TARGET_CHARS", "TEMP_FOLDER_PREFIX", "UPLOADS_DIR_NAME", "ANSWER", "CLARIFY", "REFUSE", "TYPES",
+    "is_declining", "parse_type"
 ]

@@ -41,7 +41,7 @@ def build_results_workbook(data: dict) -> bytes:
     # Primary identification
     ID_COLS   = ["chat_id", "turn_no", "type", "groups", "status"]
     # The question/answer triplet — the heart of every row
-    QA_COLS   = ["question", "expected_answer", "generated_answer"]
+    QA_COLS   = ["question", "expected_sql", "expected_tables", "expected_columns", "generated_answer"]
     # Judge scores + comments right after the answers
     JUDGE_COLS = ["answer_marks", "answer_remarks", "material_marks", "material_remarks"]
     # Retrieved context and sources
@@ -110,7 +110,7 @@ def build_results_workbook(data: dict) -> bytes:
         # Formatting: auto-width columns, wrap text in answer/context cells
         from openpyxl.styles import Alignment, Font, PatternFill
         from openpyxl.utils import get_column_letter
-        WRAP_COLS = {"question", "expected_answer", "generated_answer",
+        WRAP_COLS = {"question", "expected_sql", "generated_answer",
                      "answer_remarks", "material_remarks", "retrieved_context"}
         HEADER_FILL = PatternFill("solid", fgColor="1A5276")
         HEADER_FONT = Font(bold=True, color="FFFFFF")

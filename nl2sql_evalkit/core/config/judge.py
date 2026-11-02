@@ -16,7 +16,7 @@ class JudgeSettings(Settings):
     summary_prompt: str = ""
 
     # Source check mode
-    # "keyword" — fast substring match on pipe-separated expected_sources (default)
+    # "keyword" — fast substring match on pipe-separated expected_tables (default)
     # "llm"     — LLM decides whether retrieved sources cover expected sources; adds source_score + source_comment
     # "off"     — skip source verification entirely
     source_check_mode: str = "keyword"

@@ -76,7 +76,7 @@ def test_the_small_answers_are_fully_described(served):
         fits(LibraryTestCase, case, every_key_named=True)
     tc_id = cases[0]["tc_id"]
     fits(LibraryTestCase, client.get(f"/api/test-cases/{tc_id}").json(), every_key_named=True)
-    fits(LibraryTestCase, client.patch(f"/api/test-cases/{tc_id}", json={"expected_answer": "changed"}).json(), every_key_named=True)
+    fits(LibraryTestCase, client.patch(f"/api/test-cases/{tc_id}", json={"expected_sql": "changed"}).json(), every_key_named=True)
     fits(StatusesUpdated, client.post("/api/test-cases/status", json={"tc_ids": [tc_id], "status": "active"}).json(), every_key_named=True)
     fits(StatusOfTestCase, client.patch(f"/api/test-cases/{tc_id}/status", json={"status": "active"}).json(), every_key_named=True)
 
@@ -103,7 +103,7 @@ def test_a_run_and_its_results_are_described(served):
     client = served
     upload = {"file": ("test_cases.csv", SAMPLE.read_bytes(), "text/csv")}
     client.post("/api/test-cases/import", files=upload)
-    group_id = next(g["group_id"] for g in client.get("/api/groups").json() if g["name"] == "Billing")
+    group_id = next(g["group_id"] for g in client.get("/api/groups").json() if g["name"] == "Sales")
     fits(RunPreview, client.post("/api/runs/preview", json={"group_ids": [group_id], "tc_ids": [], "status_filter": "active", "include_context": True}).json(), every_key_named=True)
 
     started = client.post("/api/runs", data={"version": "1", "group_ids": json.dumps([group_id])}).json()

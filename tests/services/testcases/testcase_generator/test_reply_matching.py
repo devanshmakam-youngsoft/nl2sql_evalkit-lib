@@ -24,7 +24,7 @@ def chunk(text, file="faq.md", label="section: Expenses"):
 
 
 def reply(**kw):
-    base = {"question": "Within how many days must travel expenses be submitted?", "expected_answer": "Within thirty days of travel.",
+    base = {"question": "Within how many days must travel expenses be submitted?", "expected_sql": "Within thirty days of travel.",
             "evidence": ["Employees must submit expense claims within thirty days of travel."]}
     return {**base, **kw}
 
@@ -116,7 +116,7 @@ def multipart():
 
 
 def multi_reply(evidence_key="evidence", evidence=None):
-    return {"question": "What is the claim deadline, and what must visitors do on arrival?", "expected_answer": "Thirty days; sign the register.",
+    return {"question": "What is the claim deadline, and what must visitors do on arrival?", "expected_sql": "Thirty days; sign the register.",
             evidence_key: evidence}
 
 

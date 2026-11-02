@@ -1,24 +1,38 @@
-"""Test case types.
+"""Test case types: what the assistant should do with a question.
 
-A test case is either ``rag`` (its answer has to come from your documents, so retrieval is scored) or
-``non-rag`` (greetings, small talk, anything where no retrieval is expected, so it is graded on the answer only).
-Other values found in older data (``query``, ``conversational``...) keep working: only the non-rag ones are
-treated as such.
+``answer``   a clear question in scope: the assistant should return SQL (the default)
+``clarify``  a vague question: the assistant should ask something back instead of guessing
+``refuse``   a harmful or out-of-bounds question: the assistant should decline
+
+Other spellings are understood (``sql``, ``vague``, ``ambiguous``, ``unsafe``, ``attack``...); the library stores the three names.
 """
 import re
 
-RAG = "rag"
+ANSWER = "answer"
 
 
-NON_RAG = "non-rag"
+CLARIFY = "clarify"
 
 
-TYPES = (RAG, NON_RAG)
+REFUSE = "refuse"
 
 
-_NON_RAG = {"nonrag", "notrag", "norag"}
+TYPES = (ANSWER, CLARIFY, REFUSE)
 
 
-def is_non_rag(value) -> bool:
-    """True for ``non-rag`` however it is spelled (non-rag, non_rag, not rag, Non RAG...)."""
-    return re.sub(r"[\s_-]+", "", str(value or "").lower()) in _NON_RAG
+_SPELLINGS = {
+    "answer": ANSWER, "sql": ANSWER, "query": ANSWER, "normal": ANSWER,
+    "clarify": CLARIFY, "clarification": CLARIFY, "vague": CLARIFY, "ambiguous": CLARIFY,
+    "refuse": REFUSE, "refusal": REFUSE, "unsafe": REFUSE, "attack": REFUSE,
+}
+
+
+def parse_type(value) -> str | None:
+    """The type a value stands for (a blank one is ``answer``), or None when it is not one of the known spellings."""
+    key = re.sub(r"[\s_-]+", "", str(value or "").lower())
+    return ANSWER if not key else _SPELLINGS.get(key)
+
+
+def is_declining(value) -> bool:
+    """True for a type where the assistant should return no SQL: ``clarify`` or ``refuse``."""
+    return parse_type(value) in (CLARIFY, REFUSE)

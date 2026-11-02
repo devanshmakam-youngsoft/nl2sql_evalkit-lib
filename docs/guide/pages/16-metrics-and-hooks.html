@@ -9,10 +9,9 @@ minutes: 4
 <div class="table-wrap"><table>
   <thead><tr><th>Option</th><th>Use it to&hellip;</th></tr></thead>
   <tbody>
-    <tr><td><code>extra_metrics</code></td><td>Add scores such as ROUGE or a length check. Each function gets <code>(expected_answer, generated_answer)</code> and returns a number, shown in the results. A metric that fails on a question is reported as a problem and the run goes on.</td></tr>
+    <tr><td><code>extra_metrics</code></td><td>Add scores such as ROUGE or a length check. Each function gets <code>(expected_sql, generated_answer)</code> and returns a number, shown in the results. A metric that fails on a question is reported as a problem and the run goes on.</td></tr>
     <tr><td><code>on_complete</code></td><td>Run code once when a run ends, with the summary and the rows (<code>None</code> instead of a summary if the run failed). Post to Slack, fail a CI job, write to a database.</td></tr>
     <tr><td><code>column_map</code>, <code>extra_columns</code></td><td>Use your own spreadsheet column names, and carry extra columns (such as <code>difficulty</code>) into every result.</td></tr>
     <tr><td><code>session_id_fn</code></td><td>Choose the session id sent for each chat, for example to replay a conversation against a stateful backend with a stable id.</td></tr>
-    <tr><td><code>conversational_types</code></td><td>Row types that skip context scoring, besides <code>non-rag</code>.</td></tr>
   </tbody>
 </table></div>

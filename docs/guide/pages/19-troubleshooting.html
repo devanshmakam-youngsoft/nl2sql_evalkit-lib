@@ -37,8 +37,8 @@ minutes: 0
     <p class="why">One step sits inside another (the outer one includes the inner one&rsquo;s time), or steps run in parallel.</p>
     <p><b>Do:</b> for nesting, make the steps follow each other instead of wrapping each other. Parallel steps are expected to overlap.</p></div></details>
 <details class="fix"><summary>Sources say &ldquo;not checked&rdquo;, or &ldquo;some missing&rdquo; when they were found</summary><div class="body">
-    <p class="why">Not checked: the test case has no <code>expected_sources</code>, <code>source_check_mode</code> is <code>"off"</code>, or no step reported sources. Missing although retrieved: the names differ.</p>
-    <p><b>Do:</b> report sources with a <code>with</code> block and <code>s.sources = [&hellip;]</code> (decorators cannot report them). Compare the names the step reported with <code>expected_sources</code>; the keyword check ignores case, folders and file extensions, so <code>docs/Refunds.pdf</code> matches <code>refunds</code>. Different spellings of the same document? Try <code>source_check_mode="llm"</code>.</p></div></details>
+    <p class="why">Not checked: the test case has no <code>expected_tables</code>, <code>source_check_mode</code> is <code>"off"</code>, or no step reported sources. Missing although retrieved: the names differ.</p>
+    <p><b>Do:</b> report sources with a <code>with</code> block and <code>s.sources = [&hellip;]</code> (decorators cannot report them). Compare the names the step reported with <code>expected_tables</code>; the keyword check ignores case, folders and file extensions, so <code>docs/Refunds.pdf</code> matches <code>refunds</code>. Different spellings of the same document? Try <code>source_check_mode="llm"</code>.</p></div></details>
 <details class="fix"><summary>A step shows no inputs or output</summary><div class="body">
     <p class="why">Inputs and outputs are recorded only for decorated functions.</p>
     <p><b>Do:</b> use the decorator for that step, or record what you need with <code>nl2sql_evalkit.note()</code>. Arguments named like secrets show as <code>[REDACTED]</code> on purpose.</p></div></details>

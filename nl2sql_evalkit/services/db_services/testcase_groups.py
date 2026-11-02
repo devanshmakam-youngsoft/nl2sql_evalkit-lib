@@ -8,7 +8,7 @@ from tinydb.operations import delete
 
 from nl2sql_evalkit.core.exceptions import ConflictError, GroupNotFound, InvalidInput
 from nl2sql_evalkit.services.db_services.base import StoreBase
-from nl2sql_evalkit.utils import clean_expected_sources, latest_versions, new_group_id
+from nl2sql_evalkit.utils import clean_cell, latest_versions, new_group_id
 
 logger = logging.getLogger(__name__)
 
@@ -102,10 +102,11 @@ class GroupsRepository(StoreBase):
                 "row": i + 2,
                 "chat_id": str(r.chat_id),
                 "turn_no": int(r.turn_no),
-                "type": str(getattr(r, "type", "rag")),
+                "type": str(getattr(r, "type", "answer")),
                 "question": str(r.question),
-                "expected_answer": str(r.expected_answer),
-                "expected_sources": clean_expected_sources(getattr(r, "expected_sources", "")),
+                "expected_sql": str(r.expected_sql),
+                "expected_tables": clean_cell(getattr(r, "expected_tables", "")),
+                "expected_columns": clean_cell(getattr(r, "expected_columns", "")),
                 "groups": [],
             }
             for i, r in enumerate(df.itertuples(index=False))

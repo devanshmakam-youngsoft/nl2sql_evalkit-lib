@@ -19,7 +19,7 @@ from nl2sql_evalkit.core.config import Config
 from nl2sql_evalkit.main import create_app
 
 EXAMPLES = Path(__file__).parents[2] / "examples"
-COLUMNS = ["chat_id", "turn_no", "type", "question", "expected_answer"]
+COLUMNS = ["chat_id", "turn_no", "type", "question", "expected_sql"]
 JUDGE = lambda question, expected, generated, material: {"answer_marks": 8, "material_marks": 8}   # noqa: E731
 
 
@@ -63,7 +63,7 @@ def served_function(tmp_path):
         app.state.store.close()
 
 
-def evaluate(app, questions, case_type="rag", extra=None) -> list[dict]:
+def evaluate(app, questions, case_type="answer", extra=None) -> list[dict]:
     """Run (chat_id, turn_no, question, expected) rows and return the saved result rows."""
     frame = pd.DataFrame([(chat, turn, case_type, question, expected) for chat, turn, question, expected in questions], columns=COLUMNS)
     for name, values in (extra or {}).items():
@@ -162,7 +162,7 @@ def test_steps_inside_langgraph_nodes_are_recorded(serve_example):
 
 def test_a_bot_with_no_retrieval_is_graded_on_the_answer_alone(serve_example):
     app = serve_example("no_retrieval_bot.py")
-    rows = evaluate(app, [("c1", 1, "Hello there", "greets"), ("c2", 1, "Where is order A100?", "shipped")], case_type="non-rag")
+    rows = evaluate(app, [("c1", 1, "Hello there", "greets"), ("c2", 1, "Where is order A100?", "shipped")], case_type="clarify")
     assert [r["material_marks"] for r in rows] == [None, None] and [r["answer_marks"] for r in rows] == [8, 8]
     assert rows[1]["flags"] == {"intent": "order_status", "tool_called": "order_lookup"}
     assert steps_of(rows[1]) == ["intent", "order_lookup"] and rows[1]["generated_answer"] == "Order A100 is shipped."
@@ -181,7 +181,7 @@ def test_a_custom_judge_function_replaces_the_ai_judge(serve_example):
 
 def test_the_other_judges_in_the_example_grade_as_described():
     judges = runpy.run_path(str(EXAMPLES / "custom_judge.py"))
-    contains, both = judges["contains_expected_answer"], judges["grade_answer_and_context"]
+    contains, both = judges["contains_expected_sql"], judges["grade_answer_and_context"]
     assert contains("q", "30 days", "Within 30 days.", "")["answer_marks"] == 10
     assert contains("q", "30 days", "Never.", "")["answer_marks"] == 0
     assert judges["valid_json_with_fields"]("q", "a", "not json", "")["answer_comment"] == "The reply is not valid JSON."
@@ -205,7 +205,7 @@ def test_extra_metrics_columns_and_the_completion_hook(serve_example, capsys):
     deadline = time.time() + 5
     while "answer quality" not in capsys.readouterr().out and time.time() < deadline:
         time.sleep(0.05)
-    assert app.state.config.column_map == {"user_query": "question", "gold_answer": "expected_answer"}
+    assert app.state.config.column_map == {"user_query": "question", "gold_answer": "expected_sql"}
 
 
 # ---- call_existing_api.py ---------------------------------------------------------------------------------------
@@ -255,22 +255,23 @@ def test_the_sample_test_case_file_imports_as_described(served_function):
 
     cases = {c["question"]: c for c in client.get("/api/test-cases").json()}
     assert len(cases) == 5
-    assert cases["Hello!"]["type"] == "non-rag"
-    assert (cases["And for an annual plan?"]["chat_id"], cases["And for an annual plan?"]["turn_no"]) == ("refund-1", 2)
-    assert cases["When will my order ship?"]["expected_sources"] == "shipping.pdf | tracking.pdf"
-    assert cases["How do I track my parcel?"]["expected_sources"] == "tracking.pdf , tracking_v2.pdf"
-    assert sorted(g["name"] for g in client.get("/api/groups").json()) == ["Billing", "Shipping", "Small talk"]
+    assert cases["Show me the best customers"]["type"] == "clarify" and cases["Delete all orders from 2023"]["type"] == "refuse"
+    follow_up = cases["And only for the north region?"]
+    assert (follow_up["chat_id"], follow_up["turn_no"], follow_up["expected_columns"]) == ("sales-1", 2, "region, amount")
+    assert cases["Total sales per region"]["expected_tables"] == "orders, customers"
+    assert cases["How many orders are still open?"]["expected_sql"].startswith("SELECT COUNT(*)")
+    assert sorted(g["name"] for g in client.get("/api/groups").json()) == ["Attacks", "Orders", "Sales", "Vague"]
 
 
 # ---- source_checks.py -------------------------------------------------------------------------------------------
 
-def test_expected_sources_with_and_or_are_checked(serve_example):
+def test_expected_tables_with_and_or_are_checked(serve_example):
     app = serve_example("source_checks.py")
     rows = evaluate(app, [
         ("c1", 1, "Can I get a refund?", "30 days"),
         ("c2", 1, "Can I get a refund?", "30 days"),
         ("c3", 1, "Can I get a refund?", "30 days"),
-    ], extra={"expected_sources": ["refunds.pdf", "refunds.pdf | shipping.pdf", "refunds_v2.pdf , Refunds.PDF"]})
+    ], extra={"expected_tables": ["refunds.pdf", "refunds.pdf | shipping.pdf", "refunds_v2.pdf , Refunds.PDF"]})
     assert [r["source_match"] for r in rows] == [True, False, True]
     assert rows[1]["missing_sources"] == ["shipping.pdf"]
 
@@ -341,7 +342,7 @@ def running_server(tmp_path):
     app.state.manager._llm_judge = SimpleNamespace(summarize_run=lambda stats: None)
     store = app.state.store
     group = store.create_group("Billing")
-    store.import_into_group(group, pd.DataFrame([("c1", 1, "rag", "Refunds?", "30 days")], columns=COLUMNS))
+    store.import_into_group(group, pd.DataFrame([("c1", 1, "answer", "Refunds?", "30 days")], columns=COLUMNS))
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", 0))
         port = probe.getsockname()[1]

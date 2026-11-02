@@ -9,7 +9,7 @@ minutes: 4
   <li><b>The pipeline reports its sources</b>
     <p>In the retrieval step, <code>s.sources = [...]</code> lists the documents it used.</p></li>
   <li><b>The test case lists the expected ones</b>
-    <p>In the <code>expected_sources</code> column, with two small rules below.</p></li>
+    <p>In the <code>expected_tables</code> column, with two small rules below.</p></li>
   <li><b>nl2sql_evalkit compares them</b>
     <p>Each question shows what was found and what is missing, and the version page counts them.</p></li>
 </ol>
@@ -35,4 +35,4 @@ minutes: 4
     <tr><td><code>"off"</code></td><td>No source checking.</td></tr>
   </tbody>
 </table></div>
-<div class="note"><b>If sources say &ldquo;not checked&rdquo;</b><p>Either the test case has no <code>expected_sources</code>, the mode is <code>"off"</code>, or no step reported sources. Remember that decorators cannot report sources. <a href="#/troubleshooting">Troubleshooting</a> has the full list.</p></div>
+<div class="note"><b>If sources say &ldquo;not checked&rdquo;</b><p>Either the test case has no <code>expected_tables</code>, the mode is <code>"off"</code>, or no step reported sources. Remember that decorators cannot report sources. <a href="#/troubleshooting">Troubleshooting</a> has the full list.</p></div>

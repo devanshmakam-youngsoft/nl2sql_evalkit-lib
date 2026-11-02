@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 
 import pandas as pd
 
-from nl2sql_evalkit.utils import clean_expected_sources, compute_fingerprint
+from nl2sql_evalkit.utils import clean_cell, compute_fingerprint
 
 
 @dataclass
@@ -35,13 +35,14 @@ def cases_to_dataframe(cases: list[dict], group_names_of: dict[str, list[str]] |
             "turn_no": int(tc["turn_no"]),
             "type": tc.get("type", ""),
             "question": tc["question"],
-            "expected_answer": tc["expected_answer"],
+            "expected_sql": clean_cell(tc.get("expected_sql", "")),
             "tc_id": tc["tc_id"],
             "groups": tuple((group_names_of or {}).get(tc["tc_id"], ())),
         }
-        es = clean_expected_sources(tc.get("expected_sources", ""))
-        if es:
-            row["expected_sources"] = es
+        for column in ("expected_tables", "expected_columns"):
+            value = clean_cell(tc.get(column, ""))
+            if value:
+                row[column] = value
         rows.append(row)
     df = pd.DataFrame(rows)
     df.attrs["fingerprint"] = compute_fingerprint(df)

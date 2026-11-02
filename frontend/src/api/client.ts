@@ -170,7 +170,7 @@ export const api = {
   },
   testCaseHistory: (tcId: string) =>
     fetch(apiPath(`test-cases/${tcId}/history`)).then((r) => json<TestCase[]>(r)),
-  editTestCase: (tcId: string, updates: Partial<Pick<TestCase, "chat_id" | "turn_no" | "question" | "expected_answer" | "expected_sources" | "type">>) =>
+  editTestCase: (tcId: string, updates: Partial<Pick<TestCase, "chat_id" | "turn_no" | "question" | "expected_sql" | "expected_tables" | "expected_columns" | "type">>) =>
     fetch(apiPath(`test-cases/${tcId}`), {
       method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updates),
     }).then((r) => json<TestCase>(r)),
@@ -186,7 +186,7 @@ export const api = {
     return fetch(apiPath("generate"), { method: "POST", body: fd }).then((r) => json<GenSummary>(r));
   },
   generateGet: (id: string) => fetch(apiPath(`generate/${id}`)).then((r) => json<GenBatch>(r)),
-  generateEditItem: (id: string, itemId: string, turns: Pick<GenTurn, "question" | "expected_answer">[]) =>
+  generateEditItem: (id: string, itemId: string, turns: Pick<GenTurn, "question" | "expected_sql">[]) =>
     fetch(apiPath(`generate/${id}/items/${itemId}`), {
       method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ turns }),
     }).then((r) => json<GenItem>(r)),
@@ -233,7 +233,7 @@ export const api = {
     fd.append("file", file);
     return fetch(apiPath("datasets/upload"), { method: "POST", body: fd }).then((r) => json<{ dataset_id: string; rows: number }>(r));
   },
-  createTestCase: (body: { chat_id: string; turn_no: number; question: string; expected_answer: string; type?: string; expected_sources?: string; group_id?: string }) =>
+  createTestCase: (body: { chat_id: string; turn_no: number; question: string; expected_sql?: string; type?: string; expected_tables?: string; expected_columns?: string; group_id?: string }) =>
     fetch(apiPath("test-cases"), {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
     }).then((r) => json<TestCase>(r)),

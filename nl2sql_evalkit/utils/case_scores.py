@@ -4,12 +4,12 @@ import hashlib
 from nl2sql_evalkit.utils.score_math import is_nan
 
 
-def case_key(chat_id, turn_no, question, expected_answer) -> str:
-    """Identifies one test case *as it was asked*: the same chat, turn, question and expected answer.
+def case_key(chat_id, turn_no, question, expected_sql, expected_tables="", expected_columns="") -> str:
+    """Identifies one test case *as it was asked*: the same chat, turn, question and expectations.
 
-    Versions are compared on cases with the same key, so a case whose question or expected answer was
-    edited between two runs is not mistaken for the same test."""
-    raw = f"{chat_id}\x1f{turn_no}\x1f{str(question).strip()}\x1f{str(expected_answer).strip()}"
+    Versions are compared on cases with the same key, so a case whose question or expected SQL, tables or columns
+    were edited between two runs is not mistaken for the same test."""
+    raw = "\x1f".join(str(part).strip() for part in (chat_id, turn_no, question, expected_sql, expected_tables, expected_columns))
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
 
 
@@ -21,7 +21,8 @@ def build_case_scores(rows: list[dict]) -> list[dict]:
     for r in rows:
         t = r.get("total_time_taken")
         out.append({
-            "k": case_key(r.get("chat_id", ""), r.get("turn_no", 1), r.get("question", ""), r.get("expected_answer", "")),
+            "k": case_key(r.get("chat_id", ""), r.get("turn_no", 1), r.get("question", ""), r.get("expected_sql", ""),
+                         r.get("expected_tables", ""), r.get("expected_columns", "")),
             "a": r.get("answer_marks"),
             "m": r.get("material_marks"),
             "t": None if t is None or is_nan(t) else t,

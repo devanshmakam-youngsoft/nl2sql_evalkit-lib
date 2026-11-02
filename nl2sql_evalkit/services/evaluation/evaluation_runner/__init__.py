@@ -18,7 +18,7 @@ CALL FLOW (one question)
   _execute()
     └─ _process_row()
          ├─ _call_fn()             ← calls developer's fn(); recording captures steps + flags
-         ├─ check_sources_by_keyword()        ← compares expected_sources against recorded sources (if column present)
+         ├─ check_sources_by_keyword()        ← compares expected_tables against recorded sources (if column present)
          ├─ extra_metrics          ← any custom metric fns passed to serve()
          └─ _grade()              ← LLM judge or custom judge_fn
 

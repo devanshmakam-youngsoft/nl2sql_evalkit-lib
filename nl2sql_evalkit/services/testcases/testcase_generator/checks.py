@@ -89,8 +89,8 @@ def _turns_of(task: Task, data: dict, turns: int) -> tuple[list | None, str]:
 def _check_turn(task: Task, raw, index: int, earlier: list[dict], passages: list[str], avoid: list[str]) -> tuple[dict | None, str]:
     """One turn of a reply: (the cleaned turn, "") or (None, the reason it was rejected)."""
     if not isinstance(raw, dict):
-        return None, "each turn must be an object with question, expected_answer and evidence"
-    question, answer = str(raw.get("question") or "").strip(), str(raw.get("expected_answer") or "").strip()
+        return None, "each turn must be an object with question, expected_sql and evidence"
+    question, answer = str(raw.get("question") or "").strip(), str(raw.get("expected_sql") or "").strip()
     problem = check_text(question, answer, standalone=index == 0)
     if problem:
         return None, problem
@@ -107,7 +107,7 @@ def _check_turn(task: Task, raw, index: int, earlier: list[dict], passages: list
         if problem:
             return None, problem
 
-    turn = {"question": question, "expected_answer": answer, "evidence": proof}
+    turn = {"question": question, "expected_sql": answer, "evidence": proof}
     if task.category == "multiturn" and index > 0:
         problem = _check_follow_up(question, [t["question"] for t in earlier])
         if problem:

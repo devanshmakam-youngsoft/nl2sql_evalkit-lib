@@ -6,7 +6,7 @@ class TurnText(BaseModel):
     """The reworded text of one turn of a generated item."""
 
     question: str                       # 12 to 400 characters
-    expected_answer: str                # 3 to 1200 characters
+    expected_sql: str                # 3 to 1200 characters
 
 
 class ItemEdit(BaseModel):
