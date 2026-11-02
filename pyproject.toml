@@ -5,12 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "nl2sql_evalkit"
 version = "0.1.4"
-description = "A generic RAG / LLM evaluation toolkit with a React dashboard"
+description = "Evaluate text-to-SQL assistants with static SQL checks, an LLM judge and a React dashboard"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"
 authors = [{ name = "Youngsoft" }]
-keywords = ["rag", "llm", "evaluation", "benchmark", "chatbot", "ai"]
+keywords = ["nl2sql", "text-to-sql", "sql", "llm", "evaluation", "benchmark", "ai"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",

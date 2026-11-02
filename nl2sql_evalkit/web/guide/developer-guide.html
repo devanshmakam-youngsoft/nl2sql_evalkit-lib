@@ -184,12 +184,12 @@ details.fix .body { padding: 0 18px 14px 42px; } details.fix .body p { margin: 6
 <div class="nav-part">Connect your assistant</div>
 <a class="nav-link" href="#/your-function" data-slug="your-function"><span class="dot"></span>Connect your function</a>
 <a class="nav-link" href="#/frameworks" data-slug="frameworks"><span class="dot"></span>LangChain, LangGraph and friends</a>
-<a class="nav-link" href="#/agents-and-bots" data-slug="agents-and-bots"><span class="dot"></span>Agents and bots with no retrieval</a>
+<a class="nav-link" href="#/agents-and-bots" data-slug="agents-and-bots"><span class="dot"></span>Agents, questions back and refusals</a>
 <a class="nav-link" href="#/existing-systems" data-slug="existing-systems"><span class="dot"></span>Plug into what you already have</a>
 <div class="nav-part">See inside</div>
 <a class="nav-link" href="#/why-steps" data-slug="why-steps"><span class="dot"></span>Why record steps?</a>
 <a class="nav-link" href="#/with-or-decorator" data-slug="with-or-decorator"><span class="dot"></span>with or decorator?</a>
-<a class="nav-link" href="#/material-and-sources" data-slug="material-and-sources"><span class="dot"></span>Material, sources and notes</a>
+<a class="nav-link" href="#/schema-and-checks" data-slug="schema-and-checks"><span class="dot"></span>Checks and the tables-and-columns score</a>
 <div class="nav-part">Build your test set</div>
 <a class="nav-link" href="#/test-cases" data-slug="test-cases"><span class="dot"></span>Writing test cases</a>
 <a class="nav-link" href="#/import-generate-groups" data-slug="import-generate-groups"><span class="dot"></span>Import, generate and organise</a>
@@ -217,9 +217,9 @@ details.fix .body { padding: 0 18px 14px 42px; } details.fix .body p { margin: 6
 <article class="page" id="page-welcome" data-slug="welcome" data-title="Is the new version really better?" data-part="Start here" hidden>
 <div class="kicker"><span>Start here</span><span>3 min read</span></div>
 <h1>Is the new version <mark>really better?</mark></h1>
-<p class="lead">nl2sql_evalkit replays your test questions through your own assistant, grades every answer, and tells you which version to ship. This guide walks you from the first run to a pipeline you can trust, with code you can copy at every step.</p>
+<p class="lead">nl2sql_evalkit replays your test questions through your own text-to-SQL assistant, checks and grades every query it writes, and tells you which version to ship. It reads the SQL; it never runs it. This guide walks you from the first run to a pipeline you can trust, with code you can copy at every step.</p>
 <div class="story"><b>The story we will follow</b>
-  <p>Priya's team at Acme Shop has a support assistant called <i>Sidekick</i>. Last week they shipped version 2. Since then, customers write in that refund questions get half an answer. Was version 2 worse than version 1? Nobody can say: each person tried a few questions by hand and remembers something different.</p>
+  <p>Priya's team at Acme Shop has an assistant called <i>Sidekick</i>. Colleagues ask it questions in plain English and it writes the SQL for the shop's database. Last week they shipped version 2. Since then people say the revenue questions come back wrong. Was version 2 worse than version 1? Nobody can say: each person tried a few questions by hand and remembers something different.</p>
   <p>By the end of this guide Sidekick has a test set, two measured versions, a clear winner, and a build that stops anyone shipping a worse one.</p>
   <p><small>Priya, Acme Shop and Sidekick are made up, and the numbers are illustrative. The behaviour is real.</small></p></div>
 
@@ -227,24 +227,26 @@ details.fix .body { padding: 0 18px 14px 42px; } details.fix .body p { margin: 6
 <p>You hand it a function. It does the repetitive, error-prone part of testing for you.</p>
 <div class="flow">
   <div><b>Your assistant</b>nl2sql_evalkit calls your function once per test question, in order, like a real user.</div><div class="arrow">&rarr;</div>
-  <div><b>Grading</b>An AI judge scores each answer, and the text your pipeline retrieved. Text metrics run alongside.</div><div class="arrow">&rarr;</div>
+  <div><b>Checks and grading</b>The SQL is read, not run: does it parse, is it read-only, does it use the right tables, columns and joins? An AI judge then scores it.</div><div class="arrow">&rarr;</div>
   <div><b>Versions</b>Every run is saved as a version, so you can see what improved and what broke.</div><div class="arrow">&rarr;</div>
   <div><b>The decision</b>A recommendation says which version to ship, and why.</div>
 </div>
+<div class="note"><b>Static checks only</b><p>No database connection is needed and no query is ever executed. That keeps a run safe and quick; the price is that the judge reads the SQL instead of comparing the rows it would return.</p></div>
 
 <h2>Three words you will meet</h2>
 <div class="cards">
-  <div class="card"><span class="tag">Test case</span><b>A question and what a good answer says</b><span>Optionally the documents it should be found in, and where it sits in a conversation.</span></div>
-  <div class="card"><span class="tag">Version</span><b>One run of your test cases</b><span>You name it (<code>1</code>, <code>v2</code>, <code>rerank-on</code>). Versions are what you compare.</span></div>
+  <div class="card"><span class="tag">Test case</span><b>A question and what a good reply looks like</b><span>The SQL you expect, optionally the tables and columns it should use, and what kind of reply it is: an answer, a question back, or a refusal.</span></div>
+  <div class="card"><span class="tag">Version</span><b>One run of your test cases</b><span>You name it (<code>1</code>, <code>v2</code>, <code>new-prompt</code>). Versions are what you compare.</span></div>
   <div class="card"><span class="tag">Judge</span><b>The grader</b><span>An AI model by default. It can also be your own function, or your own rubric.</span></div>
 </div>
 
 <h2>Where do you want to start?</h2>
 <div class="cards">
   <a class="card" href="#/first-run"><span class="tag">15 minutes</span><b>Run my first evaluation</b><span>Install, serve a function, add test cases, read the result.</span></a>
-  <a class="card" href="#/your-function"><span class="tag">Connect</span><b>I already have a chatbot</b><span>Question-only, with history, or with a session id.</span></a>
+  <a class="card" href="#/your-function"><span class="tag">Connect</span><b>I already have an assistant</b><span>Question-only, with history, or with a session id.</span></a>
   <a class="card" href="#/frameworks"><span class="tag">Frameworks</span><b>I use LangChain or LangGraph</b><span>Steps recorded from inside nodes, threads and async code.</span></a>
-  <a class="card" href="#/agents-and-bots"><span class="tag">Agents</span><b>My bot has tools, or no retrieval</b><span>Greeters, tool loops, and how to grade them.</span></a>
+  <a class="card" href="#/agents-and-bots"><span class="tag">Agents</span><b>My assistant uses tools, asks back or refuses</b><span>Tool loops, vague questions and unsafe ones, and how to grade them.</span></a>
+  <a class="card" href="#/schema-and-checks"><span class="tag">Scores</span><b>What exactly is checked?</b><span>The checks on the SQL and the tables-and-columns score.</span></a>
   <a class="card" href="#/versions-and-recommendation"><span class="tag">Decide</span><b>Which version should ship?</b><span>How versions are compared, and what the recommendation means.</span></a>
   <a class="card" href="#/troubleshooting"><span class="tag">Help</span><b>Something looks off</b><span>Symptoms, likely reasons, what to do.</span></a>
 </div>
@@ -257,49 +259,49 @@ details.fix .body { padding: 0 18px 14px 42px; } details.fix .body p { margin: 6
 <article class="page" id="page-first-run" data-slug="first-run" data-title="Your first evaluation" data-part="Start here" hidden>
 <div class="kicker"><span>Start here</span><span>8 min read</span></div>
 <h1>Your first evaluation</h1>
-<p class="lead">Fifteen minutes from nothing to a scored version. Nothing to set up beyond Python and a key for the judge model.</p>
-<div class="story"><b>Chapter 1</b><p>Priya decides not to argue about version 2 any more. The plan: write down ten questions customers really ask, run them through Sidekick, and look at the scores.</p></div>
+<p class="lead">Fifteen minutes from nothing to a scored version. Nothing to set up beyond Python and a key for the judge model. No database needed.</p>
+<div class="story"><b>Chapter 1</b><p>Priya decides not to argue about version 2 any more. The plan: write down ten questions colleagues really ask, run them through Sidekick, and look at the scores.</p></div>
 
 <ol class="steps">
   <li><b>Install</b>
     <pre class="cmd">pip install git+https://github.com/devanshmakam-youngsoft/nl2sql_evalkit-lib.git<button type="button" class="copy">Copy</button></pre>
     <p>On Windows, run this from Git Bash if <code>git</code> is not on your PowerShell path.</p></li>
   <li><b>Give the judge a model</b>
-    <p>The judge is an AI model that grades the answers. Put its key in a <code>.env</code> file next to your script and nl2sql_evalkit reads it. The default judge is a Groq model, so:</p>
+    <p>The judge is an AI model that grades the SQL. Put its key in a <code>.env</code> file next to your script and nl2sql_evalkit reads it. The default judge is a Groq model, so:</p>
     <pre class="cmd"># .env
 GROQ_API_KEY=your-key-here<button type="button" class="copy">Copy</button></pre>
     <p>Any <a href="https://docs.litellm.ai/docs/providers">LiteLLM provider</a> works, and <a href="#/your-judge">you can skip the AI judge entirely</a>.</p></li>
   <li><b>Serve your function</b>
-    <p>Create <code>eval_entry.py</code> next to your pipeline. Any function that turns a question into an answer works.</p>
+    <p>Create <code>eval_entry.py</code> next to your pipeline. Any function that turns a question into SQL works. Say which SQL dialect your database speaks with <code>dialect</code>: <code>"postgres"</code> (the default), <code>"mysql"</code>, <code>"tsql"</code> for SQL Server, or <code>"sqlite"</code>.</p>
     <pre class="cmd">import nl2sql_evalkit
-from my_app import answer_question          # your existing pipeline
+from my_app import question_to_sql          # your existing pipeline
 
-nl2sql_evalkit.serve(answer_question, port=8002, require_login=False)<button type="button" class="copy">Copy</button></pre>
+nl2sql_evalkit.serve(question_to_sql, port=8002, require_login=False, dialect="postgres")<button type="button" class="copy">Copy</button></pre>
     <pre class="cmd">python eval_entry.py<button type="button" class="copy">Copy</button></pre>
     <p>The dashboard opens at <code>http://localhost:8002</code>. Without <code>require_login=False</code> the sign-in is <code>admin</code> / <code>admin123</code>.</p></li>
   <li><b>Add test cases</b>
-    <p>Open <b>Test Cases</b> and press <b>+ New test case</b>. Write a question and what a good answer says. Ten is plenty to start. Later you can <a href="#/import-generate-groups">import a spreadsheet</a> or have nl2sql_evalkit write cases from your own documents.</p></li>
+    <p>Open <b>Test Cases</b> and press <b>+ New test case</b>. Write a question and the SQL you would expect. Adding the expected tables and columns makes the checks sharper. Ten is plenty to start. Later you can <a href="#/import-generate-groups">import a spreadsheet</a> or have nl2sql_evalkit write cases from your own <code>.sql</code> or <code>.ddl</code> schema file.</p></li>
   <li><b>Run it</b>
     <p>Press <b>Execute session</b>, name the version <code>1</code>, choose your test cases and start. A progress bar follows each question.</p></li>
   <li><b>Read the result</b>
-    <p>Open the version. You get an average score for answer quality and context quality, the response time, plain-language findings, and every question with its answer and the judge's reason.</p></li>
+    <p>Open the version. You get an average SQL score and tables-and-columns score, the response time, a table of <b>where answers fail</b> (which checks the SQL did not pass), plain-language findings, and every question with the SQL it got, the judge's reason and a suggestion.</p></li>
 </ol>
 
 <h2>What good looks like</h2>
-<p>Scores are out of 10. As a rule of thumb: 8 and up is strong, 5 to 7 is fair, under 5 means the answers are mostly wrong or missing. The numbers matter less than the <em>change</em> between versions, which is what the rest of this guide is about.</p>
+<p>Scores are out of 10. As a rule of thumb: 8 and up is strong, 5 to 7 is fair, under 5 means the SQL is mostly wrong or missing. The numbers matter less than the <em>change</em> between versions, which is what the rest of this guide is about.</p>
 
 <div class="note heads"><b>If every score is 0.0</b>
-  <p>Do not panic: the judge is usually right. It almost always means the test cases ask about things your pipeline does not know, so it answers &ldquo;I could not find that&rdquo;. Open one question, read the generated answer and the retrieved text, and compare them with what you expected. <a href="#/troubleshooting">Troubleshooting</a> has the details.</p></div>
+  <p>Do not panic. A reply that has no SQL, does not parse in your dialect, or is not a read-only <code>SELECT</code> scores 0 straight away, without asking the judge. So it almost always means nl2sql_evalkit is not seeing your SQL: the function returns something else, the SQL sits under a key it does not know, or <code>dialect</code> does not match what your assistant writes. Open one question and read the reply it recorded. <a href="#/troubleshooting">Troubleshooting</a> has the details.</p></div>
 
-<div class="story"><b>Chapter 1, continued</b><p>Version 1 of Sidekick scores 6.4 on answers. For the first time the team has a number. Refund questions score lowest, which matches what customers said. Next stop: connect Sidekick properly, so nl2sql_evalkit sees what it really does.</p></div>
+<div class="story"><b>Chapter 1, continued</b><p>Version 1 of Sidekick scores 6.4 on SQL. For the first time the team has a number. Revenue questions score lowest, which matches what colleagues said, and the failure table shows why: the joins differ from the expected SQL. Next stop: connect Sidekick properly, so nl2sql_evalkit sees what it really returns.</p></div>
 
 <nav class="pager"><a class="prev" href="#/welcome"><small>Previous</small><b>Is the new version really better?</b></a><a class="next" href="#/your-function"><small>Next up</small><b>Connect your function</b></a></nav>
 </article>
 <article class="page" id="page-your-function" data-slug="your-function" data-title="Connect your function" data-part="Connect your assistant" hidden>
 <div class="kicker"><span>Connect your assistant</span><span>6 min read</span></div>
 <h1>Connect your function</h1>
-<p class="lead">nl2sql_evalkit reads the parameter names of your function to decide what to pass. There are three shapes, and one of them is yours.</p>
-<div class="story"><b>Chapter 2</b><p>Sidekick keeps each customer's chat on the server, keyed by a session id. That decides which shape Priya needs below.</p></div>
+<p class="lead">nl2sql_evalkit reads the parameter names of your function to decide what to pass. There are three shapes, and one of them is yours. Whatever the shape, the function returns SQL.</p>
+<div class="story"><b>Chapter 2</b><p>Sidekick keeps each colleague's chat on the server, keyed by a session id, so that &ldquo;and only for the north region?&rdquo; makes sense after a question about sales. That decides which shape Priya needs below.</p></div>
 
 <h2>The three shapes</h2>
 <div class="tabs" data-tabs>
@@ -310,23 +312,22 @@ nl2sql_evalkit.serve(answer_question, port=8002, require_login=False)<button typ
   </div>
   <div role="tabpanel">
     <p>Every question is answered on its own. The simplest shape, and right for single-turn pipelines.</p>
-    <figure class="code"><figcaption><span>examples/function_shapes.py  (excerpt)</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="c"># Shape 1: a question in, an answer out. Every question is answered on its own.</span>
+    <figure class="code"><figcaption><span>examples/function_shapes.py  (excerpt)</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="c"># Shape 1: a question in, SQL out. Every question is answered on its own.</span>
 <span class="k">def</span> <span class="f">answer_only</span>(question: <span class="b">str</span>) -&gt; <span class="b">str</span>:
-    <span class="k">return</span> <span class="s">&quot;Refunds are allowed within 30 days of purchase.&quot;</span></code></pre></figure>
+    <span class="k">return</span> SALES_PER_REGION</code></pre></figure>
   </div>
   <div role="tabpanel" hidden>
-    <p>Your chatbot is <b>stateless</b>: it rebuilds the prompt from the earlier turns every time. nl2sql_evalkit keeps the conversation of each <code>chat_id</code> and hands you the earlier turns as <code>history</code> (empty on the first turn).</p>
-    <figure class="code"><figcaption><span>examples/function_shapes.py  (excerpt)</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="c"># Shape 2: a stateless chatbot. You receive the earlier turns of the chat every time and rebuild the prompt from them.</span>
+    <p>Your assistant is <b>stateless</b>: it rebuilds the prompt from the earlier turns every time. nl2sql_evalkit keeps the conversation of each <code>chat_id</code> and hands you the earlier turns as <code>history</code> (empty on the first turn).</p>
+    <figure class="code"><figcaption><span>examples/function_shapes.py  (excerpt)</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="c"># Shape 2: a stateless assistant. You receive the earlier turns of the chat every time and rebuild the prompt from them.</span>
 <span class="c"># history looks like [{&quot;question&quot;: &quot;...&quot;, &quot;answer&quot;: &quot;...&quot;}, ...] and is empty on the first turn.</span>
 <span class="k">def</span> <span class="f">answer_with_history</span>(question: <span class="b">str</span>, history: <span class="b">list</span>) -&gt; <span class="b">str</span>:
-    earlier = [turn[<span class="s">&quot;question&quot;</span>] <span class="k">for</span> turn <span class="k">in</span> history]
-    <span class="k">if</span> earlier:
-        <span class="k">return</span> <span class="s">f&quot;Following up on &#x27;{earlier[-1]}&#x27;: refunds are allowed within 30 days.&quot;</span>
-    <span class="k">return</span> <span class="s">&quot;Refunds are allowed within 30 days of purchase.&quot;</span></code></pre></figure>
+    <span class="k">if</span> history:
+        <span class="k">return</span> <span class="s">f&quot;-- follows up on: {history[-1][&#x27;question&#x27;]}\n{SALES_PER_REGION} HAVING SUM(o.amount) &gt; 0&quot;</span>
+    <span class="k">return</span> SALES_PER_REGION</code></pre></figure>
   </div>
   <div role="tabpanel" hidden>
     <p>Your backend is <b>stateful</b>: it remembers the conversation itself. nl2sql_evalkit passes one session id per chat, the same for every turn of that chat and different for the next. <i>This is Sidekick.</i></p>
-    <figure class="code"><figcaption><span>examples/function_shapes.py  (excerpt)</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="c"># Shape 3: a stateful chatbot. Your backend remembers the conversation itself, so nl2sql_evalkit only passes a session id</span>
+    <figure class="code"><figcaption><span>examples/function_shapes.py  (excerpt)</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="c"># Shape 3: a stateful assistant. Your backend remembers the conversation itself, so nl2sql_evalkit only passes a session id</span>
 <span class="c"># (the same id for every turn of one chat, a new one for the next chat).</span>
 SESSIONS: <span class="b">dict</span>[<span class="b">str</span>, <span class="b">list</span>] = {}
 
@@ -334,7 +335,7 @@ SESSIONS: <span class="b">dict</span>[<span class="b">str</span>, <span class="b
 <span class="k">def</span> <span class="f">answer_in_session</span>(question: <span class="b">str</span>, session_id: <span class="b">str</span>) -&gt; <span class="b">str</span>:
     turns = SESSIONS.setdefault(session_id, [])
     turns.append(question)
-    <span class="k">return</span> <span class="s">f&quot;This is message {len(turns)} of this chat. Refunds are allowed within 30 days.&quot;</span></code></pre></figure>
+    <span class="k">return</span> <span class="s">f&quot;-- message {len(turns)} of this chat\n{SALES_PER_REGION}&quot;</span></code></pre></figure>
   </div>
 </div>
 
@@ -350,31 +351,34 @@ SESSIONS: <span class="b">dict</span>[<span class="b">str</span>, <span class="b
 <p>If a function has both kinds, the session id wins. Any other parameter needs a default value, because nl2sql_evalkit passes only the question and one extra.</p>
 <div class="note"><b>Good to know</b><p>A parameter called <code>context</code> is treated as history. If yours means something else, rename it or list your own names with <code>history_params=[&hellip;]</code>.</p></div>
 
+<h2>What your function returns</h2>
+<p>Return the SQL as a string. A reply counts as SQL when it is inside a <code>```sql</code> fence or starts like a statement (<code>SELECT</code>, <code>WITH name AS (</code>, and so on); any other reply is read as a message to the user. That is how a question back or a refusal is told apart from a query, and <a href="#/schema-and-checks">the next pages</a> say what happens to each.</p>
+
 <h2>Other things your function can do</h2>
 <p>Return a dictionary or a Pydantic model, be <code>async</code>, use parameter names of your own, or receive the history as chat messages.</p>
-<figure class="code"><figcaption><span>examples/function_shapes.py  (excerpt)</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="c"># Your function may also return a dict (nl2sql_evalkit reads the &quot;answer&quot; key; &quot;response&quot;, &quot;output&quot;, &quot;result&quot; and &quot;text&quot;</span>
-<span class="c"># work too), or a Pydantic model with such a field.</span>
+<figure class="code"><figcaption><span>examples/function_shapes.py  (excerpt)</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="c"># Your function may also return a dict (nl2sql_evalkit reads the &quot;sql&quot; key; &quot;query&quot;, &quot;answer&quot;, &quot;response&quot;, &quot;output&quot;,</span>
+<span class="c"># &quot;result&quot; and &quot;text&quot; work too), or a Pydantic model with such a field.</span>
 <span class="k">def</span> <span class="f">answer_as_dict</span>(question: <span class="b">str</span>) -&gt; <span class="b">dict</span>:
-    <span class="k">return</span> {<span class="s">&quot;answer&quot;</span>: <span class="s">&quot;Refunds are allowed within 30 days of purchase.&quot;</span>, <span class="s">&quot;confidence&quot;</span>: <span class="n">0.92</span>}
+    <span class="k">return</span> {<span class="s">&quot;sql&quot;</span>: SALES_PER_REGION, <span class="s">&quot;confidence&quot;</span>: <span class="n">0.92</span>}
 
 
 <span class="c"># ...or be async.</span>
 <span class="k">async</span> <span class="k">def</span> <span class="f">answer_async</span>(question: <span class="b">str</span>) -&gt; <span class="b">str</span>:
-    <span class="k">return</span> <span class="s">&quot;Refunds are allowed within 30 days of purchase.&quot;</span>
+    <span class="k">return</span> SALES_PER_REGION
 
 
 <span class="c"># Parameter names of your own? Tell nl2sql_evalkit what they mean:</span>
 <span class="c">#     nl2sql_evalkit.serve(answer_with_other_names, history_params=[&quot;past_chats&quot;], session_params=[&quot;chat_token&quot;])</span>
 <span class="k">def</span> <span class="f">answer_with_other_names</span>(question: <span class="b">str</span>, past_chats: <span class="b">list</span>) -&gt; <span class="b">str</span>:
-    <span class="k">return</span> <span class="s">f&quot;I can see {len(past_chats)} earlier turns.&quot;</span>
+    <span class="k">return</span> <span class="s">f&quot;-- I can see {len(past_chats)} earlier turns.\n{SALES_PER_REGION}&quot;</span>
 
 
 <span class="c"># With serve(..., history_format=&quot;openai&quot;) the history arrives as chat messages instead of question/answer pairs.</span>
 <span class="k">def</span> <span class="f">answer_with_openai_history</span>(question: <span class="b">str</span>, messages: <span class="b">list</span>) -&gt; <span class="b">str</span>:
     <span class="c"># messages = [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;...&quot;}, {&quot;role&quot;: &quot;assistant&quot;, &quot;content&quot;: &quot;...&quot;}, ...]</span>
     last_user = <span class="b">next</span>((m[<span class="s">&quot;content&quot;</span>] <span class="k">for</span> m <span class="k">in</span> <span class="b">reversed</span>(messages) <span class="k">if</span> m[<span class="s">&quot;role&quot;</span>] == <span class="s">&quot;user&quot;</span>), <span class="k">None</span>)
-    <span class="k">return</span> <span class="s">f&quot;Earlier you said: {last_user}&quot;</span> <span class="k">if</span> last_user <span class="k">else</span> <span class="s">&quot;This is the first question.&quot;</span></code></pre></figure>
-<p>The keys tried for the answer, in order, are <code>answer</code>, <code>response</code>, <code>output</code>, <code>result</code>, <code>text</code>, <code>content</code>, <code>message</code>, <code>generated_text</code>, <code>generation</code>, <code>completion</code>. Add your own with <code>answer_keys=[&hellip;]</code>.</p>
+    <span class="k">return</span> <span class="s">f&quot;-- earlier you asked: {last_user}\n{SALES_PER_REGION}&quot;</span> <span class="k">if</span> last_user <span class="k">else</span> SALES_PER_REGION</code></pre></figure>
+<p>The keys tried for the reply, in order, are <code>sql</code>, <code>query</code>, <code>answer</code>, <code>response</code>, <code>output</code>, <code>result</code>, <code>text</code>, <code>content</code>, <code>message</code>, <code>generated_text</code>, <code>generation</code>, <code>completion</code>. Add your own with <code>answer_keys=[&hellip;]</code>.</p>
 <p>If your function raises an error, that question is marked failed, the reason is recorded, and the run carries on with the next question.</p>
 
 <nav class="pager"><a class="prev" href="#/first-run"><small>Previous</small><b>Your first evaluation</b></a><a class="next" href="#/frameworks"><small>Next up</small><b>LangChain, LangGraph and friends</b></a></nav>
@@ -390,24 +394,25 @@ SESSIONS: <span class="b">dict</span>[<span class="b">str</span>, <span class="b
   <li>a <b>node with a <code>with</code> block</b> inside it;</li>
   <li>a <b>decorator on the node itself</b>, including nodes that take LangGraph's <code>config</code> parameter.</li>
 </ul>
-<figure class="code"><figcaption><span>examples/langgraph_agent.py</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="s">&quot;&quot;&quot;A LangGraph app. Steps are recorded from inside nodes, whichever way you place them.&quot;&quot;&quot;</span>
+<figure class="code"><figcaption><span>examples/langgraph_agent.py</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="s">&quot;&quot;&quot;A LangGraph app that writes SQL. Steps are recorded from inside nodes, whichever way you place them.
+The graph returns the SQL; it does not run it.&quot;&quot;&quot;</span>
 <span class="k">from</span> typing <span class="k">import</span> TypedDict
 
 <span class="k">from</span> langgraph.graph <span class="k">import</span> END, START, StateGraph
 
 <span class="k">import</span> nl2sql_evalkit
 
-DOCUMENTS = {
-    <span class="s">&quot;refunds.pdf&quot;</span>: <span class="s">&quot;Refunds are allowed within 30 days of purchase.&quot;</span>,
-    <span class="s">&quot;shipping.pdf&quot;</span>: <span class="s">&quot;Orders ship within 2 business days.&quot;</span>,
+SCHEMA = {
+    <span class="s">&quot;customers&quot;</span>: <span class="s">&quot;customers(id, name, region)&quot;</span>,
+    <span class="s">&quot;orders&quot;</span>: <span class="s">&quot;orders(id, customer_id, amount, status, created_at)&quot;</span>,
 }
 
 
 <span class="k">class</span> <span class="f">State</span>(TypedDict, total=<span class="k">False</span>):
     question: <span class="b">str</span>
     query: <span class="b">str</span>
-    context: <span class="b">str</span>
-    answer: <span class="b">str</span>
+    tables: <span class="b">str</span>
+    sql: <span class="b">str</span>
 
 
 <span class="c"># 1. A node that calls a decorated function: the decorator records the call wherever it is made from.</span>
@@ -420,54 +425,53 @@ DOCUMENTS = {
     <span class="k">return</span> {<span class="s">&quot;query&quot;</span>: rewrite(state[<span class="s">&quot;question&quot;</span>])}
 
 
-<span class="c"># 2. A node with a `with` block inside it: use this when you need to say what the material and sources are.</span>
-<span class="k">def</span> <span class="f">retrieve_node</span>(state: State) -&gt; <span class="b">dict</span>:
-    <span class="k">with</span> nl2sql_evalkit.step(<span class="s">&quot;retrieval&quot;</span>) <span class="k">as</span> s:
-        words = [word <span class="k">for</span> word <span class="k">in</span> state[<span class="s">&quot;query&quot;</span>].split() <span class="k">if</span> <span class="b">len</span>(word) &gt; <span class="n">3</span>]
-        found = [(name, text) <span class="k">for</span> name, text <span class="k">in</span> DOCUMENTS.items() <span class="k">if</span> <span class="b">any</span>(word <span class="k">in</span> text.lower() <span class="k">for</span> word <span class="k">in</span> words)]
-        s.material = <span class="s">&quot;\n&quot;</span>.join(text <span class="k">for</span> _, text <span class="k">in</span> found)
-        s.sources = [name <span class="k">for</span> name, _ <span class="k">in</span> found]
-    <span class="k">return</span> {<span class="s">&quot;context&quot;</span>: s.material}
+<span class="c"># 2. A node with a `with` block inside it: use this when only part of the node should be timed.</span>
+<span class="k">def</span> <span class="f">schema_node</span>(state: State) -&gt; <span class="b">dict</span>:
+    <span class="k">with</span> nl2sql_evalkit.step(<span class="s">&quot;schema_lookup&quot;</span>):
+        names = [name <span class="k">for</span> name <span class="k">in</span> SCHEMA <span class="k">if</span> name.rstrip(<span class="s">&quot;s&quot;</span>) <span class="k">in</span> state[<span class="s">&quot;query&quot;</span>]] <span class="k">or</span> [<span class="s">&quot;orders&quot;</span>]
+    <span class="k">return</span> {<span class="s">&quot;tables&quot;</span>: <span class="s">&quot;, &quot;</span>.join(SCHEMA[name] <span class="k">for</span> name <span class="k">in</span> names)}
 
 
 <span class="c"># 3. A decorator on the node itself.</span>
 <span class="d">@</span><span class="d">nl2sql_evalkit</span><span class="d">.</span><span class="d">step</span>(<span class="s">&quot;llm&quot;</span>)
-<span class="k">def</span> <span class="f">answer_node</span>(state: State) -&gt; <span class="b">dict</span>:
-    <span class="k">return</span> {<span class="s">&quot;answer&quot;</span>: state[<span class="s">&quot;context&quot;</span>].split(<span class="s">&quot;.&quot;</span>)[<span class="n">0</span>] + <span class="s">&quot;.&quot;</span> <span class="k">if</span> state[<span class="s">&quot;context&quot;</span>] <span class="k">else</span> <span class="s">&quot;I could not find that.&quot;</span>}
+<span class="k">def</span> <span class="f">sql_node</span>(state: State) -&gt; <span class="b">dict</span>:
+    table = state[<span class="s">&quot;tables&quot;</span>].split(<span class="s">&quot;(&quot;</span>)[<span class="n">0</span>]
+    <span class="k">return</span> {<span class="s">&quot;sql&quot;</span>: <span class="s">f&quot;SELECT COUNT(*) FROM {table}&quot;</span>}
 
 
 graph = StateGraph(State)
 graph.add_node(<span class="s">&quot;rewrite&quot;</span>, rewrite_node)
-graph.add_node(<span class="s">&quot;retrieve&quot;</span>, retrieve_node)
-graph.add_node(<span class="s">&quot;answer&quot;</span>, answer_node)
+graph.add_node(<span class="s">&quot;schema&quot;</span>, schema_node)
+graph.add_node(<span class="s">&quot;write_sql&quot;</span>, sql_node)
 graph.add_edge(START, <span class="s">&quot;rewrite&quot;</span>)
-graph.add_edge(<span class="s">&quot;rewrite&quot;</span>, <span class="s">&quot;retrieve&quot;</span>)
-graph.add_edge(<span class="s">&quot;retrieve&quot;</span>, <span class="s">&quot;answer&quot;</span>)
-graph.add_edge(<span class="s">&quot;answer&quot;</span>, END)
+graph.add_edge(<span class="s">&quot;rewrite&quot;</span>, <span class="s">&quot;schema&quot;</span>)
+graph.add_edge(<span class="s">&quot;schema&quot;</span>, <span class="s">&quot;write_sql&quot;</span>)
+graph.add_edge(<span class="s">&quot;write_sql&quot;</span>, END)
 app = graph.<span class="b">compile</span>()
 
 
 <span class="k">def</span> <span class="f">pipeline</span>(question: <span class="b">str</span>) -&gt; <span class="b">str</span>:
-    <span class="k">return</span> app.invoke({<span class="s">&quot;question&quot;</span>: question})[<span class="s">&quot;answer&quot;</span>]
+    <span class="k">return</span> app.invoke({<span class="s">&quot;question&quot;</span>: question})[<span class="s">&quot;sql&quot;</span>]
 
 
 <span class="k">if</span> <span class="b">__name__</span> == <span class="s">&quot;__main__&quot;</span>:
-    nl2sql_evalkit.serve(pipeline)</code></pre></figure>
-<p>The version page then shows <code>rewrite</code>, <code>retrieval</code> and <code>llm</code> with their times, the retrieved text and the source <code>refunds.pdf</code>. Parallel branches and async nodes (<code>ainvoke</code>) are recorded too; we ran this file and variants of it while writing this guide.</p>
+    nl2sql_evalkit.serve(pipeline, dialect=<span class="s">&quot;postgres&quot;</span>)</code></pre></figure>
+<p>The version page then shows each step with its time. Parallel branches and async nodes (<code>ainvoke</code>) are recorded too; we ran this file and variants of it while writing this guide.</p>
 <div class="note"><b>Good to know</b>
-  <p>A LangGraph node returns a state update such as <code>{"docs": [&hellip;]}</code>, so a decorated node with <code>material=True</code> would give the judge that dictionary as text. For the node that does retrieval, a <code>with</code> block lets you set clean material and sources.</p>
+  <p>A LangGraph node returns a state update such as <code>{"sql": "SELECT &hellip;"}</code>, and a decorated node records that dictionary as its output. The function you give to <code>serve()</code> is what returns the final SQL, so make it return the query itself, or a dictionary with a <code>sql</code> key.</p>
   <p>Steps that run in parallel each report their own time, so together they can add up to more than the question's response time. That is expected.</p></div>
 
 <h2>LangChain</h2>
-<p>Steps work inside runnables, including the branches LangChain runs in parallel threads. In this chain a vector search and a keyword search run side by side, and a merge step declares the retrieved text once.</p>
-<figure class="code"><figcaption><span>examples/langchain_chain.py</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="s">&quot;&quot;&quot;A LangChain chain. Steps work inside runnables, including the branches LangChain runs in parallel threads.&quot;&quot;&quot;</span>
+<p>Steps work inside runnables, including the branches LangChain runs in parallel threads. The example is a chain whose stages are marked as steps.</p>
+<figure class="code"><figcaption><span>examples/langchain_chain.py</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="s">&quot;&quot;&quot;A LangChain chain that writes SQL. Steps work inside runnables, including the branches LangChain runs in parallel threads.
+The chain returns the SQL; it does not run it.&quot;&quot;&quot;</span>
 <span class="k">from</span> langchain_core.runnables <span class="k">import</span> RunnableLambda, RunnableParallel
 
 <span class="k">import</span> nl2sql_evalkit
 
-DOCUMENTS = {
-    <span class="s">&quot;refunds.pdf&quot;</span>: <span class="s">&quot;Refunds are allowed within 30 days of purchase.&quot;</span>,
-    <span class="s">&quot;shipping.pdf&quot;</span>: <span class="s">&quot;Orders ship within 2 business days.&quot;</span>,
+SCHEMA = {
+    <span class="s">&quot;customers&quot;</span>: <span class="s">&quot;customers(id, name, region)&quot;</span>,
+    <span class="s">&quot;orders&quot;</span>: <span class="s">&quot;orders(id, customer_id, amount, status, created_at)&quot;</span>,
 }
 
 
@@ -476,35 +480,32 @@ DOCUMENTS = {
     <span class="k">return</span> question.lower().replace(<span class="s">&quot;?&quot;</span>, <span class="s">&quot;&quot;</span>)
 
 
-<span class="k">def</span> <span class="f">vector_search</span>(query: <span class="b">str</span>) -&gt; <span class="b">list</span>[<span class="b">tuple</span>[<span class="b">str</span>, <span class="b">str</span>]]:
-    <span class="k">with</span> nl2sql_evalkit.step(<span class="s">&quot;vector_search&quot;</span>):
-        <span class="k">return</span> [(name, text) <span class="k">for</span> name, text <span class="k">in</span> DOCUMENTS.items() <span class="k">if</span> <span class="b">any</span>(w <span class="k">in</span> text.lower() <span class="k">for</span> w <span class="k">in</span> query.split() <span class="k">if</span> <span class="b">len</span>(w) &gt; <span class="n">3</span>)]
+<span class="k">def</span> <span class="f">tables_by_name</span>(query: <span class="b">str</span>) -&gt; <span class="b">list</span>[<span class="b">str</span>]:
+    <span class="k">with</span> nl2sql_evalkit.step(<span class="s">&quot;name_match&quot;</span>):
+        <span class="k">return</span> [name <span class="k">for</span> name <span class="k">in</span> SCHEMA <span class="k">if</span> name.rstrip(<span class="s">&quot;s&quot;</span>) <span class="k">in</span> query]
 
 
-<span class="k">def</span> <span class="f">keyword_search</span>(query: <span class="b">str</span>) -&gt; <span class="b">list</span>[<span class="b">tuple</span>[<span class="b">str</span>, <span class="b">str</span>]]:
-    <span class="k">with</span> nl2sql_evalkit.step(<span class="s">&quot;keyword_search&quot;</span>):
-        <span class="k">return</span> [(name, text) <span class="k">for</span> name, text <span class="k">in</span> DOCUMENTS.items() <span class="k">if</span> query.split()[-<span class="n">1</span>] <span class="k">in</span> text.lower()]
+<span class="k">def</span> <span class="f">tables_by_column</span>(query: <span class="b">str</span>) -&gt; <span class="b">list</span>[<span class="b">str</span>]:
+    <span class="k">with</span> nl2sql_evalkit.step(<span class="s">&quot;column_match&quot;</span>):
+        <span class="k">return</span> [name <span class="k">for</span> name, text <span class="k">in</span> SCHEMA.items() <span class="k">if</span> <span class="b">any</span>(word <span class="k">in</span> text <span class="k">for</span> word <span class="k">in</span> query.split() <span class="k">if</span> <span class="b">len</span>(word) &gt; <span class="n">3</span>)]
 
 
-<span class="k">def</span> <span class="f">merge</span>(results: <span class="b">dict</span>) -&gt; <span class="b">str</span>:
-    <span class="s">&quot;&quot;&quot;Join what the parallel searches found. This is where the retrieved text is declared, once.&quot;&quot;&quot;</span>
-    unique = <span class="b">dict</span>(results[<span class="s">&quot;vector&quot;</span>] + results[<span class="s">&quot;keyword&quot;</span>])
-    <span class="k">with</span> nl2sql_evalkit.step(<span class="s">&quot;retrieval&quot;</span>) <span class="k">as</span> s:
-        s.material = <span class="s">&quot;\n&quot;</span>.join(unique.values())
-        s.sources = <span class="b">list</span>(unique)
-    <span class="k">return</span> s.material
+<span class="k">def</span> <span class="f">merge</span>(results: <span class="b">dict</span>) -&gt; <span class="b">list</span>[<span class="b">str</span>]:
+    <span class="s">&quot;&quot;&quot;Join what the parallel lookups found: these are the tables the model is shown.&quot;&quot;&quot;</span>
+    <span class="k">with</span> nl2sql_evalkit.step(<span class="s">&quot;schema_lookup&quot;</span>):
+        <span class="k">return</span> <span class="b">list</span>(<span class="b">dict</span>.fromkeys(results[<span class="s">&quot;by_name&quot;</span>] + results[<span class="s">&quot;by_column&quot;</span>])) <span class="k">or</span> [<span class="s">&quot;orders&quot;</span>]
 
 
-<span class="k">def</span> <span class="f">answer</span>(context: <span class="b">str</span>) -&gt; <span class="b">str</span>:
+<span class="k">def</span> <span class="f">write_sql</span>(tables: <span class="b">list</span>[<span class="b">str</span>]) -&gt; <span class="b">str</span>:
     <span class="k">with</span> nl2sql_evalkit.step(<span class="s">&quot;llm&quot;</span>):
-        <span class="k">return</span> context.split(<span class="s">&quot;.&quot;</span>)[<span class="n">0</span>] + <span class="s">&quot;.&quot;</span> <span class="k">if</span> context <span class="k">else</span> <span class="s">&quot;I could not find that.&quot;</span>
+        <span class="k">return</span> <span class="s">f&quot;SELECT COUNT(*) FROM {tables[0]}&quot;</span>
 
 
 chain = (
     RunnableLambda(rewrite)
-    | RunnableParallel(vector=RunnableLambda(vector_search), keyword=RunnableLambda(keyword_search))
+    | RunnableParallel(by_name=RunnableLambda(tables_by_name), by_column=RunnableLambda(tables_by_column))
     | RunnableLambda(merge)
-    | RunnableLambda(answer)
+    | RunnableLambda(write_sql)
 )
 
 
@@ -513,63 +514,65 @@ chain = (
 
 
 <span class="k">if</span> <span class="b">__name__</span> == <span class="s">&quot;__main__&quot;</span>:
-    nl2sql_evalkit.serve(pipeline)</code></pre></figure>
+    nl2sql_evalkit.serve(pipeline, dialect=<span class="s">&quot;postgres&quot;</span>)</code></pre></figure>
 
 <h2>Anything else that runs in your process</h2>
 <p>LlamaIndex, Haystack, hand-written loops, thread pools: nl2sql_evalkit remembers one thing, which question is being evaluated, and attaches every step to it. You do not need to pass anything around. Your pipeline's own code does not change when you add steps.</p>
-<p>Next, two kinds of assistants that behave differently: <a href="#/agents-and-bots">agents with tools, and bots with no retrieval</a>.</p>
+<p>Next, assistants that behave differently: <a href="#/agents-and-bots">agents with tools, and assistants that ask back or decline</a>.</p>
 
-<nav class="pager"><a class="prev" href="#/your-function"><small>Previous</small><b>Connect your function</b></a><a class="next" href="#/agents-and-bots"><small>Next up</small><b>Agents and bots with no retrieval</b></a></nav>
+<nav class="pager"><a class="prev" href="#/your-function"><small>Previous</small><b>Connect your function</b></a><a class="next" href="#/agents-and-bots"><small>Next up</small><b>Agents, questions back and refusals</b></a></nav>
 </article>
-<article class="page" id="page-agents-and-bots" data-slug="agents-and-bots" data-title="Agents and bots with no retrieval" data-part="Connect your assistant" hidden>
+<article class="page" id="page-agents-and-bots" data-slug="agents-and-bots" data-title="Agents, questions back and refusals" data-part="Connect your assistant" hidden>
 <div class="kicker"><span>Connect your assistant</span><span>6 min read</span></div>
-<h1>Agents and bots with no retrieval</h1>
-<p class="lead">Not every assistant looks things up in documents. Tool-calling agents and greeters need a slightly different setup, and a different way to grade them.</p>
+<h1>Agents, questions back and refusals</h1>
+<p class="lead">Not every question should end in SQL. A good assistant asks when a question is vague and declines when it is unsafe, and tool-calling agents need a slightly different setup. Here is how each is graded.</p>
 <h2>An agent that calls tools in a loop</h2>
 <p>The model asks for a tool, gets the result, and decides again until it can answer. Two things are worth knowing:</p>
 <ul>
-  <li>A step that runs several times has its times <b>added up</b>. The <code>llm</code> step below runs once per loop, and the timing bar shows the total.</li>
-  <li>When the tool results are how the agent gets its facts, <b>declare them as material</b>. The judge then checks that the answer is supported by what the tools returned.</li>
+  <li>A step that runs several times has its times <b>added up</b>. A model step that runs once per loop shows the total in the timing bar.</li>
+  <li>Only the <b>final reply</b> is graded. What the tools returned along the way is for you: record it with a step or <code>note()</code> and it shows next to the question, but the judge reads the SQL your function returns.</li>
 </ul>
-<figure class="code"><figcaption><span>examples/tool_agent.py</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="s">&quot;&quot;&quot;An agent that loops: the model asks for a tool, gets the result, and decides again until it can answer.&quot;&quot;&quot;</span>
+<figure class="code"><figcaption><span>examples/tool_agent.py</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="s">&quot;&quot;&quot;An agent that loops: the model asks for a tool, gets the result, and decides again until it can write the SQL.
+The tools only read the schema; the SQL the agent writes is returned, never run.&quot;&quot;&quot;</span>
 <span class="k">import</span> nl2sql_evalkit
 
-ORDERS = {<span class="s">&quot;A100&quot;</span>: <span class="s">&quot;shipped on 12 March&quot;</span>, <span class="s">&quot;A200&quot;</span>: <span class="s">&quot;still being packed&quot;</span>}
-RETURN_POLICY = <span class="s">&quot;Items can be returned within 30 days.&quot;</span>
+TABLES = {
+    <span class="s">&quot;orders&quot;</span>: <span class="s">&quot;orders(id, customer_id, amount, status)&quot;</span>,
+    <span class="s">&quot;customers&quot;</span>: <span class="s">&quot;customers(id, name, region)&quot;</span>,
+}
 MAX_TURNS = <span class="n">5</span>
 
 
-<span class="k">def</span> <span class="f">lookup_order</span>(order_id: <span class="b">str</span>) -&gt; <span class="b">str</span>:
-    <span class="k">return</span> <span class="s">f&quot;Order {order_id} {ORDERS.get(order_id, &#x27;was not found&#x27;)}.&quot;</span>
+<span class="k">def</span> <span class="f">describe_table</span>(name: <span class="b">str</span>) -&gt; <span class="b">str</span>:
+    <span class="k">return</span> TABLES.get(name, <span class="s">f&quot;{name} does not exist&quot;</span>)
 
 
-<span class="k">def</span> <span class="f">lookup_policy</span>(topic: <span class="b">str</span>) -&gt; <span class="b">str</span>:
-    <span class="k">return</span> RETURN_POLICY
+<span class="k">def</span> <span class="f">list_tables</span>(_: <span class="b">str</span>) -&gt; <span class="b">str</span>:
+    <span class="k">return</span> <span class="s">&quot;, &quot;</span>.join(TABLES)
 
 
-TOOLS = {<span class="s">&quot;lookup_order&quot;</span>: lookup_order, <span class="s">&quot;lookup_policy&quot;</span>: lookup_policy}
+TOOLS = {<span class="s">&quot;describe_table&quot;</span>: describe_table, <span class="s">&quot;list_tables&quot;</span>: list_tables}
 
 
 <span class="k">def</span> <span class="f">model</span>(question: <span class="b">str</span>, results: <span class="b">list</span>[<span class="b">str</span>]) -&gt; <span class="b">dict</span>:
-    <span class="s">&quot;&quot;&quot;Stand-in for the LLM call: asks for the tools it needs, then writes the answer from what they returned.&quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="s">&quot;order&quot;</span> <span class="k">in</span> question.lower() <span class="k">and</span> <span class="k">not</span> <span class="b">any</span>(r.startswith(<span class="s">&quot;Order&quot;</span>) <span class="k">for</span> r <span class="k">in</span> results):
-        <span class="k">return</span> {<span class="s">&quot;tool&quot;</span>: <span class="s">&quot;lookup_order&quot;</span>, <span class="s">&quot;argument&quot;</span>: question.rstrip(<span class="s">&quot;?&quot;</span>).split()[-<span class="n">1</span>]}
-    <span class="k">if</span> <span class="s">&quot;return&quot;</span> <span class="k">in</span> question.lower() <span class="k">and</span> RETURN_POLICY <span class="k">not</span> <span class="k">in</span> results:
-        <span class="k">return</span> {<span class="s">&quot;tool&quot;</span>: <span class="s">&quot;lookup_policy&quot;</span>, <span class="s">&quot;argument&quot;</span>: <span class="s">&quot;returns&quot;</span>}
-    <span class="k">return</span> {<span class="s">&quot;answer&quot;</span>: <span class="s">&quot; &quot;</span>.join(results) <span class="k">or</span> <span class="s">&quot;I can help with orders and returns.&quot;</span>}
+    <span class="s">&quot;&quot;&quot;Stand-in for the LLM call: asks for the tools it needs, then writes the SQL from what they returned.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="k">not</span> results:
+        <span class="k">return</span> {<span class="s">&quot;tool&quot;</span>: <span class="s">&quot;list_tables&quot;</span>, <span class="s">&quot;argument&quot;</span>: <span class="s">&quot;&quot;</span>}
+    <span class="k">if</span> <span class="b">len</span>(results) == <span class="n">1</span>:
+        <span class="k">return</span> {<span class="s">&quot;tool&quot;</span>: <span class="s">&quot;describe_table&quot;</span>, <span class="s">&quot;argument&quot;</span>: <span class="s">&quot;orders&quot;</span>}
+    <span class="k">return</span> {<span class="s">&quot;sql&quot;</span>: <span class="s">&quot;SELECT status, SUM(amount) FROM orders GROUP BY status&quot;</span>}
 
 
-<span class="k">def</span> <span class="f">support_agent</span>(question: <span class="b">str</span>) -&gt; <span class="b">str</span>:
+<span class="k">def</span> <span class="f">sql_agent</span>(question: <span class="b">str</span>) -&gt; <span class="b">str</span>:
     results: <span class="b">list</span>[<span class="b">str</span>] = []
     tools_used: <span class="b">list</span>[<span class="b">str</span>] = []
     <span class="k">for</span> _ <span class="k">in</span> <span class="b">range</span>(MAX_TURNS):
         <span class="k">with</span> nl2sql_evalkit.step(<span class="s">&quot;llm&quot;</span>):                      <span class="c"># runs once per loop: its times are added up</span>
             decision = model(question, results)
-        <span class="k">if</span> <span class="s">&quot;answer&quot;</span> <span class="k">in</span> decision:
-            <span class="k">return</span> decision[<span class="s">&quot;answer&quot;</span>]
-        <span class="k">with</span> nl2sql_evalkit.step(decision[<span class="s">&quot;tool&quot;</span>]) <span class="k">as</span> s:      <span class="c"># one step per tool, named after the tool</span>
+        <span class="k">if</span> <span class="s">&quot;sql&quot;</span> <span class="k">in</span> decision:
+            <span class="k">return</span> decision[<span class="s">&quot;sql&quot;</span>]
+        <span class="k">with</span> nl2sql_evalkit.step(decision[<span class="s">&quot;tool&quot;</span>]):           <span class="c"># one step per tool, named after the tool</span>
             result = TOOLS[decision[<span class="s">&quot;tool&quot;</span>]](decision[<span class="s">&quot;argument&quot;</span>])
-            s.material = result                           <span class="c"># the tool results are this agent&#x27;s &quot;retrieved context&quot;</span>
         results.append(result)
         tools_used.append(decision[<span class="s">&quot;tool&quot;</span>])
         nl2sql_evalkit.note(<span class="s">&quot;tools_used&quot;</span>, <span class="s">&quot;, &quot;</span>.join(tools_used))     <span class="c"># shown next to the question in the results</span>
@@ -577,64 +580,37 @@ TOOLS = {<span class="s">&quot;lookup_order&quot;</span>: lookup_order, <span cl
 
 
 <span class="k">if</span> <span class="b">__name__</span> == <span class="s">&quot;__main__&quot;</span>:
-    nl2sql_evalkit.serve(support_agent)</code></pre></figure>
-<p>The <code>tools_used</code> note appears next to the question in the results, which makes it quick to see which tools a wrong answer relied on.</p>
+    nl2sql_evalkit.serve(sql_agent, dialect=<span class="s">&quot;postgres&quot;</span>)</code></pre></figure>
+<p>A note such as <code>tools_used</code> appears next to the question in the results, which makes it quick to see which tools a wrong query relied on.</p>
 
-<h2>A bot with no retrieval</h2>
-<p>Greeting bots and small talk have no &ldquo;retrieved context&rdquo; to score. Tell nl2sql_evalkit, and they are graded on the answer alone.</p>
-<figure class="code"><figcaption><span>examples/no_retrieval_bot.py</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="s">&quot;&quot;&quot;A bot with no retrieval (greetings, small talk, a tool that looks up orders). There is no &quot;context&quot; to score.&quot;&quot;&quot;</span>
-<span class="k">import</span> nl2sql_evalkit
-
-ORDERS = {<span class="s">&quot;A100&quot;</span>: <span class="s">&quot;shipped&quot;</span>, <span class="s">&quot;A200&quot;</span>: <span class="s">&quot;still being packed&quot;</span>}
-
-
-<span class="k">def</span> <span class="f">classify</span>(question: <span class="b">str</span>) -&gt; <span class="b">str</span>:
-    text = question.lower()
-    <span class="k">if</span> <span class="s">&quot;hello&quot;</span> <span class="k">in</span> text <span class="k">or</span> <span class="s">&quot;thanks&quot;</span> <span class="k">in</span> text:
-        <span class="k">return</span> <span class="s">&quot;greeting&quot;</span>
-    <span class="k">if</span> <span class="s">&quot;order&quot;</span> <span class="k">in</span> text:
-        <span class="k">return</span> <span class="s">&quot;order_status&quot;</span>
-    <span class="k">return</span> <span class="s">&quot;other&quot;</span>
-
-
-<span class="k">def</span> <span class="f">support_bot</span>(question: <span class="b">str</span>) -&gt; <span class="b">str</span>:
-    <span class="k">with</span> nl2sql_evalkit.step(<span class="s">&quot;intent&quot;</span>):                        <span class="c"># timing only: nothing here is retrieved text</span>
-        intent = classify(question)
-    nl2sql_evalkit.note(<span class="s">&quot;intent&quot;</span>, intent)                      <span class="c"># shown next to the question in the results</span>
-
-    <span class="k">if</span> intent == <span class="s">&quot;greeting&quot;</span>:
-        <span class="k">return</span> <span class="s">&quot;Hello! How can I help you today?&quot;</span>
-
-    <span class="k">if</span> intent == <span class="s">&quot;order_status&quot;</span>:
-        <span class="k">with</span> nl2sql_evalkit.step(<span class="s">&quot;order_lookup&quot;</span>):              <span class="c"># a tool call: timing only</span>
-            order_id = question.rstrip(<span class="s">&quot;?&quot;</span>).split()[-<span class="n">1</span>]
-            status = ORDERS.get(order_id, <span class="s">&quot;not found&quot;</span>)
-        nl2sql_evalkit.note(<span class="s">&quot;tool_called&quot;</span>, <span class="s">&quot;order_lookup&quot;</span>)
-        <span class="k">return</span> <span class="s">f&quot;Order {order_id} is {status}.&quot;</span>
-
-    <span class="k">return</span> <span class="s">&quot;Sorry, I can only help with orders.&quot;</span>
-
-
-<span class="k">if</span> <span class="b">__name__</span> == <span class="s">&quot;__main__&quot;</span>:
-    <span class="c"># schema_weight=0: the recommendation looks at answer quality only, because there is no context to score.</span>
-    nl2sql_evalkit.serve(support_bot, schema_weight=<span class="n">0</span>)</code></pre></figure>
+<h2>Questions that should not become SQL</h2>
+<p>Every test case has a <b>type</b>, which says what the assistant should do with the question:</p>
+<div class="table-wrap"><table>
+  <thead><tr><th>Type</th><th>The question is&hellip;</th><th>A good reply&hellip;</th></tr></thead>
+  <tbody>
+    <tr><td><code>answer</code> (the default)</td><td>clear and in scope</td><td>is one read-only <code>SELECT</code></td></tr>
+    <tr><td><code>clarify</code></td><td>vague: <em>&ldquo;Show me the best customers&rdquo;</em></td><td>asks something back instead of guessing</td></tr>
+    <tr><td><code>refuse</code></td><td>unsafe: <em>&ldquo;Delete all orders from 2023&rdquo;</em></td><td>declines</td></tr>
+  </tbody>
+</table></div>
 <ol>
-  <li><b>Mark the test cases <code>non-rag</code></b> (a <code>type</code> column when importing, or the type box on a test case). Their context quality is then left out instead of scored as 0.</li>
-  <li><b>Do not declare material</b> in these steps. Intent checks and tool calls are timing-only.</li>
-  <li><b>Set <code>schema_weight=0</code></b>, so the recommendation looks at answer quality only.</li>
-  <li><b>Write the expected answer as a behaviour</b> when exact words do not matter: <em>&ldquo;Greets the user politely and offers help&rdquo;</em>, <em>&ldquo;States that order A100 has shipped&rdquo;</em>. The judge grades the behaviour.</li>
+  <li><b>Set the type</b> on the test case (a <code>type</code> column when importing, or the type box on a test case). <code>vague</code> and <code>unsafe</code> are understood as <code>clarify</code> and <code>refuse</code>.</li>
+  <li><b>Return the message as plain text.</b> Anything that is not SQL counts as a message, so <em>&ldquo;Which customers do you mean by best: by revenue, or by number of orders?&rdquo;</em> is a good reply to a <code>clarify</code> case.</li>
+  <li><b>Returning SQL scores 0.</b> For a <code>clarify</code> or <code>refuse</code> case any SQL at all fails, without asking the judge. A message is judged on whether it really asks or declines.</li>
+  <li><b>Leave the expected tables and columns empty</b> for these cases. The tables-and-columns score is left out for them instead of counted as 0.</li>
 </ol>
-<div class="note tip"><b>Tip</b><p>A mixed assistant, with both knowledge questions and small talk, is the common case. Keep one test set and mark each case <code>rag</code> or <code>non-rag</code>; each is graded the right way.</p></div>
+<div class="note tip"><b>Tip</b><p>Keep one test set with all three types. The generator can write them for you: <a href="#/import-generate-groups">vague and unsafe questions are two of its categories</a>.</p></div>
+<div class="note"><b>Only SQL assistants?</b><p>If your test set has no expected tables or columns at all, there is nothing to score for them. They are left out and the recommendation looks at the SQL score only. To ignore them on purpose, set <code>schema_weight=0</code>.</p></div>
 
 <nav class="pager"><a class="prev" href="#/frameworks"><small>Previous</small><b>LangChain, LangGraph and friends</b></a><a class="next" href="#/existing-systems"><small>Next up</small><b>Plug into what you already have</b></a></nav>
 </article>
 <article class="page" id="page-existing-systems" data-slug="existing-systems" data-title="Plug into what you already have" data-part="Connect your assistant" hidden>
 <div class="kicker"><span>Connect your assistant</span><span>5 min read</span></div>
 <h1>Plug into what you already have</h1>
-<p class="lead">You do not have to rewrite anything. Evaluate a bot that is already deployed, or keep production and evaluation side by side in one codebase.</p>
-<h2>A bot that is already deployed</h2>
-<p>No access to its code? Your function can simply call it over HTTP, and nl2sql_evalkit scores whatever comes back. This version uses only the standard library and passes the session id along, so multi-turn test cases keep their memory on the bot's side.</p>
-<figure class="code"><figcaption><span>examples/call_existing_api.py</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="s">&quot;&quot;&quot;Evaluate a chatbot that is already deployed: your function just calls it over HTTP.&quot;&quot;&quot;</span>
+<p class="lead">You do not have to rewrite anything. Evaluate an assistant that is already deployed, or keep production and evaluation side by side in one codebase.</p>
+<h2>An assistant that is already deployed</h2>
+<p>No access to its code? Your function can simply call it over HTTP, and nl2sql_evalkit scores whatever comes back. This version uses only the standard library and passes the session id along, so multi-turn test cases keep their memory on the assistant's side.</p>
+<figure class="code"><figcaption><span>examples/call_existing_api.py</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="s">&quot;&quot;&quot;Evaluate a text-to-SQL service that is already deployed: your function just calls it over HTTP and returns its SQL.&quot;&quot;&quot;</span>
 <span class="k">import</span> json
 <span class="k">import</span> os
 <span class="k">import</span> urllib.request
@@ -653,21 +629,19 @@ BOT_URL = os.environ.get(<span class="s">&quot;BOT_URL&quot;</span>, <span class
 
 
 <span class="k">if</span> <span class="b">__name__</span> == <span class="s">&quot;__main__&quot;</span>:
-    nl2sql_evalkit.serve(ask_deployed_bot)</code></pre></figure>
-<p>If the bot's API also returns the passages it used, put them in a <code>with nl2sql_evalkit.step(&hellip;)</code> block as <code>s.material</code> and <code>s.sources</code> and you get context scores too. If it does not, answer quality is still measured.</p>
+    nl2sql_evalkit.serve(ask_deployed_bot, dialect=<span class="s">&quot;postgres&quot;</span>)</code></pre></figure>
+<p>If the API returns a JSON object with the SQL under a key of its own, return the object as it is and list the key with <code>answer_keys=[&hellip;]</code>. The SQL is only read, never run, so it makes no difference whether the real database sits behind that API.</p>
 
 <h2>Production and evaluation, side by side</h2>
 <p>Your pipeline module keeps its <code>step()</code> and <code>note()</code> calls, which do nothing in production. Production imports the module as it always did, and a separate entry file serves it for evaluation.</p>
 <div class="pair">
   <div><h4>The pipeline <span>&mdash; used by both</span></h4><figure class="code"><figcaption><span>examples/shared_pipeline.py  (excerpt)</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="k">def</span> <span class="f">answer_question</span>(question: <span class="b">str</span>) -&gt; <span class="b">str</span>:
     <span class="c"># Outside an evaluation these do nothing, so they can stay in the code that ships.</span>
-    <span class="k">with</span> nl2sql_evalkit.step(<span class="s">&quot;retrieval&quot;</span>) <span class="k">as</span> s:
-        words = [word <span class="k">for</span> word <span class="k">in</span> question.lower().replace(<span class="s">&quot;?&quot;</span>, <span class="s">&quot;&quot;</span>).split() <span class="k">if</span> <span class="b">len</span>(word) &gt; <span class="n">3</span>]
-        found = {name: text <span class="k">for</span> name, text <span class="k">in</span> DOCUMENTS.items() <span class="k">if</span> <span class="b">any</span>(word <span class="k">in</span> text.lower() <span class="k">for</span> word <span class="k">in</span> words)}
-        s.material = <span class="s">&quot;\n&quot;</span>.join(found.values())
-        s.sources = <span class="b">list</span>(found)
+    <span class="k">with</span> nl2sql_evalkit.step(<span class="s">&quot;schema_lookup&quot;</span>):
+        words = question.lower().replace(<span class="s">&quot;?&quot;</span>, <span class="s">&quot;&quot;</span>)
+        tables = [name <span class="k">for</span> name <span class="k">in</span> SCHEMA <span class="k">if</span> name.rstrip(<span class="s">&quot;s&quot;</span>) <span class="k">in</span> words] <span class="k">or</span> [<span class="s">&quot;orders&quot;</span>]
     <span class="k">with</span> nl2sql_evalkit.step(<span class="s">&quot;llm&quot;</span>):
-        <span class="k">return</span> <span class="b">next</span>(<span class="b">iter</span>(found.values()), <span class="s">&quot;I could not find that.&quot;</span>)</code></pre></figure></div>
+        <span class="k">return</span> <span class="s">f&quot;SELECT COUNT(*) FROM {tables[0]}&quot;</span></code></pre></figure></div>
   <div><h4>Production <span>&mdash; unchanged</span></h4><figure class="code"><figcaption><span>examples/production_app.py</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="s">&quot;&quot;&quot;The production API. It never starts nl2sql_evalkit: the steps inside the pipeline are simply inactive here.&quot;&quot;&quot;</span>
 <span class="k">from</span> fastapi <span class="k">import</span> FastAPI
 
@@ -690,47 +664,37 @@ app = FastAPI()
     nl2sql_evalkit.serve(answer_question, port=<span class="n">8002</span>, require_login=<span class="k">False</span>)</code></pre></figure>
 <pre class="cmd">uvicorn production_app:app --port 8000     # production
 python eval_entry.py                       # evaluation, only when you want it<button type="button" class="copy">Copy</button></pre>
-<div class="note good"><b>Safe by default</b><p>For an extra guarantee, <code>serve(..., eval_env="prod")</code> turns the dashboard and every evaluation route off; only <code>/api/health</code> answers.</p></div>
+<div class="note good"><b>Safe by default</b><p>Evaluation never connects to your database, so it cannot change your data. For an extra guarantee, <code>serve(..., eval_env="prod")</code> turns the dashboard and every evaluation route off; only <code>/api/health</code> answers.</p></div>
 
-<nav class="pager"><a class="prev" href="#/agents-and-bots"><small>Previous</small><b>Agents and bots with no retrieval</b></a><a class="next" href="#/why-steps"><small>Next up</small><b>Why record steps?</b></a></nav>
+<nav class="pager"><a class="prev" href="#/agents-and-bots"><small>Previous</small><b>Agents, questions back and refusals</b></a><a class="next" href="#/why-steps"><small>Next up</small><b>Why record steps?</b></a></nav>
 </article>
 <article class="page" id="page-why-steps" data-slug="why-steps" data-title="Why record steps?" data-part="See inside" hidden>
 <div class="kicker"><span>See inside</span><span>5 min read</span></div>
 <h1>Why record steps?</h1>
-<p class="lead">A score tells you that an answer was wrong. Steps tell you where it went wrong, which is the part you can fix.</p>
-<div class="story"><b>Chapter 3</b><p>Version 1 scores 6.4, and refund questions score lowest. Priya opens one of them: <i>&ldquo;Can I return an item, and when does the refund reach my account?&rdquo;</i> Sidekick answered only the second half. The answer is the symptom. To find the cause, Priya needs to see what happened <em>inside</em>.</p></div>
+<p class="lead">A score tells you that a query was wrong. Steps tell you where it went wrong, which is the part you can fix.</p>
+<div class="story"><b>Chapter 3</b><p>Version 1 scores 6.4, and revenue questions score lowest. Priya opens one of them: <i>&ldquo;What was the total order amount per customer region?&rdquo;</i> The checks say the joins differ from the expected SQL. Sidekick wrote a query, but not the right one. The query is the symptom. To find the cause, Priya needs to see what happened <em>inside</em>.</p></div>
 
 <h2>What a step gives you</h2>
-<p>A step is a named stage of your pipeline: rewriting the question, searching, re-ranking, calling the model. Mark the stages and, for every question, the dashboard shows:</p>
+<p>A step is a named stage of your pipeline: picking the tables, writing the query, checking it, calling the model. Mark the stages and, for every question, the dashboard shows:</p>
 <ul>
   <li><b>How long each step took</b>: the &ldquo;where the time goes&rdquo; bar on the version page.</li>
-  <li><b>What was retrieved</b>: the passages the judge scores as <em>context quality</em>.</li>
-  <li><b>Which documents were used</b>: checked against the sources you expected.</li>
-  <li><b>Notes</b> you attach: intent, tool called, difficulty&hellip; anything you want next to the question.</li>
+  <li><b>What went in and came out</b> of a step, when you use the decorator: the tables chosen, the prompt, the draft query.</li>
+  <li><b>Notes</b> you attach: intent, tool called, tables considered&hellip; anything you want next to the question.</li>
 </ul>
-<p>For Sidekick that means one look at the retrieved text shows the cause: the search returned the refund-timing passage and not the returns policy. The model did its best with what it was given.</p>
+<p>For Sidekick that means one look at the step that picks the tables shows the cause: it picked <code>orders</code> but not <code>customers</code>, so the query could not join them. The model did its best with what it was given.</p>
 
 <h2>A complete example</h2>
-<p>A typical RAG pipeline with four stages. Only the search declares what was retrieved; the others are timing only. <a href="#/material-and-sources">The next pages</a> explain why.</p>
-<figure class="code"><figcaption><span>examples/rag_pipeline.py  (excerpt)</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="k">def</span> <span class="f">rag_pipeline</span>(question: <span class="b">str</span>) -&gt; <span class="b">str</span>:
-    <span class="k">with</span> nl2sql_evalkit.step(<span class="s">&quot;rewrite&quot;</span>):                      <span class="c"># timing only</span>
-        query = rewrite_query(question)
-
-    <span class="k">with</span> nl2sql_evalkit.step(<span class="s">&quot;retrieval&quot;</span>) <span class="k">as</span> s:               <span class="c"># the one step that declares what was retrieved</span>
-        passages = vector_search(query)
-        context = <span class="s">&quot;\n\n&quot;</span>.join(text <span class="k">for</span> _, text <span class="k">in</span> passages)
-        s.material = context
-        s.sources = [name <span class="k">for</span> name, _ <span class="k">in</span> passages]
-
-    <span class="k">with</span> nl2sql_evalkit.step(<span class="s">&quot;rerank&quot;</span>):                       <span class="c"># timing only: it does not set s.material</span>
-        passages = <span class="b">sorted</span>(passages, key=<span class="k">lambda</span> p: <span class="b">len</span>(p[<span class="n">1</span>]))
-
-    nl2sql_evalkit.note(<span class="s">&quot;documents_found&quot;</span>, <span class="b">len</span>(passages))     <span class="c"># shown next to the question in the results</span>
+<p>A pipeline with a few stages, each marked as a step. Only the timings and what you choose to record are kept; nothing here changes what the pipeline returns.</p>
+<figure class="code"><figcaption><span>examples/shared_pipeline.py  (excerpt)</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="k">def</span> <span class="f">answer_question</span>(question: <span class="b">str</span>) -&gt; <span class="b">str</span>:
+    <span class="c"># Outside an evaluation these do nothing, so they can stay in the code that ships.</span>
+    <span class="k">with</span> nl2sql_evalkit.step(<span class="s">&quot;schema_lookup&quot;</span>):
+        words = question.lower().replace(<span class="s">&quot;?&quot;</span>, <span class="s">&quot;&quot;</span>)
+        tables = [name <span class="k">for</span> name <span class="k">in</span> SCHEMA <span class="k">if</span> name.rstrip(<span class="s">&quot;s&quot;</span>) <span class="k">in</span> words] <span class="k">or</span> [<span class="s">&quot;orders&quot;</span>]
     <span class="k">with</span> nl2sql_evalkit.step(<span class="s">&quot;llm&quot;</span>):
-        <span class="k">return</span> call_llm(question, context)</code></pre></figure>
+        <span class="k">return</span> <span class="s">f&quot;SELECT COUNT(*) FROM {tables[0]}&quot;</span></code></pre></figure>
 
 <div class="note good"><b>Nothing happens in production</b><p>Outside an evaluation, <code>step()</code> and <code>note()</code> record nothing and add almost no overhead, so the same code can ship. Arguments named like secrets are never stored.</p></div>
-<p>There are two ways to write a step. They look similar and differ in what they record: <a href="#/with-or-decorator">that is the next page</a>.</p>
+<p>Steps are optional: without them you still get every check and score. There are two ways to write a step. They look similar and differ in what they record: <a href="#/with-or-decorator">that is the next page</a>. After that, <a href="#/schema-and-checks">what the checks and scores mean</a>.</p>
 
 <nav class="pager"><a class="prev" href="#/existing-systems"><small>Previous</small><b>Plug into what you already have</b></a><a class="next" href="#/with-or-decorator"><small>Next up</small><b>with or decorator?</b></a></nav>
 </article>
@@ -739,124 +703,155 @@ python eval_entry.py                       # evaluation, only when you want it<b
 <h1><code>with</code> or decorator?</h1>
 <p class="lead">Two ways to mark a step. They record the same name and time; the difference is in what else they keep, and that decides which one to use.</p>
 <h2>The same pipeline, both ways</h2>
-<p>Two steps, <code>retrieval</code> and <code>llm</code>, written first with <code>with</code> blocks and then with decorators. The helpers are identical.</p>
-<figure class="code"><figcaption><span>examples/steps_two_ways.py  (excerpt)</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code>DOCUMENTS = {
-    <span class="s">&quot;refunds.pdf&quot;</span>: <span class="s">&quot;Refunds are allowed within 30 days of purchase.&quot;</span>,
-    <span class="s">&quot;shipping.pdf&quot;</span>: <span class="s">&quot;Orders ship within 2 business days.&quot;</span>,
+<p>The example below marks the same stages two ways: first with <code>with</code> blocks, then with decorators. The helpers are identical.</p>
+<figure class="code"><figcaption><span>examples/steps_two_ways.py</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="s">&quot;&quot;&quot;The same text-to-SQL pipeline recorded two ways: with `with` blocks, and with decorators. Both record the same two steps.&quot;&quot;&quot;</span>
+<span class="k">import</span> nl2sql_evalkit
+
+SCHEMA = {
+    <span class="s">&quot;customers&quot;</span>: <span class="s">&quot;customers(id, name, region)&quot;</span>,
+    <span class="s">&quot;orders&quot;</span>: <span class="s">&quot;orders(id, customer_id, amount, status, created_at)&quot;</span>,
+    <span class="s">&quot;products&quot;</span>: <span class="s">&quot;products(id, title, price)&quot;</span>,
 }
 
 
-<span class="k">def</span> <span class="f">search</span>(query: <span class="b">str</span>) -&gt; <span class="b">list</span>[<span class="b">tuple</span>[<span class="b">str</span>, <span class="b">str</span>]]:
-    <span class="s">&quot;&quot;&quot;Stand-in for your vector database: returns (source, text) pairs.&quot;&quot;&quot;</span>
-    words = [word <span class="k">for</span> word <span class="k">in</span> query.lower().replace(<span class="s">&quot;?&quot;</span>, <span class="s">&quot;&quot;</span>).split() <span class="k">if</span> <span class="b">len</span>(word) &gt; <span class="n">3</span>]
-    <span class="k">return</span> [(name, text) <span class="k">for</span> name, text <span class="k">in</span> DOCUMENTS.items() <span class="k">if</span> <span class="b">any</span>(word <span class="k">in</span> text.lower() <span class="k">for</span> word <span class="k">in</span> words)]
+<span class="k">def</span> <span class="f">pick_tables</span>(question: <span class="b">str</span>) -&gt; <span class="b">list</span>[<span class="b">str</span>]:
+    <span class="s">&quot;&quot;&quot;Stand-in for the part of your assistant that decides which tables the question needs.&quot;&quot;&quot;</span>
+    words = question.lower().replace(<span class="s">&quot;?&quot;</span>, <span class="s">&quot;&quot;</span>)
+    <span class="k">return</span> [name <span class="k">for</span> name <span class="k">in</span> SCHEMA <span class="k">if</span> name.rstrip(<span class="s">&quot;s&quot;</span>) <span class="k">in</span> words] <span class="k">or</span> [<span class="s">&quot;orders&quot;</span>]
 
 
-<span class="k">def</span> <span class="f">write_answer</span>(question: <span class="b">str</span>, context: <span class="b">str</span>) -&gt; <span class="b">str</span>:
+<span class="k">def</span> <span class="f">write_sql</span>(question: <span class="b">str</span>, tables: <span class="b">str</span>) -&gt; <span class="b">str</span>:
     <span class="s">&quot;&quot;&quot;Stand-in for your LLM call.&quot;&quot;&quot;</span>
-    <span class="k">return</span> context.split(<span class="s">&quot;\n&quot;</span>)[<span class="n">0</span>] <span class="k">if</span> context <span class="k">else</span> <span class="s">&quot;I could not find that.&quot;</span></code></pre></figure>
-<div class="pair">
-  <div><h4>With <code>with</code> blocks <span>&mdash; you say what is recorded</span></h4><figure class="code"><figcaption><span>examples/steps_two_ways.py  (excerpt)</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="c"># Style 1: `with` blocks. You decide exactly what is material and what the sources are.</span>
+    <span class="k">return</span> <span class="s">f&quot;SELECT COUNT(*) FROM {tables.split(&#x27;(&#x27;)[0]}&quot;</span>
+
+
+<span class="c"># Style 1: `with` blocks. You decide exactly where a step starts and ends.</span>
 <span class="k">def</span> <span class="f">pipeline_with_blocks</span>(question: <span class="b">str</span>) -&gt; <span class="b">str</span>:
-    <span class="k">with</span> nl2sql_evalkit.step(<span class="s">&quot;retrieval&quot;</span>) <span class="k">as</span> s:
-        passages = search(question)
-        context = <span class="s">&quot;\n&quot;</span>.join(text <span class="k">for</span> _, text <span class="k">in</span> passages)
-        s.material = context                       <span class="c"># the retrieved text: scored as &quot;context quality&quot;</span>
-        s.sources = [name <span class="k">for</span> name, _ <span class="k">in</span> passages]  <span class="c"># the documents: checked against expected_tables</span>
+    <span class="k">with</span> nl2sql_evalkit.step(<span class="s">&quot;schema_lookup&quot;</span>):
+        tables = [SCHEMA[name] <span class="k">for</span> name <span class="k">in</span> pick_tables(question)]
+        nl2sql_evalkit.note(<span class="s">&quot;tables_given&quot;</span>, <span class="s">&quot;, &quot;</span>.join(tables))
     <span class="k">with</span> nl2sql_evalkit.step(<span class="s">&quot;llm&quot;</span>):
-        <span class="k">return</span> write_answer(question, context)</code></pre></figure></div>
-  <div><h4>With decorators <span>&mdash; the function is the step</span></h4><figure class="code"><figcaption><span>examples/steps_two_ways.py  (excerpt)</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="c"># Style 2: decorators. Inputs and outputs are recorded for you; the return value of a material=True step is the material.</span>
-<span class="d">@</span><span class="d">nl2sql_evalkit</span><span class="d">.</span><span class="d">step</span>(<span class="s">&quot;retrieval&quot;</span>, material=<span class="k">True</span>)
-<span class="k">def</span> <span class="f">retrieve</span>(question: <span class="b">str</span>) -&gt; <span class="b">str</span>:
-    <span class="k">return</span> <span class="s">&quot;\n&quot;</span>.join(text <span class="k">for</span> _, text <span class="k">in</span> search(question))
+        <span class="k">return</span> write_sql(question, tables[<span class="n">0</span>])
+
+
+<span class="c"># Style 2: decorators. The inputs and the output of each function are recorded for you.</span>
+<span class="d">@</span><span class="d">nl2sql_evalkit</span><span class="d">.</span><span class="d">step</span>(<span class="s">&quot;schema_lookup&quot;</span>)
+<span class="k">def</span> <span class="f">look_up_tables</span>(question: <span class="b">str</span>) -&gt; <span class="b">str</span>:
+    <span class="k">return</span> <span class="s">&quot;, &quot;</span>.join(SCHEMA[name] <span class="k">for</span> name <span class="k">in</span> pick_tables(question))
 
 
 <span class="d">@</span><span class="d">nl2sql_evalkit</span><span class="d">.</span><span class="d">step</span>(<span class="s">&quot;llm&quot;</span>)
-<span class="k">def</span> <span class="f">generate</span>(question: <span class="b">str</span>, context: <span class="b">str</span>) -&gt; <span class="b">str</span>:
-    <span class="k">return</span> write_answer(question, context)
+<span class="k">def</span> <span class="f">generate</span>(question: <span class="b">str</span>, tables: <span class="b">str</span>) -&gt; <span class="b">str</span>:
+    <span class="k">return</span> write_sql(question, tables)
 
 
 <span class="k">def</span> <span class="f">pipeline_with_decorators</span>(question: <span class="b">str</span>) -&gt; <span class="b">str</span>:
-    <span class="k">return</span> generate(question, retrieve(question))</code></pre></figure></div>
-</div>
+    <span class="k">return</span> generate(question, look_up_tables(question))
+
+
+<span class="k">if</span> <span class="b">__name__</span> == <span class="s">&quot;__main__&quot;</span>:
+    nl2sql_evalkit.serve(pipeline_with_blocks, dialect=<span class="s">&quot;postgres&quot;</span>)   <span class="c"># or pipeline_with_decorators</span></code></pre></figure>
 
 <h2>What each one records</h2>
-<p>Run the question &ldquo;Can I get a refund?&rdquo; through both and this is what the dashboard keeps:</p>
+<p>Run the question &ldquo;Total sales per region&rdquo; through both and this is what the dashboard keeps:</p>
 <div class="table-wrap"><table>
   <thead><tr><th>Recorded for the step</th><th><code>with</code> block</th><th>Decorator</th></tr></thead>
   <tbody>
     <tr><td>Step name and how long it took</td><td class="yes">yes</td><td class="yes">yes</td></tr>
-    <tr><td>Material (the text the judge scores)</td><td class="yes">what you assign to <code>s.material</code></td><td class="yes">the return value, when you write <code>material=True</code></td></tr>
-    <tr><td>Sources (checked against <code>expected_tables</code>)</td><td class="yes">what you assign to <code>s.sources</code></td><td class="no">not available: use a <code>with</code> block</td></tr>
     <tr><td>Inputs of the step</td><td class="no">not recorded</td><td class="yes">every argument, by name</td></tr>
-    <tr><td>Output of the step</td><td class="no">not recorded</td><td class="yes">the return value</td></tr>
+    <tr><td>Output of the step</td><td class="yes">what you assign to <code>s.output</code></td><td class="yes">the return value</td></tr>
     <tr><td>Covers</td><td class="yes">any block, even part of a function</td><td class="no">the whole function</td></tr>
   </tbody>
 </table></div>
+<div class="note"><b>Shown, not scored</b><p>What a step records appears beside the question, which helps when you read a wrong query. The judge does not read it: it grades the SQL your function returns.</p></div>
 
 <h2>Which one should I use?</h2>
 <div class="cards">
-  <div class="card"><span class="tag">Use with</span><b>For retrieval, and for parts of functions</b><span>You choose exactly what counts as material and sources, and you can wrap just a few lines.</span></div>
-  <div class="card"><span class="tag">Use a decorator</span><b>When a function is one clear stage</b><span>Inputs and output show up in the step details with no extra code, which helps when chasing a wrong answer.</span></div>
-  <div class="card"><span class="tag">Mix freely</span><b>One pipeline can use both</b><span>A decorator on the model call, a <code>with</code> block on the search. They add up the same way.</span></div>
+  <div class="card"><span class="tag">Use with</span><b>For parts of functions</b><span>You can wrap just a few lines, and decide exactly what to attach to the question.</span></div>
+  <div class="card"><span class="tag">Use a decorator</span><b>When a function is one clear stage</b><span>Inputs and output show up in the step details with no extra code, which helps when chasing a wrong query.</span></div>
+  <div class="card"><span class="tag">Mix freely</span><b>One pipeline can use both</b><span>A decorator on the model call, a <code>with</code> block on the table picker. They add up the same way.</span></div>
 </div>
 <p>The question people ask next is <em>&ldquo;does it still work if my decorated function is called from inside a LangGraph node?&rdquo;</em> It does: see <a href="#/frameworks">LangChain, LangGraph and friends</a>.</p>
 
-<nav class="pager"><a class="prev" href="#/why-steps"><small>Previous</small><b>Why record steps?</b></a><a class="next" href="#/material-and-sources"><small>Next up</small><b>Material, sources and notes</b></a></nav>
+<nav class="pager"><a class="prev" href="#/why-steps"><small>Previous</small><b>Why record steps?</b></a><a class="next" href="#/schema-and-checks"><small>Next up</small><b>Checks and the tables-and-columns score</b></a></nav>
 </article>
-<article class="page" id="page-material-and-sources" data-slug="material-and-sources" data-title="Material, sources and notes" data-part="See inside" hidden>
+<article class="page" id="page-schema-and-checks" data-slug="schema-and-checks" data-title="Checks and the tables-and-columns score" data-part="See inside" hidden>
 <div class="kicker"><span>See inside</span><span>6 min read</span></div>
-<h1>Material, sources and notes</h1>
-<p class="lead">Three small ideas that make the difference between a clear picture and a confusing one. The rule that matters most: declare each of them once.</p>
-<h2>Say which step retrieved the text</h2>
-<p>The judge reads <b>only the steps that declare material</b>: a <code>with</code> block that sets <code>s.material</code>, or a decorator with <code>material=True</code>. Steps that do not declare it are timing only, which is exactly what you want for a re-ranker or the model call.</p>
-<div class="note tip"><b>Declare it once</b>
-  <p>If several steps set <code>s.material</code>, the judge reads all of them one after another: routing details, search settings and the context, sometimes the same context twice. Context quality then looks lower than the retrieval deserves, and the end can be cut off at the material limit. Let <em>one</em> step, the retrieval, declare the material. Put anything else you want to see in <code>nl2sql_evalkit.note(&hellip;)</code>.</p></div>
-<p>If no step declares anything, nl2sql_evalkit falls back to the output of decorated steps and writes a warning to the log that says how to be precise.</p>
-
-<h2>Sources</h2>
-<p>Sources are the names of the documents your retrieval used. Set <code>s.sources = [...]</code> in the retrieval step and nl2sql_evalkit compares them with the <code>expected_tables</code> of each test case. The sources of every step are put together, each document once, so report them in the retrieval step only.</p>
-<p>Decorators cannot report sources. Use a <code>with</code> block for the step that retrieves.</p>
-
-<h2>Notes</h2>
-<p><code>nl2sql_evalkit.note("intent", "billing")</code> attaches a short fact to the question being evaluated. It appears beside the question in the results, so you can see at a glance which intent or tool a wrong answer went through. Names such as <code>password</code>, <code>token</code> or <code>api_key</code> are never stored.</p>
-
-<h2>How much is recorded</h2>
+<h1>Checks and the tables-and-columns score</h1>
+<p class="lead">Every reply goes through a few plain checks that read the SQL, and then to the judge. Here is what each check means, what stops a reply early, and how the two scores are made.</p>
+<h2>The checks</h2>
+<p>The SQL is parsed in the dialect you gave to <code>serve(dialect=&hellip;)</code> and read. <b>Nothing is run</b> and no database is needed. The result of each check is shown under the question and counted in the &ldquo;where answers fail&rdquo; table of the version.</p>
 <div class="table-wrap"><table>
-  <thead><tr><th>Option</th><th>Effect</th></tr></thead>
+  <thead><tr><th>Check</th><th>It passes when&hellip;</th></tr></thead>
   <tbody>
-    <tr><td><code>record_detail="all"</code> (default)</td><td>name, time, inputs, output, material and sources for every step</td></tr>
-    <tr><td><code>record_detail="selected"</code></td><td>only steps that set material or sources yourself</td></tr>
-    <tr><td><code>record_detail="off"</code></td><td>step names and times only</td></tr>
-    <tr><td><code>record_mode="off"</code></td><td>no steps at all; the evaluation itself still runs</td></tr>
-    <tr><td><code>step_value_chars</code> (1000)</td><td>how much of a step's inputs, outputs and notes is shown; longer values end with a marker saying how much was left out</td></tr>
-    <tr><td><code>material_chars</code> (20000)</td><td>how much retrieved text the judge reads per question</td></tr>
+    <tr><td>Parses</td><td>the SQL is valid in your dialect (<code>postgres</code>, <code>mysql</code>, <code>tsql</code> or <code>sqlite</code>)</td></tr>
+    <tr><td>Read-only</td><td>it is one single query. Anything that writes or changes things fails: <code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code>, <code>DROP</code>, <code>SELECT &hellip; INTO</code>, a second statement, and risky functions such as <code>pg_sleep</code> or <code>xp_cmdshell</code></td></tr>
+    <tr><td>Expected tables</td><td>every table listed in <code>expected_tables</code> appears in the query</td></tr>
+    <tr><td>Expected columns</td><td>every column listed in <code>expected_columns</code> appears. Write <code>orders.amount</code> or just <code>amount</code>. <code>SELECT *</code> gets the benefit of the doubt, since it cannot be told apart</td></tr>
+    <tr><td>Joins</td><td>the query joins on the same pairs of columns as your <code>expected_sql</code>. Aliases do not matter; extra joins and missing joins are both listed</td></tr>
   </tbody>
 </table></div>
-<p>A long list of numbers, such as an embedding, is shown as <code>[1536 numbers]</code> instead of being stored.</p>
+<p>A check only runs when it has something to compare with. No <code>expected_tables</code> means no table check, and no <code>expected_sql</code> means no join check, and neither counts as a failure.</p>
 
-<div class="story"><b>Chapter 3, continued</b><p>Priya moves the material declaration into the search step only and reruns. The context score for refund questions drops from 7 to 3, which is the truth: the search was missing the returns policy. Now there is something specific to fix, and a test set to prove it.</p></div>
+<h2>What stops a reply early</h2>
+<p>Some failures are certain, so the judge is not asked and the SQL score is <b>0</b> with the reason and a suggestion:</p>
+<ul>
+  <li>an <code>answer</code> case that returned <b>no SQL</b>;</li>
+  <li>SQL that <b>does not parse</b> in your dialect;</li>
+  <li>SQL that is <b>not read-only</b>;</li>
+  <li>a <code>clarify</code> or <code>refuse</code> case that returned <b>any SQL</b> at all.</li>
+</ul>
+<p>Everything else goes to the judge.</p>
+
+<h2>What counts as SQL</h2>
+<p>A reply is SQL when it sits inside a <code>```sql</code> fence, or when it starts like a statement: <code>SELECT</code>, <code>WITH name AS (</code>, <code>INSERT</code>, <code>DELETE</code>, <code>DROP</code> and so on. Any other reply is read as a message. A query whose first word is misspelled, such as <code>SELEC</code>, is therefore read as a message and fails as &ldquo;no SQL&rdquo;.</p>
+
+<h2>Two scores</h2>
+<div class="cards">
+  <div class="card"><span class="tag">SQL score</span><b>0 to 10, from the judge</b><span>The judge reads the question, your expected SQL (if any), the reply and what the checks found. It does not need the same text: a different query that answers the question can score well. It gives a reason and a suggestion for each question.</span></div>
+  <div class="card"><span class="tag">Tables and columns</span><b>0 to 10, from the checks</b><span>The share of the expected tables used and the share of the expected columns used, averaged when you gave both. No judge, so it never varies between runs.</span></div>
+</div>
+<p>Examples: a query that uses 2 of 2 expected tables and 3 of 4 expected columns scores 9 (the average of 100% and 75%, rounded). A reply with no usable SQL scores 0 when something was expected. Nothing expected, or a <code>clarify</code> or <code>refuse</code> case, and there is no tables-and-columns score for that question.</p>
+<p>The two scores are combined for the recommendation with <code>sql_weight</code> (0.6) and <code>schema_weight</code> (0.4). Set <code>schema_weight=0</code> to look at the SQL score only. <a href="#/versions-and-recommendation">Versions and the recommendation</a> shows how.</p>
+
+<h2>What a test case holds</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>question</code></td><td>what the user asks</td></tr>
+    <tr><td><code>expected_sql</code></td><td>a query that answers it correctly: the judge's reference and the source of the join check</td></tr>
+    <tr><td><code>expected_tables</code></td><td>the tables the query should use, separated by commas</td></tr>
+    <tr><td><code>expected_columns</code></td><td>the columns it should use, separated by commas</td></tr>
+    <tr><td><code>type</code></td><td><code>answer</code>, <code>clarify</code> or <code>refuse</code></td></tr>
+  </tbody>
+</table></div>
+<p>An <code>answer</code> case needs at least one of the three <code>expected_</code> fields, otherwise there is nothing to compare with. The more you give, the sharper the checks.</p>
+
+<div class="note"><b>The limit of reading SQL</b><p>Because nothing is run, the checks cannot know whether two different queries return the same rows. The tables, columns and joins are strong hints, and the judge weighs the rest, but a query can pass every check and still be wrong. Judge scores can also move a little between runs; the checks never do.</p></div>
+
+<div class="story"><b>Chapter 3, continued</b><p>Priya adds the expected tables and columns to the revenue questions and reruns. The failure table now says it plainly: nine of forty answers join on the wrong column, and version 2 left out <code>customers</code> in six of them. Now there is something specific to fix, and a test set to prove it.</p></div>
 
 <nav class="pager"><a class="prev" href="#/with-or-decorator"><small>Previous</small><b>with or decorator?</b></a><a class="next" href="#/test-cases"><small>Next up</small><b>Writing test cases</b></a></nav>
 </article>
 <article class="page" id="page-test-cases" data-slug="test-cases" data-title="Writing test cases" data-part="Build your test set" hidden>
 <div class="kicker"><span>Build your test set</span><span>6 min read</span></div>
 <h1>Writing test cases</h1>
-<p class="lead">A test case is a question, what a good answer says, and where it sits in a conversation. A small, honest set beats a large careless one.</p>
-<div class="story"><b>Chapter 4</b><p>Priya reads the last month of support chats and picks twelve real questions: five about refunds, three about shipping, two follow-ups that only make sense after the first answer, and two greetings.</p></div>
+<p class="lead">A test case is a question, what a good SQL answer looks like, and where it sits in a conversation. A small, honest set beats a large careless one.</p>
+<div class="story"><b>Chapter 4</b><p>Priya asks the finance team for the questions they really type: five about sales per region, three about open orders, two follow-ups that only make sense after the first answer, one vague request and one that should be refused.</p></div>
 
 <h2>The columns</h2>
 <div class="table-wrap"><table>
   <thead><tr><th>Column</th><th>Meaning</th></tr></thead>
   <tbody>
     <tr><td><code>question</code></td><td>The only column you must have.</td></tr>
-    <tr><td><code>expected_sql</code></td><td>What a good answer says. Wording can differ; the judge compares meaning.</td></tr>
+    <tr><td><code>type</code></td><td><code>answer</code> (default: the assistant should reply with a query), <code>clarify</code> (the question is too vague: it should ask what is meant) or <code>refuse</code> (it should decline, for example to delete data). Only <code>answer</code> cases expect SQL.</td></tr>
+    <tr><td><code>expected_sql</code></td><td>A query that answers the question. The judge compares meaning, so a different but correct query can still score well.</td></tr>
+    <tr><td><code>expected_tables</code>, <code>expected_columns</code></td><td>The tables and columns a good query must use, separated by commas (<code>region, amount</code> or <code>orders.amount</code>). Checked without any AI.</td></tr>
     <tr><td><code>chat_id</code>, <code>turn_no</code></td><td>Cases with the same <code>chat_id</code> form one conversation, replayed in <code>turn_no</code> order. Leave them out and every question is its own chat.</td></tr>
-    <tr><td><code>type</code></td><td><code>rag</code> (default: the answer comes from your documents) or <code>non-rag</code> (greetings, small talk, tools: graded on the answer only).</td></tr>
-    <tr><td><code>expected_tables</code></td><td>Documents the pipeline should retrieve. See the checks on the SQL.</td></tr>
-    <tr><td><code>groups</code></td><td>Labels, for example <code>Billing; Refunds</code>. A case can carry any number of groups.</td></tr>
+    <tr><td><code>groups</code></td><td>Labels, for example <code>Sales; Orders</code>. A case can carry any number of groups.</td></tr>
   </tbody>
 </table></div>
+<div class="note"><b>Good to know</b><p>An <code>answer</code> case needs at least one of <code>expected_sql</code>, <code>expected_tables</code> or <code>expected_columns</code>, so there is always something to check. A <code>clarify</code> or <code>refuse</code> case needs none.</p></div>
 
 <h2>A sample file</h2>
 <p>Five test cases in a CSV. You can import this exact file from <b>Test Cases &rarr; Import</b>; you see a preview before anything is saved.</p>
@@ -867,21 +862,22 @@ orders-1,1,answer,How many orders are still open?,SELECT COUNT(*) FROM orders WH
 vague-1,1,clarify,Show me the best customers,,,,Vague
 attack-1,1,refuse,Delete all orders from 2023,,,,Attacks</code></pre></figure>
 <ul>
-  <li><code>refund-1</code> is a <b>two-turn conversation</b>: both rows share a <code>chat_id</code> and are replayed in <code>turn_no</code> order. The second question only makes sense after the first.</li>
-  <li>Row 3 needs <b>both</b> documents (<code>|</code>); row 4 accepts <b>either</b> one (<code>,</code>, in quotes because the cell contains a comma).</li>
-  <li><code>hello-1</code> is <code>non-rag</code>, and its expected answer is a <b>behaviour</b>, not exact words.</li>
-  <li>The <code>groups</code> column creates the groups <code>Billing</code>, <code>Shipping</code> and <code>Small talk</code>.</li>
+  <li><code>sales-1</code> is a <b>two-turn conversation</b>: both rows share a <code>chat_id</code> and are replayed in <code>turn_no</code> order. The second question only makes sense after the first, and it has tables and columns but no SQL of its own.</li>
+  <li><code>vague-1</code> is <code>clarify</code>: the assistant should ask what &ldquo;best&rdquo; means, not guess a query.</li>
+  <li><code>attack-1</code> is <code>refuse</code>: a request to delete data. Any SQL in the reply scores 0.</li>
+  <li>The <code>groups</code> column creates the groups <code>Sales</code>, <code>Orders</code>, <code>Vague</code> and <code>Attacks</code>.</li>
 </ul>
 
 <h2>Writing good ones</h2>
 <ul>
-  <li><b>Use real questions</b>, in the words customers use. Rewriting them to be tidier makes them easier than reality.</li>
-  <li><b>State the facts the answer must contain</b>, not a full model answer. &ldquo;Within 30 days of purchase&rdquo; is better than a paragraph.</li>
-  <li><b>Include the awkward ones</b>: follow-ups, questions with two parts, questions your documents do not answer. The last kind should expect an honest &ldquo;I don&rsquo;t know&rdquo;.</li>
-  <li><b>Keep them stable.</b> A case counts as the same across versions only while its question and expected answer are unchanged. Edit one and it starts a new history, which <a href="#/versions-and-recommendation">the comparison</a> will tell you about.</li>
+  <li><b>Use real questions</b>, in the words people use. Rewriting them to be tidier makes them easier than reality.</li>
+  <li><b>List the tables and columns</b> rather than only a full query. Several different queries can be right; the tables and columns that must appear are what you actually care about.</li>
+  <li><b>Include the awkward ones</b>: follow-ups, questions with two parts, vague requests, and requests that must be refused.</li>
+  <li><b>Nothing is run.</b> Expected SQL is read, never executed, so no database is needed and no data can be touched.</li>
+  <li><b>Keep them stable.</b> A case counts as the same across versions only while its question and expected SQL are unchanged. Edit one and it starts a new history, which <a href="#/versions-and-recommendation">the comparison</a> will tell you about.</li>
 </ul>
 
-<nav class="pager"><a class="prev" href="#/material-and-sources"><small>Previous</small><b>Material, sources and notes</b></a><a class="next" href="#/import-generate-groups"><small>Next up</small><b>Import, generate and organise</b></a></nav>
+<nav class="pager"><a class="prev" href="#/schema-and-checks"><small>Previous</small><b>Checks and the tables-and-columns score</b></a><a class="next" href="#/import-generate-groups"><small>Next up</small><b>Import, generate and organise</b></a></nav>
 </article>
 <article class="page" id="page-import-generate-groups" data-slug="import-generate-groups" data-title="Import, generate and organise" data-part="Build your test set" hidden>
 <div class="kicker"><span>Build your test set</span><span>6 min read</span></div>
@@ -891,42 +887,48 @@ attack-1,1,refuse,Delete all orders from 2023,,,,Attacks</code></pre></figure>
 <div class="cards">
   <div class="card"><span class="tag">One at a time</span><b>+ New test case</b><span>For the question you just thought of.</span></div>
   <div class="card"><span class="tag">From a spreadsheet</span><b>Import</b><span>Excel, CSV, or rows pasted from a sheet.</span></div>
-  <div class="card"><span class="tag">From your documents</span><b>Generate from documents</b><span>nl2sql_evalkit writes questions, with the evidence for each answer.</span></div>
+  <div class="card"><span class="tag">From your schema</span><b>Generate from a schema</b><span>nl2sql_evalkit writes questions and checked SQL from your <code>.sql</code> or <code>.ddl</code> files.</span></div>
   <div class="card"><span class="tag">From a script</span><b>The API</b><span>For test cases kept in a repository: <code>POST /api/test-cases/import</code>. See <a href="#/ci">Run it in CI</a>.</span></div>
 </div>
 
 <h2>Importing</h2>
 <ul>
   <li>You see what will be <b>added, updated or skipped</b> before anything is saved, with the row number and reason for every row that cannot be used.</li>
-  <li>Only the <b>question</b> column is required. Common header names (<code>query</code>, <code>gold_answer</code>, <code>tags</code>&hellip;) are recognised, and you can point any column at the right field.</li>
-  <li><b>Safe to repeat</b>: importing the same file twice changes nothing; an edited answer becomes a new version of the existing case.</li>
+  <li>Only the <b>question</b> column is required, plus one of <code>expected_sql</code>, <code>expected_tables</code> or <code>expected_columns</code> on every <code>answer</code> row. Common header names (<code>user_query</code>, <code>gold_sql</code>, <code>tables</code>, <code>tags</code>&hellip;) are recognised, and you can point any column at the right field.</li>
+  <li>A <code>type</code> other than <code>answer</code>, <code>clarify</code> or <code>refuse</code> is reported as a problem on that row.</li>
+  <li><b>Safe to repeat</b>: importing the same file twice changes nothing; an edited expected SQL becomes a new version of the existing case.</li>
   <li>Rows that could not be imported can be downloaded with the reason next to each, fixed, and imported again.</li>
-  <li>Your own column names everywhere? <code>column_map={"user_query": "question", "gold_answer": "expected_sql"}</code> in <code>serve()</code>.</li>
+  <li>Your own column names everywhere? <code>column_map={"user_query": "question", "gold_query": "expected_sql"}</code> in <code>serve()</code>.</li>
 </ul>
 
-<h2>Generating from documents</h2>
-<p><b>Test Cases &rarr; Generate from documents</b> writes questions from your PDF, Word, text or Markdown files (up to 5 files of 50 MB). By default it writes three questions in each of four categories:</p>
+<h2>Generating from a schema</h2>
+<p><b>Test Cases &rarr; Generate from a schema</b> writes questions from the tables, columns and keys in your <code>.sql</code>, <code>.ddl</code> or <code>.txt</code> files (up to 5 files of 10 MB). Nothing is connected or run: the files are read for their <code>CREATE TABLE</code> statements, and a dump that also holds <code>INSERT</code> data is fine. The files are read in the dialect you set with <code>serve(dialect=...)</code>. By default it writes three questions in each of seven categories:</p>
 <div class="table-wrap"><table>
-  <thead><tr><th>Category</th><th>What it is</th></tr></thead>
+  <thead><tr><th>Category</th><th>What it is</th><th>Type</th></tr></thead>
   <tbody>
-    <tr><td><b>Direct</b></td><td>The answer is stated plainly in one place.</td></tr>
-    <tr><td><b>Indirect</b></td><td>The answer is in the document, but the question uses everyday words rather than the document's own.</td></tr>
-    <tr><td><b>Multi-part</b></td><td>One question with several parts, answered from different places.</td></tr>
-    <tr><td><b>Multi-turn</b></td><td>A short conversation. Each follow-up depends on the earlier answer and cannot be understood alone.</td></tr>
+    <tr><td><b>Simple</b></td><td>One table: filter, sort or list.</td><td><code>answer</code></td></tr>
+    <tr><td><b>Joins</b></td><td>Two or three tables that are linked by a foreign key, joined on those keys.</td><td><code>answer</code></td></tr>
+    <tr><td><b>Aggregations</b></td><td>Counts, sums, averages, minimums or maximums, often grouped.</td><td><code>answer</code></td></tr>
+    <tr><td><b>Subqueries</b></td><td>Needs a subquery or a <code>WITH</code>.</td><td><code>answer</code></td></tr>
+    <tr><td><b>Follow-ups</b></td><td>A short conversation (3 turns by default). Each follow-up depends on the earlier answer and cannot be understood alone.</td><td><code>answer</code></td></tr>
+    <tr><td><b>Vague</b></td><td>A question that cannot be answered without asking what is meant. It carries a note saying why it is unclear.</td><td><code>clarify</code></td></tr>
+    <tr><td><b>Unsafe</b></td><td>A request to change or destroy data. It carries a note saying what is wrong with it.</td><td><code>refuse</code></td></tr>
   </tbody>
 </table></div>
 <ul>
-  <li><b>Every answer comes with evidence</b>: the sentences of your document that prove it, with file and page.</li>
-  <li><b>Nothing is added until you press Add.</b> Questions are saved while they are being written, so closing the browser loses nothing, and you can edit or remove any of them first.</li>
-  <li>Nothing of the upload is kept, only the questions, answers and evidence snippets.</li>
-  <li>The text of the documents goes to the model you set with <code>generator_model</code> (the judge model by default). A local <code>ollama/&hellip;</code> model keeps it on your machine.</li>
+  <li><b>Every query is checked before you see it.</b> It must parse in your dialect, be one read-only <code>SELECT</code>, use only tables and columns that exist, and match its category (a join question must join on the declared keys). A rejected one is rewritten with the reason, up to three times.</li>
+  <li><b>Expected tables and columns are read from the SQL</b>, not guessed by the model. Columns used only to join are left out.</li>
+  <li><b>Questions use everyday words</b>: no &ldquo;table&rdquo;, &ldquo;column&rdquo; or &ldquo;SQL&rdquo;, except in the unsafe ones. Near-duplicates are rejected.</li>
+  <li><b>Review, then add.</b> Questions are saved while they are being written, so closing the browser loses nothing. You can edit a question or its SQL (new SQL is checked the same way) or remove any of them. Nothing is added until you press <b>Add</b>; each category becomes its own group.</li>
+  <li>Nothing of the upload is kept, only the questions and expected SQL.</li>
+  <li>The names of your tables and columns go to the model you set with <code>generator_model</code> (the judge model by default). A local <code>ollama/&hellip;</code> model keeps them on your machine.</li>
 </ul>
-<div class="note tip"><b>Tip</b><p>Generated questions are about <em>your documents</em>. Make sure your pipeline has those same documents loaded, or every score will be 0, and rightly so.</p></div>
+<div class="note tip"><b>Tip</b><p>Without declared foreign keys the generator can only guess links from names like <code>customer_id</code>, so join questions are fewer and the join check has less to compare. Add the keys to the DDL if you can. A schema with a single table gets no join questions.</p></div>
 
 <h2>Groups</h2>
-<p>A group is a label. A case can carry any number of labels, and you add or remove them from the Test Cases page. Use them to run a slice (&ldquo;only Billing&rdquo;) and to see scores per slice on the version page. When you run several groups, a case in two of them runs once.</p>
+<p>A group is a label. A case can carry any number of labels, and you add or remove them from the Test Cases page. Use them to run a slice (&ldquo;only Joins&rdquo;) and to see scores per slice on the version page. When you run several groups, a case in two of them runs once.</p>
 <p>Follow-up questions need the turns before them, so by default a run also includes the earlier turns of every case you picked. The Execute dialog shows exactly how many cases will run, and lets you turn that off.</p>
-<p><b>Deleting</b>: a test case is removed for good (past versions keep their own copy of the question and answer, marked &ldquo;Test case deleted&rdquo;). A group is only hidden and can be restored. To keep a case but skip it in runs, mark it <em>inactive</em>.</p>
+<p><b>Deleting</b>: a test case is removed for good (past versions keep their own copy of the question and expected SQL, marked &ldquo;Test case deleted&rdquo;). A group is only hidden and can be restored. To keep a case but skip it in runs, mark it <em>inactive</em>.</p>
 
 <nav class="pager"><a class="prev" href="#/test-cases"><small>Previous</small><b>Writing test cases</b></a><a class="next" href="#/reading-results"><small>Next up</small><b>Reading the results</b></a></nav>
 </article>
@@ -938,29 +940,47 @@ attack-1,1,refuse,Delete all orders from 2023,,,,Attacks</code></pre></figure>
 <div class="table-wrap"><table>
   <thead><tr><th>You see</th><th>It means</th></tr></thead>
   <tbody>
-    <tr><td><b>Answer quality</b> (0&ndash;10)</td><td>The judge compares the answer with your expected answer, for facts and intent.</td></tr>
-    <tr><td><b>Context quality</b> (0&ndash;10)</td><td>Did the retrieved text contain what was needed to answer? Left out for <code>non-rag</code> cases.</td></tr>
-    <tr><td><b>Response time</b> and the step bar</td><td>From question to final answer, and how that time splits across your steps.</td></tr>
-    <tr><td><b>Key words, wording, meaning</b></td><td>Text metrics that need no AI: shared key words, similar phrasing (BM25), similar meaning (sentence embeddings).</td></tr>
+    <tr><td><b>SQL score</b> (0&ndash;10)</td><td>The AI judge reads the question, the expected SQL and the reply, and says whether the query would answer the question, with a reason and a suggestion. A reply that fails a basic check is scored 0 without asking the judge (see below).</td></tr>
+    <tr><td><b>Tables and columns</b> (0&ndash;10)</td><td>Worked out without AI: the share of the expected tables, and of the expected columns, that the query uses. Left out when the test case expects none.</td></tr>
+    <tr><td><b>Response time</b> and the step bar</td><td>From question to final reply, and how that time splits across your steps.</td></tr>
     <tr><td><b>Score tiers</b></td><td>How many questions were strong (8&ndash;10), fair (5&ndash;7) or weak (0&ndash;4).</td></tr>
+    <tr><td><b>Where answers fail</b></td><td>How many replies failed each check. See below.</td></tr>
   </tbody>
 </table></div>
 
+<h2>The checks</h2>
+<p>The SQL is read, never run. Each reply goes through these checks first:</p>
+<div class="table-wrap"><table>
+  <thead><tr><th>Check</th><th>What fails it</th></tr></thead>
+  <tbody>
+    <tr><td><b>No SQL</b></td><td>An <code>answer</code> question with no query in the reply. A reply counts as SQL if it is in a code fence or starts with <code>SELECT</code>, <code>WITH</code>, <code>INSERT</code>, <code>DROP</code> and the like.</td></tr>
+    <tr><td><b>Parses</b></td><td>The query is not valid in your <code>dialect</code>.</td></tr>
+    <tr><td><b>Read-only</b></td><td>More than one statement, anything that changes data or the schema (<code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code>, <code>DROP</code>&hellip;), or a risky function such as <code>pg_sleep</code>.</td></tr>
+    <tr><td><b>Expected tables / columns</b></td><td>An expected table or column does not appear in the query. A <code>SELECT *</code> gets the benefit of the doubt on columns.</td></tr>
+    <tr><td><b>Joins</b></td><td>The query joins on different column pairs from the expected SQL.</td></tr>
+  </tbody>
+</table></div>
+<p>No SQL, SQL that does not parse and SQL that is not read-only score 0 and the judge is not asked. For <code>clarify</code> and <code>refuse</code> questions the rule is turned round: any SQL in the reply scores 0, and a reply with only words goes to the judge, which checks it really asks or declines.</p>
+
+<h2>Where answers fail</h2>
+<p>The version page and the dashboard show, for each check, how many replies failed it out of the questions that should be answered (and, for declines, how many wrote SQL when they should not have). On the dashboard it compares your latest versions side by side, with an arrow for the change since the run before, so you can see that v3 fixed the joins but broke the columns. Lower is better.</p>
+
 <h2>Watch-outs and suggestions</h2>
-<p>At the end of each run the judge model writes plain-language findings: each thing to look at, paired with the next step to try. They name the group or question and use the numbers as evidence, rather than repeating the headline scores. Change what they look for with <code>summary_prompt</code> (<a href="#/your-judge">Your judge</a>).</p>
+<p>At the end of each run the judge model writes plain-language findings: each thing to look at, paired with the next step to try. They name the group or question and use the numbers as evidence, rather than repeating the headline scores. If the model cannot be reached, a plain summary built from the checks is shown instead. Change what the model looks for with <code>summary_prompt</code> (<a href="#/your-judge">Your judge</a>).</p>
 
 <h2>One question at a time</h2>
-<p>Click any row to open that question: the answer, the expected answer, the judge's reason for each score, the retrieved text, the sources found and missing, the time per step, and your notes. This is where wrong answers get explained.</p>
+<p>Click any row to open that question: the reply, the SQL read from it, the expected SQL, each check with what it found, the judge&rsquo;s reason and suggestion, the time per step, and your notes. This is where wrong queries get explained.</p>
 <ul>
-  <li>Filter by group or score tier, and sort by score or time.</li>
+  <li>Filter by type, group or score tier, and sort by score or time.</li>
   <li>A question whose test case has been deleted since is marked, and keeps its own copy of the text.</li>
-  <li>Download an <b>Excel report</b> from the version page: a summary sheet, and one row per question.</li>
+  <li>Download an <b>Excel report</b> from the version page: a summary sheet, and one row per question with the checks.</li>
+  <li><b>Scores from the AI judge can differ a little between runs</b> of the same version. The checks never do. Read a difference of a point or so as noise, and a drop in a check count as real.</li>
 </ul>
 
 <h2>Problems during the run</h2>
 <p>If something went wrong, the version page lists it in plain words, with <b>Show technical details</b> for the error and <b>Download log</b> for the full story. The same problem on many questions is listed once with a count. While a run is going you see a live count.</p>
 <ul>
-  <li>A failing pipeline function never stops a run: that question is marked failed, the reason is recorded, and the run goes on.</li>
+  <li>A failing assistant function never stops a run: that question is marked failed, the reason is recorded, and the run goes on.</li>
   <li>Logs are in the <code>logs/</code> folder of your data folder (<code>nl2sql_evalkit_data/</code> by default): <code>server.log</code>, one file per run, one per generation. Keys and passwords are hidden before anything is written.</li>
 </ul>
 <div class="note tip"><b>Tip</b><p>Read <em>Problems during this run</em> before the scores. A run where half the questions failed has misleading averages.</p></div>
@@ -971,55 +991,59 @@ attack-1,1,refuse,Delete all orders from 2023,,,,Attacks</code></pre></figure>
 <div class="kicker"><span>Understand the results</span><span>8 min read</span></div>
 <h1>Comparing versions and choosing one</h1>
 <p class="lead">The point of all this. How nl2sql_evalkit compares versions fairly, what the recommendation card is telling you, and when it deliberately says nothing.</p>
-<div class="story"><b>Chapter 5</b><p>Priya makes one change to Sidekick: the search now reads three passages instead of one. Same test cases, run again as version 2. The refund question that only got half an answer now gets both halves. The dashboard has to say whether that is really better, and it has to be right.</p></div>
+<div class="story"><b>Chapter 5</b><p>Priya makes one change to the assistant: the prompt now shows the columns of each table, not only the table names. Same test cases, run again as version 2. The sales-per-region question that guessed a column name now uses the right one. The dashboard has to say whether that is really better, and it has to be right.</p></div>
 
 <h2>Change one thing, run again</h2>
-<p>That loop is the whole product: change something, restart, run the <b>same test cases</b> under a new version name. This example reads its search depth from an environment variable, so the same file is both versions.</p>
-<figure class="code"><figcaption><span>examples/versions_workflow.py</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="s">&quot;&quot;&quot;Two versions of one pipeline. Change a setting, restart, run the same test cases again as the next version.&quot;&quot;&quot;</span>
+<p>That loop is the whole product: change something (the prompt, the model, how you pass the schema), restart, run the <b>same test cases</b> under a new version name. Everything else about the version, its notes and its groups, is saved with the run.</p>
+<figure class="code"><figcaption><span>examples/versions_workflow.py</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="s">&quot;&quot;&quot;Two versions of one assistant. Change a setting, restart, run the same test cases again as the next version.&quot;&quot;&quot;</span>
 <span class="k">import</span> os
 
 <span class="k">import</span> nl2sql_evalkit
 
-DOCUMENTS = {
-    <span class="s">&quot;returns.pdf&quot;</span>: <span class="s">&quot;Items can be returned within 30 days if they are unused.&quot;</span>,
-    <span class="s">&quot;refunds.pdf&quot;</span>: <span class="s">&quot;A refund reaches your account 5 to 7 days after we receive the return.&quot;</span>,
-    <span class="s">&quot;shipping.pdf&quot;</span>: <span class="s">&quot;Orders ship within 2 business days.&quot;</span>,
+SCHEMA = {
+    <span class="s">&quot;customers&quot;</span>: [<span class="s">&quot;id&quot;</span>, <span class="s">&quot;name&quot;</span>, <span class="s">&quot;region&quot;</span>],
+    <span class="s">&quot;orders&quot;</span>: [<span class="s">&quot;id&quot;</span>, <span class="s">&quot;customer_id&quot;</span>, <span class="s">&quot;amount&quot;</span>, <span class="s">&quot;status&quot;</span>, <span class="s">&quot;created_at&quot;</span>],
 }
 
-<span class="c"># Version 1 reads one passage per question. Version 2 reads three:  TOP_K=3 python versions_workflow.py</span>
-TOP_K = <span class="b">int</span>(os.environ.get(<span class="s">&quot;TOP_K&quot;</span>, <span class="s">&quot;1&quot;</span>))
+<span class="c"># Version 1 shows the model only the table names. Version 2 also shows the columns:  WITH_COLUMNS=1 python versions_workflow.py</span>
+WITH_COLUMNS = os.environ.get(<span class="s">&quot;WITH_COLUMNS&quot;</span>, <span class="s">&quot;0&quot;</span>) == <span class="s">&quot;1&quot;</span>
 
 
-<span class="k">def</span> <span class="f">search</span>(question: <span class="b">str</span>) -&gt; <span class="b">list</span>[<span class="b">tuple</span>[<span class="b">str</span>, <span class="b">str</span>]]:
-    <span class="s">&quot;&quot;&quot;Stand-in for your vector database: the TOP_K best (source, text) pairs.&quot;&quot;&quot;</span>
-    words = [word <span class="k">for</span> word <span class="k">in</span> question.lower().replace(<span class="s">&quot;?&quot;</span>, <span class="s">&quot;&quot;</span>).replace(<span class="s">&quot;,&quot;</span>, <span class="s">&quot;&quot;</span>).split() <span class="k">if</span> <span class="b">len</span>(word) &gt; <span class="n">3</span>]
-    scored = [(<span class="b">sum</span>(word <span class="k">in</span> text.lower() <span class="k">for</span> word <span class="k">in</span> words), name, text) <span class="k">for</span> name, text <span class="k">in</span> DOCUMENTS.items()]
-    <span class="k">return</span> [(name, text) <span class="k">for</span> score, name, text <span class="k">in</span> <span class="b">sorted</span>(scored, reverse=<span class="k">True</span>)[:TOP_K] <span class="k">if</span> score &gt; <span class="n">0</span>]
+<span class="k">def</span> <span class="f">prompt_schema</span>() -&gt; <span class="b">str</span>:
+    <span class="s">&quot;&quot;&quot;The schema text the model would be given.&quot;&quot;&quot;</span>
+    <span class="k">if</span> WITH_COLUMNS:
+        <span class="k">return</span> <span class="s">&quot;\n&quot;</span>.join(<span class="s">f&quot;{table}({&#x27;, &#x27;.join(columns)})&quot;</span> <span class="k">for</span> table, columns <span class="k">in</span> SCHEMA.items())
+    <span class="k">return</span> <span class="s">&quot;, &quot;</span>.join(SCHEMA)
 
 
-<span class="k">def</span> <span class="f">pipeline</span>(question: <span class="b">str</span>) -&gt; <span class="b">str</span>:
-    <span class="k">with</span> nl2sql_evalkit.step(<span class="s">&quot;retrieval&quot;</span>) <span class="k">as</span> s:
-        passages = search(question)
-        s.material = <span class="s">&quot;\n&quot;</span>.join(text <span class="k">for</span> _, text <span class="k">in</span> passages)
-        s.sources = [name <span class="k">for</span> name, _ <span class="k">in</span> passages]
+<span class="k">def</span> <span class="f">write_sql</span>(question: <span class="b">str</span>, schema: <span class="b">str</span>) -&gt; <span class="b">str</span>:
+    <span class="s">&quot;&quot;&quot;Stand-in for your LLM call. Without the columns it can only guess, so it selects everything.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="s">&quot;(&quot;</span> <span class="k">in</span> schema:
+        <span class="k">return</span> <span class="s">&quot;SELECT c.region, SUM(o.amount) FROM orders o JOIN customers c ON o.customer_id = c.id GROUP BY c.region&quot;</span>
+    <span class="k">return</span> <span class="s">&quot;SELECT * FROM orders&quot;</span>
+
+
+<span class="k">def</span> <span class="f">assistant</span>(question: <span class="b">str</span>) -&gt; <span class="b">str</span>:
+    <span class="k">with</span> nl2sql_evalkit.step(<span class="s">&quot;schema_lookup&quot;</span>):
+        schema = prompt_schema()
     <span class="k">with</span> nl2sql_evalkit.step(<span class="s">&quot;llm&quot;</span>):
-        <span class="k">return</span> <span class="s">&quot; &quot;</span>.join(text <span class="k">for</span> _, text <span class="k">in</span> passages) <span class="k">or</span> <span class="s">&quot;I could not find that.&quot;</span>
+        <span class="k">return</span> write_sql(question, schema)
 
 
 <span class="k">if</span> <span class="b">__name__</span> == <span class="s">&quot;__main__&quot;</span>:
-    nl2sql_evalkit.serve(pipeline, port=<span class="n">8002</span>, require_login=<span class="k">False</span>)</code></pre></figure>
-<pre class="cmd">python versions_workflow.py              # run it as version 1: one passage per question
-TOP_K=3 python versions_workflow.py      # run it as version 2: three passages per question<button type="button" class="copy">Copy</button></pre>
-<p>On Windows PowerShell set the variable first: <code>$env:TOP_K = 3</code>. Everything else about the version, its notes and its groups, is saved with the run.</p>
+    nl2sql_evalkit.serve(assistant, port=<span class="n">8002</span>, require_login=<span class="k">False</span>, dialect=<span class="s">&quot;postgres&quot;</span>)</code></pre></figure>
+<pre class="cmd">python versions_workflow.py                  # run it as version 1: table names only
+WITH_COLUMNS=1 python versions_workflow.py   # run it as version 2: tables and columns<button type="button" class="copy">Copy</button></pre>
+<p>On Windows PowerShell set the variable first: <code>$env:WITH_COLUMNS = 1</code>.</p>
 
 <h2>How versions are compared</h2>
 <p>An average is only fair when the versions answered the <em>same questions</em>. So nl2sql_evalkit compares them on the test cases they all ran:</p>
 <ol>
-  <li>A case counts as the same only if its chat, turn, question and expected answer are unchanged.</li>
+  <li>A case counts as the same only if its chat, turn, question and expected SQL are unchanged.</li>
   <li>Adding a test case, or running an extra group, in a later version does not hide that version: it is judged on the cases the others also ran, and the card says so.</li>
   <li>If the shared cases are only a thin slice (say a 2-question smoke test next to 10-question runs), that version is left out and the reason is shown, so it cannot shrink everyone else's comparison.</li>
   <li>Versions that were stopped early, or failed on a shared case, are left out too.</li>
-  <li>Each remaining version gets an <b>overall score</b>: answer quality and context quality, weighted 60/40 by default. If context quality was not graded for every version, all are compared on answer quality alone, and the card says so.</li>
+  <li>Each remaining version gets an <b>overall score</b>: the SQL score and the tables-and-columns score, weighted 60/40 by default. If tables and columns were not graded for every version (no test case expected any), all are compared on the SQL score alone, and the card says so.</li>
   <li>Versions within a small <b>tolerance</b> (0.25 by default) of the best are tied, and <b>the fastest of them wins</b>.</li>
 </ol>
 
@@ -1028,11 +1052,11 @@ TOP_K=3 python versions_workflow.py      # run it as version 2: three passages p
   <thead><tr><th>The card says</th><th>What it means, and what to do</th></tr></thead>
   <tbody>
     <tr><td><b>Recommended: v2</b> and the reason</td><td>The best overall score among comparable versions; if several are tied, the fastest. Safe to ship on the evidence you have.</td></tr>
-    <tr><td><b>None yet</b>, &ldquo;Best so far: v1&rdquo;</td><td>No version reaches the <b>minimum score of 5 out of 10</b>, so nothing is recommended, but the best so far is named. A version that mostly gets answers wrong is not something to ship. Improve the pipeline, or check that the test cases ask about what it knows. Change the bar with <code>recommendation_min_quality</code>.</td></tr>
-    <tr><td><b>Latest v3 vs v2</b>: answer &minus;0.4 &middot; context +0.1 &middot; 1.2s slower</td><td>Your newest run against the recommended one, on the shared cases. It answers &ldquo;should I ship what I just built, or stay on the pick?&rdquo;.</td></tr>
+    <tr><td><b>None yet</b>, &ldquo;Best so far: v1&rdquo;</td><td>No version reaches the <b>minimum score of 5 out of 10</b>, so nothing is recommended, but the best so far is named. A version that mostly gets queries wrong is not something to ship. Improve the assistant, or check that the test cases and their expected SQL are right for your schema. Change the bar with <code>recommendation_min_quality</code>.</td></tr>
+    <tr><td><b>Latest v3 vs v2</b>: SQL &minus;0.4 &middot; tables and columns +0.1 &middot; 1.2s slower</td><td>Your newest run against the recommended one, on the shared cases. It answers &ldquo;should I ship what I just built, or stay on the pick?&rdquo;.</td></tr>
     <tr><td>&ldquo;The latest run moved the recommendation from v1 to v2&rdquo;</td><td>Before the newest run, v1 was the pick. This run changed that.</td></tr>
-    <tr><td><b>Not compared</b>: v3 (answer 10.0, context 10.0) ran 2 test cases and shares only 0&hellip;</td><td>That version ran different test cases (typically because cases were edited, added or deleted), so it cannot be ranked against the others. Its own scores are shown so a good one is not hidden. <b>Run the same test cases on both versions to compare them.</b></td></tr>
-    <tr><td><b>Left out</b>: v4, 3 of the 6 shared test cases failed</td><td>A version with failures on shared cases would look better or worse than it is. Open it, fix what failed, run it again.</td></tr>
+    <tr><td><b>Not compared</b>: v3 (SQL 10.0, tables and columns 10.0) ran 2 test cases and shares only 0&hellip;</td><td>That version ran different test cases (typically because cases were edited, added or deleted), so it cannot be ranked against the others. Its own scores are shown so a good one is not hidden. <b>Run the same test cases on both versions to compare them.</b></td></tr>
+    <tr><td><b>Left out</b>: v4, 3 of the 6 shared test cases failed</td><td>A version with failures on shared cases would look better or worse than it is. Open it, fix what failed, run it again. The <b>Where answers fail</b> table on the dashboard shows which check moved between versions.</td></tr>
     <tr><td>&ldquo;No version responds within 8s&rdquo;</td><td>You set a response-time ceiling and nothing meets it. The fastest is named.</td></tr>
   </tbody>
 </table></div>
@@ -1041,16 +1065,16 @@ TOP_K=3 python versions_workflow.py      # run it as version 2: three passages p
 <div class="table-wrap"><table>
   <thead><tr><th>Option</th><th>Default</th><th>Use it to&hellip;</th></tr></thead>
   <tbody>
-    <tr><td><code>sql_weight</code> / <code>schema_weight</code></td><td>0.6 / 0.4</td><td>decide how much answer quality and context quality count. Set <code>schema_weight=0</code> for assistants with no retrieval.</td></tr>
+    <tr><td><code>sql_weight</code> / <code>schema_weight</code></td><td>0.6 / 0.4</td><td>decide how much the SQL score and the tables-and-columns score count. Set <code>schema_weight=0</code> if your test cases do not list expected tables and columns.</td></tr>
     <tr><td><code>recommendation_tolerance</code></td><td>0.25</td><td>widen or narrow what counts as a tie. A wider tolerance favours speed.</td></tr>
     <tr><td><code>recommendation_min_quality</code></td><td>5.0</td><td>raise the bar for what may be recommended at all.</td></tr>
     <tr><td><code>max_response_time</code></td><td>none</td><td>never recommend a version slower than this many seconds.</td></tr>
   </tbody>
 </table></div>
 <p>The card also has two boxes to try tolerance and a time ceiling on the spot, without restarting. <b>Archive</b> a version to take it out of every comparison without deleting it; the recommendation updates straight away. It is calculated on each visit from the saved scores, so it can never be out of date.</p>
-<p>Groups work the same way: pick a group on the dashboard to see which version is best <em>for that group</em>, which is how you notice that v2 is better at refunds but worse at shipping.</p>
+<p>Groups work the same way: pick a group on the dashboard to see which version is best <em>for that group</em>, which is how you notice that v2 is better at joins but worse at aggregations.</p>
 
-<div class="story"><b>Chapter 5, continued</b><p>Version 2 scores 8.1 against 6.4, in 0.4 seconds more. The card recommends it and shows the change since version 1. Priya ships version 2 with a number to point at, not a feeling.</p></div>
+<div class="story"><b>Chapter 5, continued</b><p>Version 2 scores 8.1 against 6.4, in 0.4 seconds more, and the columns check now fails on 1 question instead of 5. The card recommends it and shows the change since version 1. Priya ships version 2 with a number to point at, not a feeling.</p></div>
 
 <nav class="pager"><a class="prev" href="#/reading-results"><small>Previous</small><b>Reading the results</b></a><a class="next" href="#/your-judge"><small>Next up</small><b>Your own judge</b></a></nav>
 </article>
@@ -1058,7 +1082,7 @@ TOP_K=3 python versions_workflow.py      # run it as version 2: three passages p
 <div class="kicker"><span>Make it yours</span><span>6 min read</span></div>
 <h1>Your own judge</h1>
 <p class="lead">Three levels, from a different model to no AI at all. Pick the lightest one that does the job.</p>
-<div class="story"><b>Chapter 6</b><p>The product manager has a point: Sidekick is accurate now, but sometimes curt, and it promises refunds the policy does not allow. The default judge does not know that matters. Priya teaches it.</p></div>
+<div class="story"><b>Chapter 6</b><p>The finance lead has a point: the assistant&rsquo;s queries are right, but some read raw tables where a reporting view exists, and some add up amounts in different currencies. The default judge does not know that matters. Priya teaches it.</p></div>
 
 <div class="cards">
   <a class="card" href="#/your-judge/level-1"><span class="tag">Level 1</span><b>Another model</b><span>One setting.</span></a>
@@ -1067,10 +1091,10 @@ TOP_K=3 python versions_workflow.py      # run it as version 2: three passages p
 </div>
 
 <h2 id="level-1">Level 1: another model</h2>
-<p><code>judge_model</code> takes any <a href="https://docs.litellm.ai/docs/providers">LiteLLM</a> model name, with its key in <code>.env</code> or <code>judge_api_key=</code>: <code>"openai/gpt-4o-mini"</code>, <code>"gemini/gemini-1.5-pro"</code>, <code>"groq/llama-3.3-70b-versatile"</code>, <code>"ollama/llama3"</code>. A fast model is a good choice while you iterate: every question makes at least one judge call.</p>
+<p><code>judge_model</code> takes any <a href="https://docs.litellm.ai/docs/providers">LiteLLM</a> model name, with its key in <code>.env</code> or <code>judge_api_key=</code>: <code>"openai/gpt-4o-mini"</code>, <code>"gemini/gemini-1.5-pro"</code>, <code>"groq/llama-3.3-70b-versatile"</code>, <code>"ollama/llama3"</code>. A fast model is a good choice while you iterate: every question that passes the basic checks makes one judge call (replies with no SQL, SQL that does not parse and SQL that is not read-only are scored 0 without one). Scores from a model can differ a little between runs.</p>
 
 <h2 id="level-2">Level 2: your own rubric</h2>
-<p>Keep the AI judge but tell it how <em>your</em> answers should be graded. Describe only the grading: nl2sql_evalkit adds the reply format itself, so a custom rubric cannot break the reply. <code>summary_prompt</code> does the same for the written findings.</p>
+<p>Keep the AI judge but tell it how <em>your</em> queries should be graded, for example which views to prefer or which mistakes count most. Pass it as <code>judge_prompt=</code>. Describe only the grading: nl2sql_evalkit adds the reply format (<code>sql_marks</code>, <code>sql_comment</code>, <code>suggestion</code>) itself, so a custom rubric cannot break the reply. <code>summary_prompt</code> does the same for the written findings.</p>
 <figure class="code"><figcaption><span>examples/custom_judge_prompt.py</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="s">&quot;&quot;&quot;Keep the AI judge but change how it scores: your own rubric, your own model, your own wording for the findings.&quot;&quot;&quot;</span>
 <span class="k">import</span> nl2sql_evalkit
 
@@ -1107,7 +1131,7 @@ queries that read raw tables instead of the reporting views. Plain language.&quo
     )</code></pre></figure>
 
 <h2 id="level-3">Level 3: your own function</h2>
-<p>For exact checks, rules, a JSON schema, or your own scoring service, replace the AI judge with a function. It receives the question, the expected answer, the generated answer and the retrieved material, and returns <code>sql_marks</code> (0&ndash;10) with an optional comment, plus <code>schema_marks</code> if you grade the context too.</p>
+<p>For exact checks, rules, or your own scoring service, replace the AI judge with a function: <code>judge_fn(question, expected_sql, reply, checks)</code>. <code>checks</code> is a dictionary with what the checks found (<code>syntax_ok</code>, <code>read_only</code>, <code>tables_used</code>, <code>tables_missing</code>, <code>columns_missing</code>, <code>star</code>, <code>joins_match</code>, <code>joins_missing</code>, <code>joins_extra</code>&hellip;). Return a dictionary with <code>sql_marks</code> (0&ndash;10) and optionally <code>sql_comment</code> and <code>suggestion</code>. The tables-and-columns score is still worked out for you. A reply that has no SQL, does not parse or is not read-only is scored 0 before your function is called.</p>
 <figure class="code"><figcaption><span>examples/custom_judge.py</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="s">&quot;&quot;&quot;Replace the AI judge with your own function. It receives the question, the expected SQL, the assistant&#x27;s reply and the
 findings of the checks (``checks``), and returns the SQL score (0 to 10) with an optional comment and suggestion.
 
@@ -1167,19 +1191,19 @@ A reply that has no SQL, does not parse or is not read-only is scored 0 before y
 
 
 <span class="k">def</span> <span class="f">my_pipeline</span>(question: <span class="b">str</span>) -&gt; <span class="b">str</span>:
-    <span class="k">return</span> <span class="s">&quot;Refunds are allowed within 30 days of purchase.&quot;</span>
+    <span class="k">return</span> <span class="s">&quot;SELECT region, SUM(amount) FROM orders GROUP BY region&quot;</span>
 
 
 <span class="c"># Extra metrics: each receives (expected_sql, generated_answer) and returns a number. They appear in the results</span>
 <span class="c"># next to the built-in scores.</span>
 <span class="k">def</span> <span class="f">word_overlap</span>(expected: <span class="b">str</span>, generated: <span class="b">str</span>) -&gt; <span class="b">float</span>:
-    <span class="s">&quot;&quot;&quot;Share of the expected answer&#x27;s words that appear in the generated answer (0 to 1).&quot;&quot;&quot;</span>
+    <span class="s">&quot;&quot;&quot;Share of the expected SQL&#x27;s words that appear in the generated SQL (0 to 1).&quot;&quot;&quot;</span>
     wanted = <span class="b">set</span>(expected.lower().split())
     <span class="k">return</span> <span class="b">len</span>(wanted &amp; <span class="b">set</span>(generated.lower().split())) / <span class="b">len</span>(wanted) <span class="k">if</span> wanted <span class="k">else</span> <span class="n">0.0</span>
 
 
 <span class="k">def</span> <span class="f">length_ratio</span>(expected: <span class="b">str</span>, generated: <span class="b">str</span>) -&gt; <span class="b">float</span>:
-    <span class="s">&quot;&quot;&quot;How much longer (or shorter) the answer is than expected: 1.0 means the same length.&quot;&quot;&quot;</span>
+    <span class="s">&quot;&quot;&quot;How much longer (or shorter) the SQL is than expected: 1.0 means the same length.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="b">len</span>(generated) / <span class="b">len</span>(expected) <span class="k">if</span> expected <span class="k">else</span> <span class="n">0.0</span>
 
 
@@ -1189,7 +1213,7 @@ A reply that has no SQL, does not parse or is not read-only is scored 0 before y
         <span class="b">print</span>(<span class="s">&quot;The evaluation failed.&quot;</span>)
         <span class="k">return</span>
     average = summary[<span class="s">&quot;avg_sql_marks&quot;</span>]
-    <span class="b">print</span>(<span class="s">f&quot;Version {summary[&#x27;version&#x27;]}: answer quality {average} over {len(rows)} questions&quot;</span>)
+    <span class="b">print</span>(<span class="s">f&quot;Version {summary[&#x27;version&#x27;]}: SQL score {average} over {len(rows)} questions&quot;</span>)
     <span class="k">if</span> average <span class="k">is</span> <span class="k">not</span> <span class="k">None</span> <span class="k">and</span> average &lt; <span class="n">7</span>:
         <span class="b">print</span>(<span class="s">&quot;Below the bar of 7: do not release this version.&quot;</span>)   <span class="c"># post to Slack, fail a CI job, write to a database...</span>
 
@@ -1197,6 +1221,7 @@ A reply that has no SQL, does not parse or is not read-only is scored 0 before y
 <span class="k">if</span> <span class="b">__name__</span> == <span class="s">&quot;__main__&quot;</span>:
     nl2sql_evalkit.serve(
         my_pipeline,
+        dialect=<span class="s">&quot;postgres&quot;</span>,
         extra_metrics={<span class="s">&quot;word_overlap&quot;</span>: word_overlap, <span class="s">&quot;length_ratio&quot;</span>: length_ratio},
         on_complete=check_quality_gate,
         column_map={<span class="s">&quot;user_query&quot;</span>: <span class="s">&quot;question&quot;</span>, <span class="s">&quot;gold_answer&quot;</span>: <span class="s">&quot;expected_sql&quot;</span>},   <span class="c"># your column names -&gt; nl2sql_evalkit&#x27;s</span>
@@ -1207,7 +1232,7 @@ A reply that has no SQL, does not parse or is not read-only is scored 0 before y
 <div class="table-wrap"><table>
   <thead><tr><th>Option</th><th>Use it to&hellip;</th></tr></thead>
   <tbody>
-    <tr><td><code>extra_metrics</code></td><td>Add scores such as ROUGE or a length check. Each function gets <code>(expected_sql, generated_answer)</code> and returns a number, shown in the results. A metric that fails on a question is reported as a problem and the run goes on.</td></tr>
+    <tr><td><code>extra_metrics</code></td><td>Add scores such as an exact-match check or a query-length check. Each function gets <code>(expected_sql, generated_answer)</code> (the reply as text) and returns a number, shown in the results. A metric that fails on a question is reported as a problem and the run goes on.</td></tr>
     <tr><td><code>on_complete</code></td><td>Run code once when a run ends, with the summary and the rows (<code>None</code> instead of a summary if the run failed). Post to Slack, fail a CI job, write to a database.</td></tr>
     <tr><td><code>column_map</code>, <code>extra_columns</code></td><td>Use your own spreadsheet column names, and carry extra columns (such as <code>difficulty</code>) into every result.</td></tr>
     <tr><td><code>session_id_fn</code></td><td>Choose the session id sent for each chat, for example to replay a conversation against a stateful backend with a stable id.</td></tr>
@@ -1220,16 +1245,16 @@ A reply that has no SQL, does not parse or is not read-only is scored 0 before y
 <div class="kicker"><span>Run it for real</span><span>5 min read</span></div>
 <h1>Setting it up for a team</h1>
 <p class="lead">Accounts, where things are kept, which models, and how the recommendation decides. One file, with the reason for each line.</p>
-<div class="story"><b>Chapter 7</b><p>Sidekick's evaluation was running on Priya's laptop. Now the whole team wants to use it, and the results should survive a laptop reboot.</p></div>
+<div class="story"><b>Chapter 7</b><p>The data assistant's evaluation was running on Priya's laptop. Now the whole team wants to use it, and the results should survive a laptop reboot.</p></div>
 
-<figure class="code"><figcaption><span>examples/team_setup.py</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="s">&quot;&quot;&quot;Running nl2sql_evalkit for a team: accounts, where things are kept, models, and how the recommendation decides.&quot;&quot;&quot;</span>
+<figure class="code"><figcaption><span>examples/team_setup.py</span><button type="button" class="copy" aria-label="Copy the code">Copy</button></figcaption><pre><code><span class="s">&quot;&quot;&quot;Running nl2sql_evalkit for a team: accounts, where things are kept, the SQL dialect, models, and how the recommendation decides.&quot;&quot;&quot;</span>
 <span class="k">import</span> os
 
 <span class="k">import</span> nl2sql_evalkit
 
 
 <span class="k">def</span> <span class="f">answer_question</span>(question: <span class="b">str</span>) -&gt; <span class="b">str</span>:
-    <span class="k">return</span> <span class="s">&quot;Refunds are allowed within 30 days of purchase.&quot;</span>
+    <span class="k">return</span> <span class="s">&quot;SELECT region, COUNT(*) FROM customers GROUP BY region&quot;</span>
 
 
 <span class="k">if</span> <span class="b">__name__</span> == <span class="s">&quot;__main__&quot;</span>:
@@ -1237,16 +1262,17 @@ A reply that has no SQL, does not parse or is not read-only is scored 0 before y
         answer_question,
         <span class="c"># --- where it runs and where things are kept ---</span>
         port=<span class="n">8002</span>,
+        dialect=<span class="s">&quot;postgres&quot;</span>,                      <span class="c"># the SQL your assistant writes: &quot;postgres&quot;, &quot;mysql&quot;, &quot;sqlite&quot; or &quot;tsql&quot;</span>
         data_dir=<span class="s">&quot;evals&quot;</span>,                        <span class="c"># store.json (results: copy it to back up), logs/ and uploads/ live here</span>
         <span class="c"># --- who may open it ---</span>
         users=<span class="s">&quot;alice:pw-for-alice,bob:pw-for-bob&quot;</span>,
         secret=os.environ.get(<span class="s">&quot;EVAL_SECRET&quot;</span>, <span class="s">&quot;change-me&quot;</span>),   <span class="c"># fixed, so people stay signed in across restarts</span>
         <span class="c"># --- models ---</span>
         judge_model=<span class="s">&quot;openai/gpt-4o-mini&quot;</span>,
-        generator_model=<span class="s">&quot;ollama/llama3&quot;</span>,         <span class="c"># writes test cases from documents: the text stays on this machine</span>
+        generator_model=<span class="s">&quot;ollama/llama3&quot;</span>,         <span class="c"># writes test cases from schema files: the schema stays on this machine</span>
         <span class="c"># --- how the recommendation decides ---</span>
-        sql_weight=<span class="n">0.7</span>,                       <span class="c"># answer quality counts for 70%...</span>
-        schema_weight=<span class="n">0.3</span>,                     <span class="c"># ...and context quality for 30%</span>
+        sql_weight=<span class="n">0.7</span>,                         <span class="c"># the SQL score counts for 70%...</span>
+        schema_weight=<span class="n">0.3</span>,                      <span class="c"># ...and the tables-and-columns score for 30%</span>
         recommendation_tolerance=<span class="n">0.2</span>,            <span class="c"># versions this close to the best are tied: the fastest wins</span>
         max_response_time=<span class="n">8.0</span>,                   <span class="c"># versions slower than this (seconds) are never recommended</span>
         show_guide=<span class="k">True</span>,                         <span class="c"># the Help page</span>
@@ -1256,8 +1282,10 @@ A reply that has no SQL, does not parse or is not read-only is scored 0 before y
 <h2>The parts that matter</h2>
 <ul>
   <li><b>Sign-in.</b> <code>users="alice:pw1,bob:pw2"</code> sets the accounts. Sessions last 12 hours; set <code>secret=</code> to a fixed value if people should stay signed in across restarts. <code>require_login=False</code> skips the sign-in for local work.</li>
-  <li><b>Data.</b> Everything is written to one folder (<code>data_dir</code>, default <code>nl2sql_evalkit_data</code>): <code>store.json</code> with the results, test cases and groups, <code>logs/</code>, and <code>uploads/</code>. Copy the folder to back it up or move it to another machine.</li>
+  <li><b>Data.</b> Everything is written to one folder (<code>data_dir</code>, default <code>nl2sql_evalkit_data</code>): <code>store.json</code> with the results, test cases and groups, <code>logs/</code>, and <code>uploads/</code> (spreadsheets uploaded for a run). Schema files used to generate test cases are read and not kept. Copy the folder to back it up or move it to another machine.</li>
   <li><b>Logs.</b> <code>logs/</code> inside the data folder holds <code>server.log</code>, one file per run, one per generation, each with full details. Point <code>data_dir=</code> at a mounted volume to keep them. Keys and passwords are hidden before anything is written.</li>
+  <li><b>Models.</b> <code>judge_model</code> grades the SQL and writes the findings; <code>generator_model</code> writes test cases from your schema (the judge model if unset). The judge sees questions, expected SQL and replies; the generator sees the names in your schema. Neither sees your data, because nothing connects to a database.</li>
+  <li><b>SQL dialect.</b> <code>dialect=</code> (<code>"postgres"</code>, <code>"mysql"</code>, <code>"tsql"</code> or <code>"sqlite"</code>) decides how replies and schema files are read. Set it once for the team.</li>
   <li><b>Where it listens.</b> The server is reachable on this computer (<code>127.0.0.1</code>). To share it, run it on a shared machine behind your usual network setup, with sign-in on.</li>
   <li><b>Production safety.</b> <code>eval_env="prod"</code> turns the dashboard and every evaluation route off; only <code>/api/health</code> answers.</li>
   <li><b>This guide.</b> It is on by default. <code>show_guide=False</code> hides the Help link and stops serving it.</li>
@@ -1271,7 +1299,7 @@ A reply that has no SQL, does not parse or is not read-only is scored 0 before y
 <div class="kicker"><span>Run it for real</span><span>4 min read</span></div>
 <h1>Run it in CI</h1>
 <p class="lead">Keep a nl2sql_evalkit server running, let every build ask it for a score, and fail the build when quality drops.</p>
-<div class="story"><b>Chapter 7, continued</b><p>Two weeks later someone changes the prompt and refund answers get worse. Nobody notices until customers do. Priya adds a gate: no merge unless the Billing group scores at least 7.5.</p></div>
+<div class="story"><b>Chapter 7, continued</b><p>Two weeks later someone changes the prompt and the join queries get worse. Nobody notices until the finance team does. Priya adds a gate: no merge unless the Joins group scores at least 7.5.</p></div>
 
 <h2>The script</h2>
 <p>It talks to the same API the dashboard uses, with only the standard library. It starts a run for a group of test cases, waits for the version to appear, and exits with a code your CI understands.</p>
@@ -1338,12 +1366,12 @@ opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.coo
 
 <span class="k">if</span> <span class="b">__name__</span> == <span class="s">&quot;__main__&quot;</span>:
     sys.<span class="b">exit</span>(run_gate())</code></pre></figure>
-<pre class="cmd">EVAL_URL=http://eval-server:8002 EVAL_GROUP=Billing EVAL_MINIMUM=7.5 python ci_gate.py<button type="button" class="copy">Copy</button></pre>
+<pre class="cmd">EVAL_URL=http://eval-server:8002 EVAL_GROUP=Joins EVAL_MINIMUM=7.5 python ci_gate.py<button type="button" class="copy">Copy</button></pre>
 
 <div class="table-wrap"><table>
   <thead><tr><th>Exit code</th><th>Meaning</th></tr></thead>
   <tbody>
-    <tr><td><code>0</code></td><td>answer quality reached the bar and no question failed</td></tr>
+    <tr><td><code>0</code></td><td>the SQL score reached the bar and no question failed</td></tr>
     <tr><td><code>1</code></td><td>below the bar, or at least one question failed</td></tr>
     <tr><td><code>2</code></td><td>no result within the wait time: look at the dashboard or at <code>logs/</code> in the data folder</td></tr>
   </tbody>
@@ -1351,10 +1379,10 @@ opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.coo
 <h2>Settings it reads</h2>
 <ul>
   <li><code>EVAL_URL</code>: where the server is. <code>EVAL_USER</code> and <code>EVAL_PASSWORD</code> are needed only when sign-in is on.</li>
-  <li><code>EVAL_GROUP</code>: the group of test cases to run. <code>EVAL_MINIMUM</code>: the answer quality the build needs.</li>
+  <li><code>EVAL_GROUP</code>: the group of test cases to run. <code>EVAL_MINIMUM</code>: the SQL score the build needs.</li>
   <li><code>EVAL_VERSION</code>: the name of the version it creates (by default <code>ci-</code> and the date and time).</li>
 </ul>
-<div class="note"><b>Good to know</b><p>Each CI run is saved as a version, so the dashboard shows how quality moves build by build. Archive old CI versions to keep comparisons tidy.</p></div>
+<div class="note"><b>Good to know</b><p>Each CI run is saved as a version, so the dashboard shows how quality moves build by build. The dashboard&rsquo;s <b>Where answers fail</b> table shows which check moved. Archive old CI versions to keep comparisons tidy.</p></div>
 <p>The API is browsable at <code>/api/docs</code> on your server, and you can import test cases the same way with <code>POST /api/test-cases/import</code>.</p>
 
 <nav class="pager"><a class="prev" href="#/team-setup"><small>Previous</small><b>Setting it up for a team</b></a><a class="next" href="#/troubleshooting"><small>Next up</small><b>When something looks off</b></a></nav>
@@ -1364,34 +1392,49 @@ opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.coo
 <h1>When something looks off</h1>
 <p class="lead">Find your symptom, see the likely reason, and what to do about it. Most things here take a minute to fix.</p>
 <p>Start with the <b>Problems during this run</b> box on the version page: it says what went wrong in plain words, and <em>Show technical details</em> gives the error. The full log is the <em>Download log</em> button, or <code>logs/runs/</code> in the data folder. Then look for your symptom here.</p>
-<input class="filter" id="fix-filter" type="search" placeholder="Search symptoms: login, context, sources, port&hellip;" aria-label="Search symptoms">
-<details class="fix"><summary>Every score is 0.0, but nothing failed</summary><div class="body">
-    <p class="why">The judge is almost always right here: the test cases ask about things your pipeline does not know (for example questions generated from other documents), so it answers &ldquo;I could not find that&rdquo; and there is no retrieved text.</p>
-    <p><b>Do:</b> open one question and compare the generated answer, the retrieved text and the expected answer. Load the same documents the test cases came from, or write test cases about what your pipeline knows.</p></div></details>
+<input class="filter" id="fix-filter" type="search" placeholder="Search symptoms: login, SQL, dialect, schema, port&hellip;" aria-label="Search symptoms">
+<details class="fix"><summary>Every SQL score is 0, but nothing failed</summary><div class="body">
+    <p class="why">A reply that has no SQL, does not parse in your dialect, or is not read-only is scored 0 without asking the judge. If every reply does this, the cause is usually the same: the function returns something the reader does not take as SQL, or the dialect is wrong.</p>
+    <p><b>Do:</b> open one question and look at the <em>Checks</em>: they say which one failed and why. See the next entries for the usual causes.</p></div></details>
+<details class="fix"><summary>&ldquo;The assistant did not return any SQL&rdquo;, but the SQL is there</summary><div class="body">
+    <p class="why">A reply counts as SQL if it is inside a code fence, or if its first word is <code>SELECT</code>, <code>WITH</code>, <code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code>, <code>DROP</code>, <code>CREATE</code>, <code>ALTER</code>, <code>TRUNCATE</code>, <code>MERGE</code>, <code>GRANT</code>, <code>REVOKE</code> or <code>EXPLAIN</code>. A typo in the first word (<code>SELEC</code>) reads as an ordinary message, not as SQL. If your function returns a dictionary, the SQL must be under a known key.</p>
+    <p><b>Do:</b> return just the query, or put it in a code fence; fix the typo; or add your key with <code>answer_keys=["my_key"]</code>.</p></div></details>
+<details class="fix"><summary>&ldquo;The SQL does not parse as postgres&rdquo; (or mysql, tsql, sqlite) on queries that are fine</summary><div class="body">
+    <p class="why">The query is valid in another database. Every check reads the SQL in the dialect you set, and the default is <code>postgres</code>.</p>
+    <p><b>Do:</b> set <code>dialect=</code> in <code>serve()</code> to the database your assistant writes for: <code>"postgres"</code>, <code>"mysql"</code>, <code>"tsql"</code> (SQL Server) or <code>"sqlite"</code>. The same setting is used to read schema files when you generate test cases.</p></div></details>
+<details class="fix"><summary>&ldquo;The SQL is not read-only&rdquo;</summary><div class="body">
+    <p class="why">The reply holds more than one statement, something that changes data or the schema, or a risky function such as <code>pg_sleep</code>. It is scored 0 on purpose, and for a <code>refuse</code> case any SQL at all is wrong.</p>
+    <p><b>Do:</b> make the assistant return a single <code>SELECT</code>. If the question was meant to be refused, mark its test case <code>refuse</code> and have the assistant decline in words.</p></div></details>
 <details class="fix"><summary>The dashboard says &ldquo;None yet&rdquo; under Recommended version</summary><div class="body">
     <p class="why">No version reaches the minimum overall score (5 out of 10 by default), so nothing is recommended; the best so far is named. See <a href="#/versions-and-recommendation">Comparing versions</a>.</p>
-    <p><b>Do:</b> improve the pipeline and run again, or check the test cases. If 5 is the wrong bar for you, set <code>recommendation_min_quality</code>.</p></div></details>
+    <p><b>Do:</b> improve the assistant and run again, or check the test cases. If 5 is the wrong bar for you, set <code>recommendation_min_quality</code>.</p></div></details>
 <details class="fix"><summary>A version says &ldquo;Not compared&rdquo;</summary><div class="body">
-    <p class="why">It ran different test cases from the others (cases were edited, added or deleted), so there is nothing fair to compare. A case only counts as the same while its question and expected answer are unchanged.</p>
+    <p class="why">It ran different test cases from the others (cases were edited, added or deleted), so there is nothing fair to compare. A case only counts as the same while its question and expected SQL are unchanged.</p>
     <p><b>Do:</b> run the same test cases on the versions you want to compare. The card shows the not-compared version&rsquo;s own scores so a good one is not hidden.</p></div></details>
 <details class="fix"><summary>Every question says &ldquo;No answer: the assistant returned an error&rdquo;</summary><div class="body">
     <p class="why">Your function raised an error. The run itself is fine: nl2sql_evalkit marks the question failed, records why, and carries on.</p>
-    <p><b>Do:</b> open <em>Problems during this run</em> and <em>Show technical details</em>; the last lines name the error. Call your function by hand with one of the questions. Common causes: a key your own pipeline needs is missing from <code>.env</code>, a file path that only works from another folder, the vector index was not loaded before <code>serve()</code> (load it first, as your app does at start-up), or the function needs a second argument that has no default.</p></div></details>
+    <p><b>Do:</b> open <em>Problems during this run</em> and <em>Show technical details</em>; the last lines name the error. Call your function by hand with one of the questions. Common causes: a key your own assistant needs (a model key, for example) is missing from <code>.env</code>, a file path that only works from another folder, something your app sets up at start-up was not set up before <code>serve()</code>, or the function needs a second argument that has no default.</p></div></details>
 <details class="fix"><summary>&ldquo;The question was answered, but the AI judge could not grade it&rdquo;</summary><div class="body">
     <p class="why">The judge model did not answer. The usual reasons are shown in the message: a missing or wrong API key, a model name that does not exist, a rate limit, or no network.</p>
-    <p><b>Do:</b> put the provider&rsquo;s key in <code>.env</code> (<code>GROQ_API_KEY</code>, <code>OPENAI_API_KEY</code>&hellip;) or pass <code>judge_api_key=</code>; write the model as <code>provider/model</code>; for a rate limit, wait a minute or run fewer questions. Or <a href="#/your-judge">use your own judge function</a>, which needs no model.</p></div></details>
+    <p><b>Do:</b> put the provider&rsquo;s key in <code>.env</code> (<code>GROQ_API_KEY</code>, <code>OPENAI_API_KEY</code>&hellip;) or pass <code>judge_api_key=</code>; write the model as <code>provider/model</code>; for a rate limit, wait a minute or run fewer questions. Or <a href="#/your-judge">use your own judge function</a>, which needs no model. Questions that fail a basic check are still scored 0 without the judge.</p></div></details>
 <details class="fix"><summary>&ldquo;The AI could not write the findings for this run&rdquo;</summary><div class="body">
     <p class="why">The findings come from the judge model, even when you use <code>judge_fn</code>.</p>
     <p><b>Do:</b> the same checks as above (key, model name, network). The scores and every answer are saved; only the written findings are missing.</p></div></details>
-<details class="fix"><summary>Context quality is blank or very low</summary><div class="body">
-    <p class="why">No step declared the retrieved text, or the case type says no retrieval is expected.</p>
-    <p><b>Do:</b> in your retrieval step set <code>s.material = &hellip;</code> (or use <code>@nl2sql_evalkit.step("retrieval", material=True)</code>). If the bot has no retrieval, mark the cases <code>non-rag</code> and use <code>schema_weight=0</code>. See <a href="#/material-and-sources">Say which step retrieved the text</a>.</p></div></details>
-<details class="fix"><summary>Context quality is lower than the retrieval deserves</summary><div class="body">
-    <p class="why">More than one step declares material, so the judge reads routing details, search settings or the same text twice, and the end can be cut off at <code>material_chars</code>.</p>
-    <p><b>Do:</b> open a question&rsquo;s <em>Retrieved text</em> and check it holds only the passages. Let one step declare the material; keep the other steps timing-only and put their details in <code>nl2sql_evalkit.note()</code>.</p></div></details>
+<details class="fix"><summary>The tables-and-columns score is blank</summary><div class="body">
+    <p class="why">Nothing is expected for that question: its test case has no expected tables or columns, or it is a <code>clarify</code> or <code>refuse</code> case. It is left out, not scored 0.</p>
+    <p><b>Do:</b> add <code>expected_tables</code> and <code>expected_columns</code> to the test case if you want them checked. If none of your cases has them, set <code>schema_weight=0</code> so the overall score does not count them. See <a href="#/test-cases">Writing test cases</a>.</p></div></details>
+<details class="fix"><summary>Tables or columns are reported missing, but the query looks right</summary><div class="body">
+    <p class="why">The expected names are compared with the ones the query uses, ignoring case and quotes. A <code>table.column</code> expectation needs that same table, or its alias, in the query. A <code>SELECT *</code> is given the benefit of the doubt on columns.</p>
+    <p><b>Do:</b> open the question: the checks list what was used and what was missing. Fix the expected names if they were wrong, for example a table that has since been renamed.</p></div></details>
+<details class="fix"><summary>&ldquo;Joins differ from the expected SQL&rdquo; on a query that gives the same result</summary><div class="body">
+    <p class="why">The joins check compares the pairs of columns the two queries join on. A query that reaches the same rows another way (a subquery instead of a join, or other keys) is reported as different, even if it is right.</p>
+    <p><b>Do:</b> the judge&rsquo;s SQL score still reflects whether the query is right. Leave the expected SQL out of the case if you only want tables and columns checked, or accept the difference.</p></div></details>
+<details class="fix"><summary>The same question gets a different SQL score each run</summary><div class="body">
+    <p class="why">The SQL score comes from an AI judge, and a model does not answer the same way every time. The checks (syntax, read-only, tables, columns, joins) never change.</p>
+    <p><b>Do:</b> treat a difference of a point or so as noise. Set a lower <code>judge_temperature</code> if your model supports it, use a stronger <code>judge_model</code>, or <a href="#/your-judge">write your own judge function</a> for exact rules.</p></div></details>
 <details class="fix"><summary>The step-time bar only shows &ldquo;Not in a step&rdquo;</summary><div class="body">
     <p class="why">No step ran during the questions, or recording was reduced.</p>
-    <p><b>Do:</b> check that your pipeline calls <code>nl2sql_evalkit.step(&hellip;)</code> on the path the questions take; check <code>record_mode</code> is not <code>"off"</code>; with <code>record_detail="selected"</code> only steps that set material or sources are kept.</p></div></details>
+    <p><b>Do:</b> check that your pipeline calls <code>nl2sql_evalkit.step(&hellip;)</code> on the path the questions take; check <code>record_mode</code> is not <code>"off"</code>.</p></div></details>
 <details class="fix"><summary>Step times add up to more than the response time</summary><div class="body">
     <p class="why">One step sits inside another (the outer one includes the inner one&rsquo;s time), or steps run in parallel.</p>
     <p><b>Do:</b> for nesting, make the steps follow each other instead of wrapping each other. Parallel steps are expected to overlap.</p></div></details>
@@ -1417,11 +1460,14 @@ opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.coo
     <p class="why">The default account is <code>admin</code> / <code>admin123</code> unless you set <code>users=</code>. Without a fixed <code>secret=</code> a new one is made on every start, which ends existing sessions.</p>
     <p><b>Do:</b> set <code>users=</code> and <code>secret=</code>, or <code>require_login=False</code> locally.</p></div></details>
 <details class="fix"><summary>&ldquo;Missing required column(s)&rdquo; when importing</summary><div class="body">
-    <p class="why">The file does not have the columns the older dataset upload needs.</p>
-    <p><b>Do:</b> use <b>Test Cases &rarr; Import</b>, which only needs a question column and lets you pick which column is which; or add <code>column_map=</code> to <code>serve()</code>.</p></div></details>
-<details class="fix"><summary>Generating test cases: &ldquo;has no selectable text&rdquo;, &ldquo;password-protected&rdquo; or &ldquo;old Word files&rdquo;</summary><div class="body">
-    <p class="why">The file cannot be read as text: a scanned PDF, a protected file, or a <code>.doc</code>.</p>
-    <p><b>Do:</b> upload a text-based PDF, remove the password, or save <code>.doc</code> files as <code>.docx</code>. Plain <code>.txt</code> and <code>.md</code> always work.</p></div></details>
+    <p class="why">The file has no recognisable <code>question</code> column.</p>
+    <p><b>Do:</b> use <b>Test Cases &rarr; Import</b>, which lets you pick which column is which; or add <code>column_map=</code> to <code>serve()</code>.</p></div></details>
+<details class="fix"><summary>Generating test cases: &ldquo;no tables could be read&rdquo;, or a file is skipped</summary><div class="body">
+    <p class="why">The schema reader found no <code>CREATE TABLE</code> statements it could read in that file, or the file is the wrong kind or too large. Statements it cannot read are skipped and listed; a file with none readable fails. Only <code>.sql</code>, <code>.ddl</code> and <code>.txt</code> files are accepted (up to 5 files of 10 MB).</p>
+    <p><b>Do:</b> check that the file really holds <code>CREATE TABLE</code> statements and that <code>dialect=</code> matches them (a SQL Server script read as <code>postgres</code> can fail on its brackets and <code>GO</code> lines). Split a huge dump, or remove its data.</p></div></details>
+<details class="fix"><summary>Generated join questions are few, or the join check has little to compare</summary><div class="body">
+    <p class="why">Joins are planned from foreign keys. Without declared keys the generator can only guess links from column names such as <code>customer_id</code>, and a schema with one table has none.</p>
+    <p><b>Do:</b> add <code>FOREIGN KEY</code> clauses (or <code>ALTER TABLE &hellip; ADD FOREIGN KEY</code>) to the DDL you upload.</p></div></details>
 <details class="fix"><summary>The dashboard looks old after an update, or a new option is not recognised</summary><div class="body">
     <p class="why">The environment still has the previous version of nl2sql_evalkit, or the browser kept the old page.</p>
     <p><b>Do:</b> reinstall with <code>pip install --force-reinstall --no-deps git+https://github.com/devanshmakam-youngsoft/nl2sql_evalkit-lib.git</code>, then refresh the page with <kbd>Ctrl</kbd>+<kbd>F5</kbd>.</p></div></details>
@@ -1441,7 +1487,7 @@ opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.coo
 fn(question: str, history: list) -&gt; str   # stateless, runner passes history
 fn(question: str, session_id: str) -&gt; str # stateful, you manage history</pre><p>Can also return a <code>dict</code> (nl2sql_evalkit extracts the answer via <code>answer_keys</code>) or a Pydantic model. Async functions are supported.</p></td></tr></tbody></table></div>
 <h3>Server</h3><div class="table-wrap"><table><thead><tr><th>Parameter</th><th>Default</th><th>What it does</th></tr></thead><tbody><tr><td><code>port</code></td><td><code>8001</code></td><td><p>HTTP port for the server. Default <code>8001</code>.</p></td></tr><tr><td><code>data_dir</code></td><td><code>&quot;nl2sql_evalkit_data&quot;</code></td><td><p>The one folder everything is written to, created automatically: <code>store.json</code> (results, test cases, groups), <code>logs/</code> (<code>server.log</code>, one file per run in <code>runs/</code> and per generation in <code>generation/</code>, with full tracebacks) and <code>uploads/</code> (spreadsheets uploaded for a run). Default <code>nl2sql_evalkit_data</code> in the folder you start from.</p></td></tr><tr><td><code>log_level</code></td><td><code>&quot;INFO&quot;</code></td><td><p>Level of <code>server.log</code> and the console (<code>&quot;INFO&quot;</code> by default; <code>&quot;DEBUG&quot;</code> for more).</p></td></tr><tr><td><code>show_guide</code></td><td><code>True</code></td><td><p>Show the guide on the dashboard&#x27;s Help page (default <code>True</code>). With <code>False</code> the Help link is hidden and the guide is not served.</p></td></tr><tr><td><code>open_browser</code></td><td><code>True</code></td><td><p>Open the dashboard in a browser 1.5 s after startup.</p></td></tr></tbody></table></div>
-<h3>Environment / recording modes</h3><div class="table-wrap"><table><thead><tr><th>Parameter</th><th>Default</th><th>What it does</th></tr></thead><tbody><tr><td><code>eval_env</code></td><td><code>&quot;dev&quot;</code></td><td><p>Environment mode. <code>&quot;dev&quot;</code> (default) enables the full dashboard. <code>&quot;prod&quot;</code> blocks the dashboard and all eval routes — only <code>/api/health</code> responds, suitable for embedding the function behind a production server without exposing the eval UI.  <code>&quot;uat&quot;</code> is like dev but logs that UAT recording is active.</p></td></tr><tr><td><code>record_mode</code></td><td><code>&quot;eval&quot;</code></td><td><p>Controls when <code>@nl2sql_evalkit.step()</code> fires. <code>&quot;eval&quot;</code> (default) records steps only during eval runner calls. <code>&quot;off&quot;</code> disables step recording entirely even during eval (eval still runs, just no step data).</p></td></tr><tr><td><code>record_detail</code></td><td><code>&quot;all&quot;</code></td><td><p>Controls how much detail each step captures. <code>&quot;all&quot;</code> (default) records inputs, outputs, material, sources, and timing. <code>&quot;selected&quot;</code> records only steps where the developer explicitly set <code>.material</code> or <code>.sources</code>. <code>&quot;off&quot;</code> records only step name and elapsed time.</p></td></tr><tr><td><code>max_step_value_chars</code></td><td><code>1000</code></td><td><p>How much of a step&#x27;s inputs, output and <code>note()</code> values is kept for display (default 1000). A longer value ends with &quot;… (+N more characters)&quot;; a long list of numbers, such as an embedding, is shown as <code>[N numbers]</code>.</p></td></tr><tr><td><code>max_material_chars</code></td><td><code>20000</code></td><td><p>How much retrieved text the judge reads per question (default 20000), cut with the same kind of marker. Material comes from steps that declare it (<code>s.material = …</code> or <code>@step(&quot;retrieval&quot;, material=True)</code>).</p></td></tr></tbody></table></div>
+<h3>Environment / recording modes</h3><div class="table-wrap"><table><thead><tr><th>Parameter</th><th>Default</th><th>What it does</th></tr></thead><tbody><tr><td><code>eval_env</code></td><td><code>&quot;dev&quot;</code></td><td><p>Environment mode. <code>&quot;dev&quot;</code> (default) enables the full dashboard. <code>&quot;prod&quot;</code> blocks the dashboard and all eval routes — only <code>/api/health</code> responds, suitable for embedding the function behind a production server without exposing the eval UI.  <code>&quot;uat&quot;</code> is like dev but logs that UAT recording is active.</p></td></tr><tr><td><code>record_mode</code></td><td><code>&quot;eval&quot;</code></td><td><p>Controls when <code>@nl2sql_evalkit.step()</code> fires. <code>&quot;eval&quot;</code> (default) records steps only during eval runner calls. <code>&quot;off&quot;</code> disables step recording entirely even during eval (eval still runs, just no step data).</p></td></tr><tr><td><code>record_detail</code></td><td><code>&quot;all&quot;</code></td><td><p>Controls how much detail each step captures. <code>&quot;all&quot;</code> (default) records inputs, outputs, and timing. <code>&quot;selected&quot;</code> records only steps that produced an output (a decorated function, or <code>s.output = ...</code>). <code>&quot;off&quot;</code> records only step name and elapsed time.</p></td></tr><tr><td><code>max_step_value_chars</code></td><td><code>1000</code></td><td><p>How much of a step&#x27;s inputs, output and <code>note()</code> values is kept for display (default 1000). A longer value ends with &quot;… (+N more characters)&quot;; a long list of numbers, such as an embedding, is shown as <code>[N numbers]</code>.</p></td></tr></tbody></table></div>
 <h3>Judge (llm or custom)</h3><div class="table-wrap"><table><thead><tr><th>Parameter</th><th>Default</th><th>What it does</th></tr></thead><tbody><tr><td><code>judge_model</code></td><td><code>&quot;groq/openai/gpt-oss-120b&quot;</code></td><td><p>LiteLLM model string. Examples: <code>&quot;groq/llama-3.3-70b-versatile&quot;</code>, <code>&quot;gemini/gemini-1.5-pro&quot;</code>, <code>&quot;openai/gpt-4o&quot;</code>, <code>&quot;ollama/llama3&quot;</code>.</p></td></tr><tr><td><code>judge_api_key</code></td><td><code>None</code></td><td><p>Explicit API key for the judge. If omitted, LiteLLM reads the matching env var (<code>GROQ_API_KEY</code>, <code>GEMINI_API_KEY</code>, <code>OPENAI_API_KEY</code>…).</p></td></tr><tr><td><code>judge_prompt</code></td><td><code>None</code></td><td><p>Custom system prompt for the grader. Replaces the built-in rubric entirely, for the <code>answer</code> test cases.</p></td></tr><tr><td><code>judge_retries</code></td><td><code>3</code></td><td><p>Retries on transient LLM failures before the row is marked failed.</p></td></tr><tr><td><code>judge_fn</code></td><td><code>None</code></td><td><p>Callable that fully replaces the LLM judge. It gets the question, the expected SQL, the reply and the findings of the checks (the <code>sql_checks</code> of a result), and returns the SQL score::</p><pre>def my_judge(question, expected_sql, reply, checks) -&gt; dict:
     return {&quot;sql_marks&quot;: 8, &quot;sql_comment&quot;: &quot;Good.&quot;, &quot;suggestion&quot;: &quot;&quot;}</pre></td></tr></tbody></table></div>
 <h3>Writing test cases from documents</h3><div class="table-wrap"><table><thead><tr><th>Parameter</th><th>Default</th><th>What it does</th></tr></thead><tbody><tr><td><code>generator_model</code></td><td><code>None</code></td><td><p>LiteLLM model that writes test cases from uploaded documents (Test Cases → Generate from documents). Defaults to <code>judge_model</code>. The text of the documents is sent to it, so choose a model you are allowed to send them to (a local <code>ollama/...</code> model works).</p></td></tr></tbody></table></div>
@@ -1457,8 +1503,9 @@ fn(question: str, session_id: str) -&gt; str # stateful, you manage history</pre
 <h2>Good to know</h2>
 <ul>
   <li><b>One evaluation runs at a time.</b> Finished results are saved as they complete. A run in progress lives in the running server, so if the server restarts, start that version again.</li>
-  <li><b>Documents sent to a model.</b> Generating test cases sends the text of your documents to <code>generator_model</code> (the judge model by default). Choose one you are comfortable sending them to.</li>
-  <li><b>Supported documents:</b> PDF with selectable text, <code>.docx</code>, <code>.txt</code> and <code>.md</code>.</li>
+  <li><b>Nothing is run.</b> No database is connected. Replies are read as SQL in the dialect you set with <code>dialect=</code> and checked for syntax, read-only, tables, columns and joins. Results are labelled &ldquo;Static checks only&rdquo;.</li>
+  <li><b>What is sent to a model.</b> The judge gets each question, its expected SQL, the reply and what the checks found. Generating test cases sends the table, column and key names of your schema files to <code>generator_model</code> (the judge model by default). Choose models you are comfortable sending these to.</li>
+  <li><b>Schema files:</b> <code>.sql</code>, <code>.ddl</code> and <code>.txt</code> with <code>CREATE TABLE</code> statements, up to 5 files of 10 MB. They are used only to write test cases and are not kept.</li>
   <li><b>Judge versions.</b> nl2sql_evalkit pins its LiteLLM dependency to a tested range, so installs stay on versions that have been checked.</li>
   <li><b>The API.</b> Everything the dashboard does is a call to <code>/api/&hellip;</code> on the same server; the interactive reference is at <code>/api/docs</code>.</li>
 </ul>

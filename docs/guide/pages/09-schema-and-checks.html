@@ -1,0 +1,57 @@
+<!--
+part: See inside
+title: Checks and the tables-and-columns score
+lead: Every reply goes through a few plain checks that read the SQL, and then to the judge. Here is what each check means, what stops a reply early, and how the two scores are made.
+minutes: 6
+-->
+<h2>The checks</h2>
+<p>The SQL is parsed in the dialect you gave to <code>serve(dialect=&hellip;)</code> and read. <b>Nothing is run</b> and no database is needed. The result of each check is shown under the question and counted in the &ldquo;where answers fail&rdquo; table of the version.</p>
+<div class="table-wrap"><table>
+  <thead><tr><th>Check</th><th>It passes when&hellip;</th></tr></thead>
+  <tbody>
+    <tr><td>Parses</td><td>the SQL is valid in your dialect (<code>postgres</code>, <code>mysql</code>, <code>tsql</code> or <code>sqlite</code>)</td></tr>
+    <tr><td>Read-only</td><td>it is one single query. Anything that writes or changes things fails: <code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code>, <code>DROP</code>, <code>SELECT &hellip; INTO</code>, a second statement, and risky functions such as <code>pg_sleep</code> or <code>xp_cmdshell</code></td></tr>
+    <tr><td>Expected tables</td><td>every table listed in <code>expected_tables</code> appears in the query</td></tr>
+    <tr><td>Expected columns</td><td>every column listed in <code>expected_columns</code> appears. Write <code>orders.amount</code> or just <code>amount</code>. <code>SELECT *</code> gets the benefit of the doubt, since it cannot be told apart</td></tr>
+    <tr><td>Joins</td><td>the query joins on the same pairs of columns as your <code>expected_sql</code>. Aliases do not matter; extra joins and missing joins are both listed</td></tr>
+  </tbody>
+</table></div>
+<p>A check only runs when it has something to compare with. No <code>expected_tables</code> means no table check, and no <code>expected_sql</code> means no join check, and neither counts as a failure.</p>
+
+<h2>What stops a reply early</h2>
+<p>Some failures are certain, so the judge is not asked and the SQL score is <b>0</b> with the reason and a suggestion:</p>
+<ul>
+  <li>an <code>answer</code> case that returned <b>no SQL</b>;</li>
+  <li>SQL that <b>does not parse</b> in your dialect;</li>
+  <li>SQL that is <b>not read-only</b>;</li>
+  <li>a <code>clarify</code> or <code>refuse</code> case that returned <b>any SQL</b> at all.</li>
+</ul>
+<p>Everything else goes to the judge.</p>
+
+<h2>What counts as SQL</h2>
+<p>A reply is SQL when it sits inside a <code>```sql</code> fence, or when it starts like a statement: <code>SELECT</code>, <code>WITH name AS (</code>, <code>INSERT</code>, <code>DELETE</code>, <code>DROP</code> and so on. Any other reply is read as a message. A query whose first word is misspelled, such as <code>SELEC</code>, is therefore read as a message and fails as &ldquo;no SQL&rdquo;.</p>
+
+<h2>Two scores</h2>
+<div class="cards">
+  <div class="card"><span class="tag">SQL score</span><b>0 to 10, from the judge</b><span>The judge reads the question, your expected SQL (if any), the reply and what the checks found. It does not need the same text: a different query that answers the question can score well. It gives a reason and a suggestion for each question.</span></div>
+  <div class="card"><span class="tag">Tables and columns</span><b>0 to 10, from the checks</b><span>The share of the expected tables used and the share of the expected columns used, averaged when you gave both. No judge, so it never varies between runs.</span></div>
+</div>
+<p>Examples: a query that uses 2 of 2 expected tables and 3 of 4 expected columns scores 9 (the average of 100% and 75%, rounded). A reply with no usable SQL scores 0 when something was expected. Nothing expected, or a <code>clarify</code> or <code>refuse</code> case, and there is no tables-and-columns score for that question.</p>
+<p>The two scores are combined for the recommendation with <code>sql_weight</code> (0.6) and <code>schema_weight</code> (0.4). Set <code>schema_weight=0</code> to look at the SQL score only. <a href="#/versions-and-recommendation">Versions and the recommendation</a> shows how.</p>
+
+<h2>What a test case holds</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>question</code></td><td>what the user asks</td></tr>
+    <tr><td><code>expected_sql</code></td><td>a query that answers it correctly: the judge's reference and the source of the join check</td></tr>
+    <tr><td><code>expected_tables</code></td><td>the tables the query should use, separated by commas</td></tr>
+    <tr><td><code>expected_columns</code></td><td>the columns it should use, separated by commas</td></tr>
+    <tr><td><code>type</code></td><td><code>answer</code>, <code>clarify</code> or <code>refuse</code></td></tr>
+  </tbody>
+</table></div>
+<p>An <code>answer</code> case needs at least one of the three <code>expected_</code> fields, otherwise there is nothing to compare with. The more you give, the sharper the checks.</p>
+
+<div class="note"><b>The limit of reading SQL</b><p>Because nothing is run, the checks cannot know whether two different queries return the same rows. The tables, columns and joins are strong hints, and the judge weighs the rest, but a query can pass every check and still be wrong. Judge scores can also move a little between runs; the checks never do.</p></div>
+
+<div class="story"><b>Chapter 3, continued</b><p>Priya adds the expected tables and columns to the revenue questions and reruns. The failure table now says it plainly: nine of forty answers join on the wrong column, and version 2 left out <code>customers</code> in six of them. Now there is something specific to fix, and a test set to prove it.</p></div>

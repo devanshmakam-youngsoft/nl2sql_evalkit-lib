@@ -1,38 +1,40 @@
 <!--
 part: Build your test set
 title: Writing test cases
-lead: A test case is a question, what a good answer says, and where it sits in a conversation. A small, honest set beats a large careless one.
+lead: A test case is a question, what a good SQL answer looks like, and where it sits in a conversation. A small, honest set beats a large careless one.
 minutes: 6
 -->
-<div class="story"><b>Chapter 4</b><p>Priya reads the last month of support chats and picks twelve real questions: five about refunds, three about shipping, two follow-ups that only make sense after the first answer, and two greetings.</p></div>
+<div class="story"><b>Chapter 4</b><p>Priya asks the finance team for the questions they really type: five about sales per region, three about open orders, two follow-ups that only make sense after the first answer, one vague request and one that should be refused.</p></div>
 
 <h2>The columns</h2>
 <div class="table-wrap"><table>
   <thead><tr><th>Column</th><th>Meaning</th></tr></thead>
   <tbody>
     <tr><td><code>question</code></td><td>The only column you must have.</td></tr>
-    <tr><td><code>expected_sql</code></td><td>What a good answer says. Wording can differ; the judge compares meaning.</td></tr>
+    <tr><td><code>type</code></td><td><code>answer</code> (default: the assistant should reply with a query), <code>clarify</code> (the question is too vague: it should ask what is meant) or <code>refuse</code> (it should decline, for example to delete data). Only <code>answer</code> cases expect SQL.</td></tr>
+    <tr><td><code>expected_sql</code></td><td>A query that answers the question. The judge compares meaning, so a different but correct query can still score well.</td></tr>
+    <tr><td><code>expected_tables</code>, <code>expected_columns</code></td><td>The tables and columns a good query must use, separated by commas (<code>region, amount</code> or <code>orders.amount</code>). Checked without any AI.</td></tr>
     <tr><td><code>chat_id</code>, <code>turn_no</code></td><td>Cases with the same <code>chat_id</code> form one conversation, replayed in <code>turn_no</code> order. Leave them out and every question is its own chat.</td></tr>
-    <tr><td><code>type</code></td><td><code>rag</code> (default: the answer comes from your documents) or <code>non-rag</code> (greetings, small talk, tools: graded on the answer only).</td></tr>
-    <tr><td><code>expected_tables</code></td><td>Documents the pipeline should retrieve. See the checks on the SQL.</td></tr>
-    <tr><td><code>groups</code></td><td>Labels, for example <code>Billing; Refunds</code>. A case can carry any number of groups.</td></tr>
+    <tr><td><code>groups</code></td><td>Labels, for example <code>Sales; Orders</code>. A case can carry any number of groups.</td></tr>
   </tbody>
 </table></div>
+<div class="note"><b>Good to know</b><p>An <code>answer</code> case needs at least one of <code>expected_sql</code>, <code>expected_tables</code> or <code>expected_columns</code>, so there is always something to check. A <code>clarify</code> or <code>refuse</code> case needs none.</p></div>
 
 <h2>A sample file</h2>
 <p>Five test cases in a CSV. You can import this exact file from <b>Test Cases &rarr; Import</b>; you see a preview before anything is saved.</p>
 {{example:test_cases.csv}}
 <ul>
-  <li><code>refund-1</code> is a <b>two-turn conversation</b>: both rows share a <code>chat_id</code> and are replayed in <code>turn_no</code> order. The second question only makes sense after the first.</li>
-  <li>Row 3 needs <b>both</b> documents (<code>|</code>); row 4 accepts <b>either</b> one (<code>,</code>, in quotes because the cell contains a comma).</li>
-  <li><code>hello-1</code> is <code>non-rag</code>, and its expected answer is a <b>behaviour</b>, not exact words.</li>
-  <li>The <code>groups</code> column creates the groups <code>Billing</code>, <code>Shipping</code> and <code>Small talk</code>.</li>
+  <li><code>sales-1</code> is a <b>two-turn conversation</b>: both rows share a <code>chat_id</code> and are replayed in <code>turn_no</code> order. The second question only makes sense after the first, and it has tables and columns but no SQL of its own.</li>
+  <li><code>vague-1</code> is <code>clarify</code>: the assistant should ask what &ldquo;best&rdquo; means, not guess a query.</li>
+  <li><code>attack-1</code> is <code>refuse</code>: a request to delete data. Any SQL in the reply scores 0.</li>
+  <li>The <code>groups</code> column creates the groups <code>Sales</code>, <code>Orders</code>, <code>Vague</code> and <code>Attacks</code>.</li>
 </ul>
 
 <h2>Writing good ones</h2>
 <ul>
-  <li><b>Use real questions</b>, in the words customers use. Rewriting them to be tidier makes them easier than reality.</li>
-  <li><b>State the facts the answer must contain</b>, not a full model answer. &ldquo;Within 30 days of purchase&rdquo; is better than a paragraph.</li>
-  <li><b>Include the awkward ones</b>: follow-ups, questions with two parts, questions your documents do not answer. The last kind should expect an honest &ldquo;I don&rsquo;t know&rdquo;.</li>
-  <li><b>Keep them stable.</b> A case counts as the same across versions only while its question and expected answer are unchanged. Edit one and it starts a new history, which <a href="#/versions-and-recommendation">the comparison</a> will tell you about.</li>
+  <li><b>Use real questions</b>, in the words people use. Rewriting them to be tidier makes them easier than reality.</li>
+  <li><b>List the tables and columns</b> rather than only a full query. Several different queries can be right; the tables and columns that must appear are what you actually care about.</li>
+  <li><b>Include the awkward ones</b>: follow-ups, questions with two parts, vague requests, and requests that must be refused.</li>
+  <li><b>Nothing is run.</b> Expected SQL is read, never executed, so no database is needed and no data can be touched.</li>
+  <li><b>Keep them stable.</b> A case counts as the same across versions only while its question and expected SQL are unchanged. Edit one and it starts a new history, which <a href="#/versions-and-recommendation">the comparison</a> will tell you about.</li>
 </ul>

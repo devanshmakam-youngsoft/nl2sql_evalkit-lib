@@ -1,11 +1,12 @@
-"""A LangChain chain. Steps work inside runnables, including the branches LangChain runs in parallel threads."""
+"""A LangChain chain that writes SQL. Steps work inside runnables, including the branches LangChain runs in parallel threads.
+The chain returns the SQL; it does not run it."""
 from langchain_core.runnables import RunnableLambda, RunnableParallel
 
 import nl2sql_evalkit
 
-DOCUMENTS = {
-    "refunds.pdf": "Refunds are allowed within 30 days of purchase.",
-    "shipping.pdf": "Orders ship within 2 business days.",
+SCHEMA = {
+    "customers": "customers(id, name, region)",
+    "orders": "orders(id, customer_id, amount, status, created_at)",
 }
 
 
@@ -14,35 +15,32 @@ def rewrite(question: str) -> str:
     return question.lower().replace("?", "")
 
 
-def vector_search(query: str) -> list[tuple[str, str]]:
-    with nl2sql_evalkit.step("vector_search"):
-        return [(name, text) for name, text in DOCUMENTS.items() if any(w in text.lower() for w in query.split() if len(w) > 3)]
+def tables_by_name(query: str) -> list[str]:
+    with nl2sql_evalkit.step("name_match"):
+        return [name for name in SCHEMA if name.rstrip("s") in query]
 
 
-def keyword_search(query: str) -> list[tuple[str, str]]:
-    with nl2sql_evalkit.step("keyword_search"):
-        return [(name, text) for name, text in DOCUMENTS.items() if query.split()[-1] in text.lower()]
+def tables_by_column(query: str) -> list[str]:
+    with nl2sql_evalkit.step("column_match"):
+        return [name for name, text in SCHEMA.items() if any(word in text for word in query.split() if len(word) > 3)]
 
 
-def merge(results: dict) -> str:
-    """Join what the parallel searches found. This is where the retrieved text is declared, once."""
-    unique = dict(results["vector"] + results["keyword"])
-    with nl2sql_evalkit.step("retrieval") as s:
-        s.material = "\n".join(unique.values())
-        s.sources = list(unique)
-    return s.material
+def merge(results: dict) -> list[str]:
+    """Join what the parallel lookups found: these are the tables the model is shown."""
+    with nl2sql_evalkit.step("schema_lookup"):
+        return list(dict.fromkeys(results["by_name"] + results["by_column"])) or ["orders"]
 
 
-def answer(context: str) -> str:
+def write_sql(tables: list[str]) -> str:
     with nl2sql_evalkit.step("llm"):
-        return context.split(".")[0] + "." if context else "I could not find that."
+        return f"SELECT COUNT(*) FROM {tables[0]}"
 
 
 chain = (
     RunnableLambda(rewrite)
-    | RunnableParallel(vector=RunnableLambda(vector_search), keyword=RunnableLambda(keyword_search))
+    | RunnableParallel(by_name=RunnableLambda(tables_by_name), by_column=RunnableLambda(tables_by_column))
     | RunnableLambda(merge)
-    | RunnableLambda(answer)
+    | RunnableLambda(write_sql)
 )
 
 
@@ -51,4 +49,4 @@ def pipeline(question: str) -> str:
 
 
 if __name__ == "__main__":
-    nl2sql_evalkit.serve(pipeline)
+    nl2sql_evalkit.serve(pipeline, dialect="postgres")

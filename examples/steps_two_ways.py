@@ -1,48 +1,47 @@
-"""The same pipeline recorded two ways: with `with` blocks, and with decorators. Both record the same two steps."""
+"""The same text-to-SQL pipeline recorded two ways: with `with` blocks, and with decorators. Both record the same two steps."""
 import nl2sql_evalkit
 
-DOCUMENTS = {
-    "refunds.pdf": "Refunds are allowed within 30 days of purchase.",
-    "shipping.pdf": "Orders ship within 2 business days.",
+SCHEMA = {
+    "customers": "customers(id, name, region)",
+    "orders": "orders(id, customer_id, amount, status, created_at)",
+    "products": "products(id, title, price)",
 }
 
 
-def search(query: str) -> list[tuple[str, str]]:
-    """Stand-in for your vector database: returns (source, text) pairs."""
-    words = [word for word in query.lower().replace("?", "").split() if len(word) > 3]
-    return [(name, text) for name, text in DOCUMENTS.items() if any(word in text.lower() for word in words)]
+def pick_tables(question: str) -> list[str]:
+    """Stand-in for the part of your assistant that decides which tables the question needs."""
+    words = question.lower().replace("?", "")
+    return [name for name in SCHEMA if name.rstrip("s") in words] or ["orders"]
 
 
-def write_answer(question: str, context: str) -> str:
+def write_sql(question: str, tables: str) -> str:
     """Stand-in for your LLM call."""
-    return context.split("\n")[0] if context else "I could not find that."
+    return f"SELECT COUNT(*) FROM {tables.split('(')[0]}"
 
 
-# Style 1: `with` blocks. You decide exactly what is material and what the sources are.
+# Style 1: `with` blocks. You decide exactly where a step starts and ends.
 def pipeline_with_blocks(question: str) -> str:
-    with nl2sql_evalkit.step("retrieval") as s:
-        passages = search(question)
-        context = "\n".join(text for _, text in passages)
-        s.material = context                       # the retrieved text: scored as "context quality"
-        s.sources = [name for name, _ in passages]  # the documents: checked against expected_tables
+    with nl2sql_evalkit.step("schema_lookup"):
+        tables = [SCHEMA[name] for name in pick_tables(question)]
+        nl2sql_evalkit.note("tables_given", ", ".join(tables))
     with nl2sql_evalkit.step("llm"):
-        return write_answer(question, context)
+        return write_sql(question, tables[0])
 
 
-# Style 2: decorators. Inputs and outputs are recorded for you; the return value of a material=True step is the material.
-@nl2sql_evalkit.step("retrieval", material=True)
-def retrieve(question: str) -> str:
-    return "\n".join(text for _, text in search(question))
+# Style 2: decorators. The inputs and the output of each function are recorded for you.
+@nl2sql_evalkit.step("schema_lookup")
+def look_up_tables(question: str) -> str:
+    return ", ".join(SCHEMA[name] for name in pick_tables(question))
 
 
 @nl2sql_evalkit.step("llm")
-def generate(question: str, context: str) -> str:
-    return write_answer(question, context)
+def generate(question: str, tables: str) -> str:
+    return write_sql(question, tables)
 
 
 def pipeline_with_decorators(question: str) -> str:
-    return generate(question, retrieve(question))
+    return generate(question, look_up_tables(question))
 
 
 if __name__ == "__main__":
-    nl2sql_evalkit.serve(pipeline_with_blocks)   # or pipeline_with_decorators
+    nl2sql_evalkit.serve(pipeline_with_blocks, dialect="postgres")   # or pipeline_with_decorators

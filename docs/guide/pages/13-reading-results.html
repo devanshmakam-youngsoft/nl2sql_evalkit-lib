@@ -8,29 +8,47 @@ minutes: 6
 <div class="table-wrap"><table>
   <thead><tr><th>You see</th><th>It means</th></tr></thead>
   <tbody>
-    <tr><td><b>Answer quality</b> (0&ndash;10)</td><td>The judge compares the answer with your expected answer, for facts and intent.</td></tr>
-    <tr><td><b>Context quality</b> (0&ndash;10)</td><td>Did the retrieved text contain what was needed to answer? Left out for <code>non-rag</code> cases.</td></tr>
-    <tr><td><b>Response time</b> and the step bar</td><td>From question to final answer, and how that time splits across your steps.</td></tr>
-    <tr><td><b>Key words, wording, meaning</b></td><td>Text metrics that need no AI: shared key words, similar phrasing (BM25), similar meaning (sentence embeddings).</td></tr>
+    <tr><td><b>SQL score</b> (0&ndash;10)</td><td>The AI judge reads the question, the expected SQL and the reply, and says whether the query would answer the question, with a reason and a suggestion. A reply that fails a basic check is scored 0 without asking the judge (see below).</td></tr>
+    <tr><td><b>Tables and columns</b> (0&ndash;10)</td><td>Worked out without AI: the share of the expected tables, and of the expected columns, that the query uses. Left out when the test case expects none.</td></tr>
+    <tr><td><b>Response time</b> and the step bar</td><td>From question to final reply, and how that time splits across your steps.</td></tr>
     <tr><td><b>Score tiers</b></td><td>How many questions were strong (8&ndash;10), fair (5&ndash;7) or weak (0&ndash;4).</td></tr>
+    <tr><td><b>Where answers fail</b></td><td>How many replies failed each check. See below.</td></tr>
   </tbody>
 </table></div>
 
+<h2>The checks</h2>
+<p>The SQL is read, never run. Each reply goes through these checks first:</p>
+<div class="table-wrap"><table>
+  <thead><tr><th>Check</th><th>What fails it</th></tr></thead>
+  <tbody>
+    <tr><td><b>No SQL</b></td><td>An <code>answer</code> question with no query in the reply. A reply counts as SQL if it is in a code fence or starts with <code>SELECT</code>, <code>WITH</code>, <code>INSERT</code>, <code>DROP</code> and the like.</td></tr>
+    <tr><td><b>Parses</b></td><td>The query is not valid in your <code>dialect</code>.</td></tr>
+    <tr><td><b>Read-only</b></td><td>More than one statement, anything that changes data or the schema (<code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code>, <code>DROP</code>&hellip;), or a risky function such as <code>pg_sleep</code>.</td></tr>
+    <tr><td><b>Expected tables / columns</b></td><td>An expected table or column does not appear in the query. A <code>SELECT *</code> gets the benefit of the doubt on columns.</td></tr>
+    <tr><td><b>Joins</b></td><td>The query joins on different column pairs from the expected SQL.</td></tr>
+  </tbody>
+</table></div>
+<p>No SQL, SQL that does not parse and SQL that is not read-only score 0 and the judge is not asked. For <code>clarify</code> and <code>refuse</code> questions the rule is turned round: any SQL in the reply scores 0, and a reply with only words goes to the judge, which checks it really asks or declines.</p>
+
+<h2>Where answers fail</h2>
+<p>The version page and the dashboard show, for each check, how many replies failed it out of the questions that should be answered (and, for declines, how many wrote SQL when they should not have). On the dashboard it compares your latest versions side by side, with an arrow for the change since the run before, so you can see that v3 fixed the joins but broke the columns. Lower is better.</p>
+
 <h2>Watch-outs and suggestions</h2>
-<p>At the end of each run the judge model writes plain-language findings: each thing to look at, paired with the next step to try. They name the group or question and use the numbers as evidence, rather than repeating the headline scores. Change what they look for with <code>summary_prompt</code> (<a href="#/your-judge">Your judge</a>).</p>
+<p>At the end of each run the judge model writes plain-language findings: each thing to look at, paired with the next step to try. They name the group or question and use the numbers as evidence, rather than repeating the headline scores. If the model cannot be reached, a plain summary built from the checks is shown instead. Change what the model looks for with <code>summary_prompt</code> (<a href="#/your-judge">Your judge</a>).</p>
 
 <h2>One question at a time</h2>
-<p>Click any row to open that question: the answer, the expected answer, the judge's reason for each score, the retrieved text, the sources found and missing, the time per step, and your notes. This is where wrong answers get explained.</p>
+<p>Click any row to open that question: the reply, the SQL read from it, the expected SQL, each check with what it found, the judge&rsquo;s reason and suggestion, the time per step, and your notes. This is where wrong queries get explained.</p>
 <ul>
-  <li>Filter by group or score tier, and sort by score or time.</li>
+  <li>Filter by type, group or score tier, and sort by score or time.</li>
   <li>A question whose test case has been deleted since is marked, and keeps its own copy of the text.</li>
-  <li>Download an <b>Excel report</b> from the version page: a summary sheet, and one row per question.</li>
+  <li>Download an <b>Excel report</b> from the version page: a summary sheet, and one row per question with the checks.</li>
+  <li><b>Scores from the AI judge can differ a little between runs</b> of the same version. The checks never do. Read a difference of a point or so as noise, and a drop in a check count as real.</li>
 </ul>
 
 <h2>Problems during the run</h2>
 <p>If something went wrong, the version page lists it in plain words, with <b>Show technical details</b> for the error and <b>Download log</b> for the full story. The same problem on many questions is listed once with a count. While a run is going you see a live count.</p>
 <ul>
-  <li>A failing pipeline function never stops a run: that question is marked failed, the reason is recorded, and the run goes on.</li>
+  <li>A failing assistant function never stops a run: that question is marked failed, the reason is recorded, and the run goes on.</li>
   <li>Logs are in the <code>logs/</code> folder of your data folder (<code>nl2sql_evalkit_data/</code> by default): <code>server.log</code>, one file per run, one per generation. Keys and passwords are hidden before anything is written.</li>
 </ul>
 <div class="note tip"><b>Tip</b><p>Read <em>Problems during this run</em> before the scores. A run where half the questions failed has misleading averages.</p></div>

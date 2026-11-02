@@ -9,8 +9,9 @@ minutes: 0
 <h2>Good to know</h2>
 <ul>
   <li><b>One evaluation runs at a time.</b> Finished results are saved as they complete. A run in progress lives in the running server, so if the server restarts, start that version again.</li>
-  <li><b>Documents sent to a model.</b> Generating test cases sends the text of your documents to <code>generator_model</code> (the judge model by default). Choose one you are comfortable sending them to.</li>
-  <li><b>Supported documents:</b> PDF with selectable text, <code>.docx</code>, <code>.txt</code> and <code>.md</code>.</li>
+  <li><b>Nothing is run.</b> No database is connected. Replies are read as SQL in the dialect you set with <code>dialect=</code> and checked for syntax, read-only, tables, columns and joins. Results are labelled &ldquo;Static checks only&rdquo;.</li>
+  <li><b>What is sent to a model.</b> The judge gets each question, its expected SQL, the reply and what the checks found. Generating test cases sends the table, column and key names of your schema files to <code>generator_model</code> (the judge model by default). Choose models you are comfortable sending these to.</li>
+  <li><b>Schema files:</b> <code>.sql</code>, <code>.ddl</code> and <code>.txt</code> with <code>CREATE TABLE</code> statements, up to 5 files of 10 MB. They are used only to write test cases and are not kept.</li>
   <li><b>Judge versions.</b> nl2sql_evalkit pins its LiteLLM dependency to a tested range, so installs stay on versions that have been checked.</li>
   <li><b>The API.</b> Everything the dashboard does is a call to <code>/api/&hellip;</code> on the same server; the interactive reference is at <code>/api/docs</code>.</li>
 </ul>

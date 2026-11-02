@@ -20,7 +20,8 @@ from nl2sql_evalkit.main import create_app
 
 EXAMPLES = Path(__file__).parents[2] / "examples"
 COLUMNS = ["chat_id", "turn_no", "type", "question", "expected_sql"]
-JUDGE = lambda question, expected, generated, material: {"sql_marks": 8, "schema_marks": 8}   # noqa: E731
+JUDGE = lambda question, expected, generated, checks: {"sql_marks": 8}   # noqa: E731
+SCHEMA_ORDERS = "orders(id, customer_id, amount, status, created_at)"
 
 
 @pytest.fixture
@@ -84,89 +85,85 @@ def steps_of(row: dict) -> list[str]:
 
 def test_function_shapes_example_is_served(serve_example):
     app = serve_example("function_shapes.py")
-    rows = evaluate(app, [("c1", 1, "Can I get a refund?", "30 days"), ("c1", 2, "And for annual plans?", "pro rata")])
-    assert "Following up on 'Can I get a refund?'" in rows[1]["generated_answer"]
+    rows = evaluate(app, [("c1", 1, "Total sales per region", "SELECT 1"), ("c1", 2, "And only the large ones?", "SELECT 1")])
+    assert "-- follows up on: Total sales per region" in rows[1]["generated_answer"]
+    assert rows[1]["sql_checks"]["syntax_ok"] and rows[1]["sql_checks"]["read_only"]
 
 
-def test_each_of_the_three_shapes_works(served_function):
+def test_each_of_the_shapes_works(served_function):
     shapes = runpy.run_path(str(EXAMPLES / "function_shapes.py"))
-    only = evaluate(served_function(shapes["answer_only"]), [("c1", 1, "Refunds?", "30 days")])
-    assert only[0]["status"] == "ok"
+    only = evaluate(served_function(shapes["answer_only"]), [("c1", 1, "Sales?", "SELECT 1")])
+    assert only[0]["status"] == "ok" and only[0]["sql_checks"]["tables_used"] == ["orders", "customers"]
 
-    history = evaluate(served_function(shapes["answer_with_history"]), [("c1", 1, "Refunds?", "x"), ("c1", 2, "Shipping?", "x")])
-    assert "Following up" not in history[0]["generated_answer"] and "Following up on 'Refunds?'" in history[1]["generated_answer"]
+    history = evaluate(served_function(shapes["answer_with_history"]), [("c1", 1, "Sales?", "x"), ("c1", 2, "Large ones?", "x")])
+    assert "follows up" not in history[0]["generated_answer"] and "follows up on: Sales?" in history[1]["generated_answer"]
 
     shapes["SESSIONS"].clear()
     session = evaluate(served_function(shapes["answer_in_session"]), [("c1", 1, "a?", "x"), ("c1", 2, "b?", "x"), ("c2", 1, "c?", "x")])
-    assert [r["generated_answer"].split(".")[0] for r in session] == [
-        "This is message 1 of this chat", "This is message 2 of this chat", "This is message 1 of this chat"]
+    assert [r["generated_answer"].splitlines()[0] for r in session] == ["-- message 1 of this chat", "-- message 2 of this chat", "-- message 1 of this chat"]
 
 
 def test_dict_async_and_renamed_parameters_are_understood(served_function):
     shapes = runpy.run_path(str(EXAMPLES / "function_shapes.py"))
-    chat = [("c1", 1, "Refunds?", "x"), ("c1", 2, "And shipping?", "x")]
-    assert evaluate(served_function(shapes["answer_as_dict"]), chat[:1])[0]["generated_answer"].startswith("Refunds are allowed")
-    assert evaluate(served_function(shapes["answer_async"]), chat[:1])[0]["generated_answer"].startswith("Refunds are allowed")
+    chat = [("c1", 1, "Sales?", "x"), ("c1", 2, "And large ones?", "x")]
+    assert evaluate(served_function(shapes["answer_as_dict"]), chat[:1])[0]["generated_answer"].startswith("SELECT c.region")
+    assert evaluate(served_function(shapes["answer_async"]), chat[:1])[0]["generated_answer"].startswith("SELECT c.region")
     renamed = served_function(shapes["answer_with_other_names"], config_options={"history_params": ["past_chats"]})
-    assert evaluate(renamed, chat)[1]["generated_answer"] == "I can see 1 earlier turns."
+    assert evaluate(renamed, chat)[1]["generated_answer"].startswith("-- I can see 1 earlier turns.")
     openai = served_function(shapes["answer_with_openai_history"], config_options={"history_format": "openai"})
-    assert [r["generated_answer"] for r in evaluate(openai, chat)] == ["This is the first question.", "Earlier you said: Refunds?"]
+    assert [r["generated_answer"].splitlines()[0] for r in evaluate(openai, chat)][1] == "-- earlier you asked: Sales?"
 
 
 # ---- steps_two_ways.py ------------------------------------------------------------------------------------------
 
-def test_the_two_step_styles_record_the_same_steps_and_the_same_material(served_function):
+def test_the_two_step_styles_record_the_same_steps_and_the_same_sql(served_function):
     module = runpy.run_path(str(EXAMPLES / "steps_two_ways.py"))
-    question = [("c1", 1, "Can I get a refund?", "30 days")]
+    question = [("c1", 1, "How many orders are there?", "SELECT COUNT(*) FROM orders")]
     blocks = evaluate(served_function(module["pipeline_with_blocks"]), question)[0]
     decorated = evaluate(served_function(module["pipeline_with_decorators"]), question)[0]
 
-    assert steps_of(blocks) == steps_of(decorated) == ["retrieval", "llm"]
-    assert blocks["material"] == decorated["material"] == "Refunds are allowed within 30 days of purchase."
-    assert blocks["generated_answer"] == decorated["generated_answer"]
-    # the difference between them
-    assert blocks["sources"] == ["refunds.pdf"] and decorated["sources"] == []
-    assert decorated["step_inputs"]["retrieval"] == {"question": "Can I get a refund?"}
-    assert decorated["step_outputs"]["retrieval"] == "Refunds are allowed within 30 days of purchase."
-    assert blocks["step_inputs"]["retrieval"] == {} and blocks["step_outputs"]["retrieval"] == ""
+    assert steps_of(blocks) == steps_of(decorated) == ["schema_lookup", "llm"]
+    assert blocks["generated_answer"] == decorated["generated_answer"] == "SELECT COUNT(*) FROM orders"
+    # the difference between them: decorators record the inputs and outputs for you
+    assert decorated["step_inputs"]["schema_lookup"] == {"question": "How many orders are there?"}
+    assert decorated["step_outputs"]["schema_lookup"] == SCHEMA_ORDERS
+    assert blocks["step_inputs"]["schema_lookup"] == {} and blocks["flags"]["tables_given"] == SCHEMA_ORDERS
 
 
 def test_steps_two_ways_example_is_served(serve_example):
-    rows = evaluate(serve_example("steps_two_ways.py"), [("c1", 1, "When do orders ship?", "2 business days")])
-    assert rows[0]["sources"] == ["shipping.pdf"]
+    rows = evaluate(serve_example("steps_two_ways.py"), [("c1", 1, "How many customers are there?", "SELECT COUNT(*) FROM customers")])
+    assert rows[0]["generated_answer"] == "SELECT COUNT(*) FROM customers" and rows[0]["sql_marks"] == 8
 
 
-# ---- rag_pipeline.py --------------------------------------------------------------------------------------------
+# ---- text_to_sql_pipeline.py ------------------------------------------------------------------------------------
 
-def test_rag_pipeline_only_the_search_declares_material(serve_example):
-    rows = evaluate(serve_example("rag_pipeline.py"), [("c1", 1, "How long do refunds take?", "30 days")])
+def test_text_to_sql_pipeline_records_each_stage(serve_example):
+    rows = evaluate(serve_example("text_to_sql_pipeline.py"), [("c1", 1, "How many products are there?", "SELECT COUNT(*) FROM products")])
     row = rows[0]
-    assert steps_of(row) == ["rewrite", "retrieval", "rerank", "llm"]
-    assert "Refunds are allowed within 30 days" in row["material"] and "Orders ship" not in row["material"]
-    assert row["sources"][0] == "refunds.pdf"
-    assert row["flags"]["documents_found"] == "1"
+    assert steps_of(row) == ["rewrite", "schema_lookup", "llm", "self_check"]
+    assert row["generated_answer"] == "SELECT COUNT(*) FROM products" and row["flags"]["tables_given"] == "products"
+    assert row["sql_checks"]["tables_used"] == ["products"]
 
 
 # ---- langgraph_agent.py -----------------------------------------------------------------------------------------
 
 def test_steps_inside_langgraph_nodes_are_recorded(serve_example):
     pytest.importorskip("langgraph")
-    row = evaluate(serve_example("langgraph_agent.py"), [("c1", 1, "Can I get a refund?", "30 days")])[0]
-    assert steps_of(row) == ["rewrite", "retrieval", "llm"]
-    assert row["material"] == "Refunds are allowed within 30 days of purchase." and row["sources"] == ["refunds.pdf"]
-    assert row["step_inputs"]["rewrite"] == {"question": "Can I get a refund?"}
-    assert row["generated_answer"] == "Refunds are allowed within 30 days of purchase."
+    row = evaluate(serve_example("langgraph_agent.py"), [("c1", 1, "How many orders are there?", "SELECT COUNT(*) FROM orders")])[0]
+    assert steps_of(row) == ["rewrite", "schema_lookup", "llm"]
+    assert row["step_inputs"]["rewrite"] == {"question": "How many orders are there?"}
+    assert row["generated_answer"] == "SELECT COUNT(*) FROM orders"
 
 
-# ---- no_retrieval_bot.py ----------------------------------------------------------------------------------------
+# ---- declining_assistant.py -------------------------------------------------------------------------------------
 
-def test_a_bot_with_no_retrieval_is_graded_on_the_answer_alone(serve_example):
-    app = serve_example("no_retrieval_bot.py")
-    rows = evaluate(app, [("c1", 1, "Hello there", "greets"), ("c2", 1, "Where is order A100?", "shipped")], case_type="clarify")
-    assert [r["schema_marks"] for r in rows] == [None, None] and [r["sql_marks"] for r in rows] == [8, 8]
-    assert rows[1]["flags"] == {"intent": "order_status", "tool_called": "order_lookup"}
-    assert steps_of(rows[1]) == ["intent", "order_lookup"] and rows[1]["generated_answer"] == "Order A100 is shipped."
-    assert app.state.config.schema_weight == 0
+def test_an_assistant_that_declines_is_scored_on_the_decline_and_on_clear_questions(serve_example):
+    app = serve_example("declining_assistant.py")
+    rows = evaluate(app, [("c1", 1, "Show me the best customers", ""), ("c2", 1, "Delete all orders from 2023", "")], case_type="clarify")
+    assert [r["sql_checks"]["returned_sql"] for r in rows] == [False, False] and [r["sql_marks"] for r in rows] == [8, 8]
+    assert [r["flags"]["triage"] for r in rows] == ["vague", "unsafe"] and steps_of(rows[0]) == ["triage"]
+    answer = evaluate(app, [("c3", 1, "Orders per status", "SELECT status, COUNT(*) FROM orders GROUP BY status")], case_type="answer")
+    assert answer[0]["sql_checks"]["returned_sql"] and answer[0]["flags"]["triage"] == "clear"
 
 
 # ---- custom_judge.py and custom_judge_prompt.py -----------------------------------------------------------------
@@ -202,10 +199,10 @@ def test_a_custom_rubric_gets_the_reply_format_added(serve_example):
 
 def test_extra_metrics_columns_and_the_completion_hook(serve_example, capsys):
     app = serve_example("metrics_and_hooks.py")
-    rows = evaluate(app, [("c1", 1, "Refunds?", "Refunds are allowed within 30 days")], extra={"difficulty": ["easy"]})
-    assert rows[0]["word_overlap"] == 1.0 and rows[0]["length_ratio"] > 1 and rows[0]["difficulty"] == "easy"
+    rows = evaluate(app, [("c1", 1, "Sales?", "SELECT region, SUM(amount) FROM orders GROUP BY region")], extra={"difficulty": ["easy"]})
+    assert rows[0]["word_overlap"] == 1.0 and rows[0]["length_ratio"] == 1.0 and rows[0]["difficulty"] == "easy"
     deadline = time.time() + 5
-    while "answer quality" not in capsys.readouterr().out and time.time() < deadline:
+    while "SQL score" not in capsys.readouterr().out and time.time() < deadline:
         time.sleep(0.05)
     assert app.state.config.column_map == {"user_query": "question", "gold_answer": "expected_sql"}
 
@@ -281,42 +278,40 @@ def test_production_runs_the_same_pipeline_with_steps_doing_nothing(example_modu
     from nl2sql_evalkit.services.evaluation.step_recorder.recorder import current_recorder
 
     import production_app
-    reply = TestClient(production_app.app).post("/chat", json={"message": "Can I get a refund?"}).json()
-    assert reply == {"reply": "Refunds are allowed within 30 days of purchase."}
+    reply = TestClient(production_app.app).post("/chat", json={"message": "How many customers are there?"}).json()
+    assert reply == {"reply": "SELECT COUNT(*) FROM customers"}
     assert current_recorder() is None
 
 
 def test_the_evaluation_entry_records_the_same_pipeline(example_modules, serve_example):
-    row = evaluate(serve_example("eval_entry.py"), [("c1", 1, "Can I get a refund?", "30 days")])[0]
-    assert steps_of(row) == ["retrieval", "llm"]
-    assert row["sources"] == ["refunds.pdf"] and row["material"] == "Refunds are allowed within 30 days of purchase."
+    row = evaluate(serve_example("eval_entry.py"), [("c1", 1, "How many customers are there?", "SELECT COUNT(*) FROM customers")])[0]
+    assert steps_of(row) == ["schema_lookup", "llm"] and row["generated_answer"] == "SELECT COUNT(*) FROM customers"
 
 
 # ---- tool_agent.py ----------------------------------------------------------------------------------------------
 
-def test_an_agent_loop_adds_up_repeated_steps_and_keeps_tool_results_as_material(serve_example):
-    row = evaluate(serve_example("tool_agent.py"), [("c1", 1, "Can I return this? Where is order A200?", "x")])[0]
-    assert steps_of(row) == ["llm", "lookup_order", "lookup_policy"]
-    assert "Order A200 still being packed." in row["material"] and "returned within 30 days" in row["material"]
-    assert row["flags"]["tools_used"] == "lookup_order, lookup_policy"
-    assert row["generated_answer"] == "Order A200 still being packed. Items can be returned within 30 days."
+def test_an_agent_loop_adds_up_repeated_steps(serve_example):
+    row = evaluate(serve_example("tool_agent.py"), [("c1", 1, "Total per order status", "SELECT status, SUM(amount) FROM orders GROUP BY status")])[0]
+    assert steps_of(row) == ["llm", "list_tables", "describe_table"]
+    assert row["flags"]["tools_used"] == "list_tables, describe_table"
+    assert row["generated_answer"] == "SELECT status, SUM(amount) FROM orders GROUP BY status"
 
 
 # ---- langchain_chain.py -----------------------------------------------------------------------------------------
 
 def test_steps_in_parallel_langchain_branches_are_recorded(serve_example):
     pytest.importorskip("langchain_core")
-    row = evaluate(serve_example("langchain_chain.py"), [("c1", 1, "Can I get a refund?", "30 days")])[0]
-    assert steps_of(row)[0] == "rewrite" and steps_of(row)[-2:] == ["retrieval", "llm"]
-    assert {"vector_search", "keyword_search"} <= set(steps_of(row))
-    assert row["material"] == "Refunds are allowed within 30 days of purchase." and row["sources"] == ["refunds.pdf"]
+    row = evaluate(serve_example("langchain_chain.py"), [("c1", 1, "How many orders are there?", "SELECT COUNT(*) FROM orders")])[0]
+    assert steps_of(row)[0] == "rewrite" and steps_of(row)[-2:] == ["schema_lookup", "llm"]
+    assert {"name_match", "column_match"} <= set(steps_of(row))
+    assert row["generated_answer"] == "SELECT COUNT(*) FROM orders"
 
 
 # ---- team_setup.py ----------------------------------------------------------------------------------------------
 
 def test_the_team_setup_example_is_a_valid_configuration(serve_example):
     config = serve_example("team_setup.py").state.config
-    assert config.eval_users == "alice:pw-for-alice,bob:pw-for-bob" and config.eval_secret == "change-me"
+    assert config.dialect == "postgres" and config.eval_users == "alice:pw-for-alice,bob:pw-for-bob" and config.eval_secret == "change-me"
     assert (config.sql_weight, config.schema_weight, config.recommendation_tolerance, config.max_response_time) == (0.7, 0.3, 0.2, 8.0)
     assert config.generator_model == "ollama/llama3" and config.logs_dir == Path("evals/logs") and config.store_path == Path("evals/store.json")
 
@@ -360,11 +355,9 @@ def test_the_ci_script_passes_or_fails_the_build_on_the_sql_score(running_server
 
 # ---- versions_workflow.py ---------------------------------------------------------------------------------------
 
-@pytest.mark.parametrize("top_k,documents", [("1", 1), ("3", 2)])
-def test_the_same_pipeline_gives_a_different_version_when_one_setting_changes(serve_example, monkeypatch, top_k, documents):
-    monkeypatch.setenv("TOP_K", top_k)
-    question = "Can I return an item, and when does the refund reach my account?"
-    row = evaluate(serve_example("versions_workflow.py"), [("c1", 1, question, "30 days, then 5 to 7 days")])[0]
-    assert len(row["sources"]) == documents
-    assert "A refund reaches your account" in row["material"]
-    assert ("Items can be returned within 30 days" in row["material"]) == (documents == 2)     # version 1 only finds half of it
+@pytest.mark.parametrize("with_columns", ["0", "1"])
+def test_the_same_assistant_gives_a_different_version_when_one_setting_changes(serve_example, monkeypatch, with_columns):
+    monkeypatch.setenv("WITH_COLUMNS", with_columns)
+    row = evaluate(serve_example("versions_workflow.py"), [("c1", 1, "Sales per region?", "SELECT 1")])[0]
+    assert row["sql_checks"]["star"] == (with_columns == "0")      # version 1 only knows the table names, so it selects everything
+    assert row["sql_checks"]["tables_used"] == (["orders"] if with_columns == "0" else ["orders", "customers"])

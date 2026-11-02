@@ -49,7 +49,7 @@ EOF
 ```
 
 Or open `https://pypi.org/project/NAME/` in a browser: a "404 Not Found" page means it is free. PyPI treats `-`, `_` and `.`
-as the same character and ignores case, so `Rag-Eval`, `rag_eval` and `rag.eval` are one name. "Free on PyPI" is not trademark
+as the same character and ignores case, so `NL2SQL-EvalKit`, `nl2sql_evalkit` and `nl2sql.evalkit` are one name. "Free on PyPI" is not trademark
 clearance: also look at GitHub, a web search and the domain if you care about those.
 
 ## 2. One-time setup

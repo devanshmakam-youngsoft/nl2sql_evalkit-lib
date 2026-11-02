@@ -3,19 +3,19 @@ import nl2sql_evalkit
 
 
 def my_pipeline(question: str) -> str:
-    return "Refunds are allowed within 30 days of purchase."
+    return "SELECT region, SUM(amount) FROM orders GROUP BY region"
 
 
 # Extra metrics: each receives (expected_sql, generated_answer) and returns a number. They appear in the results
 # next to the built-in scores.
 def word_overlap(expected: str, generated: str) -> float:
-    """Share of the expected answer's words that appear in the generated answer (0 to 1)."""
+    """Share of the expected SQL's words that appear in the generated SQL (0 to 1)."""
     wanted = set(expected.lower().split())
     return len(wanted & set(generated.lower().split())) / len(wanted) if wanted else 0.0
 
 
 def length_ratio(expected: str, generated: str) -> float:
-    """How much longer (or shorter) the answer is than expected: 1.0 means the same length."""
+    """How much longer (or shorter) the SQL is than expected: 1.0 means the same length."""
     return len(generated) / len(expected) if expected else 0.0
 
 
@@ -25,7 +25,7 @@ def check_quality_gate(summary: dict | None, rows: list[dict]) -> None:
         print("The evaluation failed.")
         return
     average = summary["avg_sql_marks"]
-    print(f"Version {summary['version']}: answer quality {average} over {len(rows)} questions")
+    print(f"Version {summary['version']}: SQL score {average} over {len(rows)} questions")
     if average is not None and average < 7:
         print("Below the bar of 7: do not release this version.")   # post to Slack, fail a CI job, write to a database...
 
@@ -33,6 +33,7 @@ def check_quality_gate(summary: dict | None, rows: list[dict]) -> None:
 if __name__ == "__main__":
     nl2sql_evalkit.serve(
         my_pipeline,
+        dialect="postgres",
         extra_metrics={"word_overlap": word_overlap, "length_ratio": length_ratio},
         on_complete=check_quality_gate,
         column_map={"user_query": "question", "gold_answer": "expected_sql"},   # your column names -> nl2sql_evalkit's

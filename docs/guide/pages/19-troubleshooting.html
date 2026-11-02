@@ -5,34 +5,49 @@ lead: Find your symptom, see the likely reason, and what to do about it. Most th
 minutes: 0
 -->
 <p>Start with the <b>Problems during this run</b> box on the version page: it says what went wrong in plain words, and <em>Show technical details</em> gives the error. The full log is the <em>Download log</em> button, or <code>logs/runs/</code> in the data folder. Then look for your symptom here.</p>
-<input class="filter" id="fix-filter" type="search" placeholder="Search symptoms: login, context, sources, port&hellip;" aria-label="Search symptoms">
-<details class="fix"><summary>Every score is 0.0, but nothing failed</summary><div class="body">
-    <p class="why">The judge is almost always right here: the test cases ask about things your pipeline does not know (for example questions generated from other documents), so it answers &ldquo;I could not find that&rdquo; and there is no retrieved text.</p>
-    <p><b>Do:</b> open one question and compare the generated answer, the retrieved text and the expected answer. Load the same documents the test cases came from, or write test cases about what your pipeline knows.</p></div></details>
+<input class="filter" id="fix-filter" type="search" placeholder="Search symptoms: login, SQL, dialect, schema, port&hellip;" aria-label="Search symptoms">
+<details class="fix"><summary>Every SQL score is 0, but nothing failed</summary><div class="body">
+    <p class="why">A reply that has no SQL, does not parse in your dialect, or is not read-only is scored 0 without asking the judge. If every reply does this, the cause is usually the same: the function returns something the reader does not take as SQL, or the dialect is wrong.</p>
+    <p><b>Do:</b> open one question and look at the <em>Checks</em>: they say which one failed and why. See the next entries for the usual causes.</p></div></details>
+<details class="fix"><summary>&ldquo;The assistant did not return any SQL&rdquo;, but the SQL is there</summary><div class="body">
+    <p class="why">A reply counts as SQL if it is inside a code fence, or if its first word is <code>SELECT</code>, <code>WITH</code>, <code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code>, <code>DROP</code>, <code>CREATE</code>, <code>ALTER</code>, <code>TRUNCATE</code>, <code>MERGE</code>, <code>GRANT</code>, <code>REVOKE</code> or <code>EXPLAIN</code>. A typo in the first word (<code>SELEC</code>) reads as an ordinary message, not as SQL. If your function returns a dictionary, the SQL must be under a known key.</p>
+    <p><b>Do:</b> return just the query, or put it in a code fence; fix the typo; or add your key with <code>answer_keys=["my_key"]</code>.</p></div></details>
+<details class="fix"><summary>&ldquo;The SQL does not parse as postgres&rdquo; (or mysql, tsql, sqlite) on queries that are fine</summary><div class="body">
+    <p class="why">The query is valid in another database. Every check reads the SQL in the dialect you set, and the default is <code>postgres</code>.</p>
+    <p><b>Do:</b> set <code>dialect=</code> in <code>serve()</code> to the database your assistant writes for: <code>"postgres"</code>, <code>"mysql"</code>, <code>"tsql"</code> (SQL Server) or <code>"sqlite"</code>. The same setting is used to read schema files when you generate test cases.</p></div></details>
+<details class="fix"><summary>&ldquo;The SQL is not read-only&rdquo;</summary><div class="body">
+    <p class="why">The reply holds more than one statement, something that changes data or the schema, or a risky function such as <code>pg_sleep</code>. It is scored 0 on purpose, and for a <code>refuse</code> case any SQL at all is wrong.</p>
+    <p><b>Do:</b> make the assistant return a single <code>SELECT</code>. If the question was meant to be refused, mark its test case <code>refuse</code> and have the assistant decline in words.</p></div></details>
 <details class="fix"><summary>The dashboard says &ldquo;None yet&rdquo; under Recommended version</summary><div class="body">
     <p class="why">No version reaches the minimum overall score (5 out of 10 by default), so nothing is recommended; the best so far is named. See <a href="#/versions-and-recommendation">Comparing versions</a>.</p>
-    <p><b>Do:</b> improve the pipeline and run again, or check the test cases. If 5 is the wrong bar for you, set <code>recommendation_min_quality</code>.</p></div></details>
+    <p><b>Do:</b> improve the assistant and run again, or check the test cases. If 5 is the wrong bar for you, set <code>recommendation_min_quality</code>.</p></div></details>
 <details class="fix"><summary>A version says &ldquo;Not compared&rdquo;</summary><div class="body">
-    <p class="why">It ran different test cases from the others (cases were edited, added or deleted), so there is nothing fair to compare. A case only counts as the same while its question and expected answer are unchanged.</p>
+    <p class="why">It ran different test cases from the others (cases were edited, added or deleted), so there is nothing fair to compare. A case only counts as the same while its question and expected SQL are unchanged.</p>
     <p><b>Do:</b> run the same test cases on the versions you want to compare. The card shows the not-compared version&rsquo;s own scores so a good one is not hidden.</p></div></details>
 <details class="fix"><summary>Every question says &ldquo;No answer: the assistant returned an error&rdquo;</summary><div class="body">
     <p class="why">Your function raised an error. The run itself is fine: nl2sql_evalkit marks the question failed, records why, and carries on.</p>
-    <p><b>Do:</b> open <em>Problems during this run</em> and <em>Show technical details</em>; the last lines name the error. Call your function by hand with one of the questions. Common causes: a key your own pipeline needs is missing from <code>.env</code>, a file path that only works from another folder, the vector index was not loaded before <code>serve()</code> (load it first, as your app does at start-up), or the function needs a second argument that has no default.</p></div></details>
+    <p><b>Do:</b> open <em>Problems during this run</em> and <em>Show technical details</em>; the last lines name the error. Call your function by hand with one of the questions. Common causes: a key your own assistant needs (a model key, for example) is missing from <code>.env</code>, a file path that only works from another folder, something your app sets up at start-up was not set up before <code>serve()</code>, or the function needs a second argument that has no default.</p></div></details>
 <details class="fix"><summary>&ldquo;The question was answered, but the AI judge could not grade it&rdquo;</summary><div class="body">
     <p class="why">The judge model did not answer. The usual reasons are shown in the message: a missing or wrong API key, a model name that does not exist, a rate limit, or no network.</p>
-    <p><b>Do:</b> put the provider&rsquo;s key in <code>.env</code> (<code>GROQ_API_KEY</code>, <code>OPENAI_API_KEY</code>&hellip;) or pass <code>judge_api_key=</code>; write the model as <code>provider/model</code>; for a rate limit, wait a minute or run fewer questions. Or <a href="#/your-judge">use your own judge function</a>, which needs no model.</p></div></details>
+    <p><b>Do:</b> put the provider&rsquo;s key in <code>.env</code> (<code>GROQ_API_KEY</code>, <code>OPENAI_API_KEY</code>&hellip;) or pass <code>judge_api_key=</code>; write the model as <code>provider/model</code>; for a rate limit, wait a minute or run fewer questions. Or <a href="#/your-judge">use your own judge function</a>, which needs no model. Questions that fail a basic check are still scored 0 without the judge.</p></div></details>
 <details class="fix"><summary>&ldquo;The AI could not write the findings for this run&rdquo;</summary><div class="body">
     <p class="why">The findings come from the judge model, even when you use <code>judge_fn</code>.</p>
     <p><b>Do:</b> the same checks as above (key, model name, network). The scores and every answer are saved; only the written findings are missing.</p></div></details>
-<details class="fix"><summary>Context quality is blank or very low</summary><div class="body">
-    <p class="why">No step declared the retrieved text, or the case type says no retrieval is expected.</p>
-    <p><b>Do:</b> in your retrieval step set <code>s.material = &hellip;</code> (or use <code>@nl2sql_evalkit.step("retrieval", material=True)</code>). If the bot has no retrieval, mark the cases <code>non-rag</code> and use <code>schema_weight=0</code>. See <a href="#/material-and-sources">Say which step retrieved the text</a>.</p></div></details>
-<details class="fix"><summary>Context quality is lower than the retrieval deserves</summary><div class="body">
-    <p class="why">More than one step declares material, so the judge reads routing details, search settings or the same text twice, and the end can be cut off at <code>material_chars</code>.</p>
-    <p><b>Do:</b> open a question&rsquo;s <em>Retrieved text</em> and check it holds only the passages. Let one step declare the material; keep the other steps timing-only and put their details in <code>nl2sql_evalkit.note()</code>.</p></div></details>
+<details class="fix"><summary>The tables-and-columns score is blank</summary><div class="body">
+    <p class="why">Nothing is expected for that question: its test case has no expected tables or columns, or it is a <code>clarify</code> or <code>refuse</code> case. It is left out, not scored 0.</p>
+    <p><b>Do:</b> add <code>expected_tables</code> and <code>expected_columns</code> to the test case if you want them checked. If none of your cases has them, set <code>schema_weight=0</code> so the overall score does not count them. See <a href="#/test-cases">Writing test cases</a>.</p></div></details>
+<details class="fix"><summary>Tables or columns are reported missing, but the query looks right</summary><div class="body">
+    <p class="why">The expected names are compared with the ones the query uses, ignoring case and quotes. A <code>table.column</code> expectation needs that same table, or its alias, in the query. A <code>SELECT *</code> is given the benefit of the doubt on columns.</p>
+    <p><b>Do:</b> open the question: the checks list what was used and what was missing. Fix the expected names if they were wrong, for example a table that has since been renamed.</p></div></details>
+<details class="fix"><summary>&ldquo;Joins differ from the expected SQL&rdquo; on a query that gives the same result</summary><div class="body">
+    <p class="why">The joins check compares the pairs of columns the two queries join on. A query that reaches the same rows another way (a subquery instead of a join, or other keys) is reported as different, even if it is right.</p>
+    <p><b>Do:</b> the judge&rsquo;s SQL score still reflects whether the query is right. Leave the expected SQL out of the case if you only want tables and columns checked, or accept the difference.</p></div></details>
+<details class="fix"><summary>The same question gets a different SQL score each run</summary><div class="body">
+    <p class="why">The SQL score comes from an AI judge, and a model does not answer the same way every time. The checks (syntax, read-only, tables, columns, joins) never change.</p>
+    <p><b>Do:</b> treat a difference of a point or so as noise. Set a lower <code>judge_temperature</code> if your model supports it, use a stronger <code>judge_model</code>, or <a href="#/your-judge">write your own judge function</a> for exact rules.</p></div></details>
 <details class="fix"><summary>The step-time bar only shows &ldquo;Not in a step&rdquo;</summary><div class="body">
     <p class="why">No step ran during the questions, or recording was reduced.</p>
-    <p><b>Do:</b> check that your pipeline calls <code>nl2sql_evalkit.step(&hellip;)</code> on the path the questions take; check <code>record_mode</code> is not <code>"off"</code>; with <code>record_detail="selected"</code> only steps that set material or sources are kept.</p></div></details>
+    <p><b>Do:</b> check that your pipeline calls <code>nl2sql_evalkit.step(&hellip;)</code> on the path the questions take; check <code>record_mode</code> is not <code>"off"</code>.</p></div></details>
 <details class="fix"><summary>Step times add up to more than the response time</summary><div class="body">
     <p class="why">One step sits inside another (the outer one includes the inner one&rsquo;s time), or steps run in parallel.</p>
     <p><b>Do:</b> for nesting, make the steps follow each other instead of wrapping each other. Parallel steps are expected to overlap.</p></div></details>
@@ -58,11 +73,14 @@ minutes: 0
     <p class="why">The default account is <code>admin</code> / <code>admin123</code> unless you set <code>users=</code>. Without a fixed <code>secret=</code> a new one is made on every start, which ends existing sessions.</p>
     <p><b>Do:</b> set <code>users=</code> and <code>secret=</code>, or <code>require_login=False</code> locally.</p></div></details>
 <details class="fix"><summary>&ldquo;Missing required column(s)&rdquo; when importing</summary><div class="body">
-    <p class="why">The file does not have the columns the older dataset upload needs.</p>
-    <p><b>Do:</b> use <b>Test Cases &rarr; Import</b>, which only needs a question column and lets you pick which column is which; or add <code>column_map=</code> to <code>serve()</code>.</p></div></details>
-<details class="fix"><summary>Generating test cases: &ldquo;has no selectable text&rdquo;, &ldquo;password-protected&rdquo; or &ldquo;old Word files&rdquo;</summary><div class="body">
-    <p class="why">The file cannot be read as text: a scanned PDF, a protected file, or a <code>.doc</code>.</p>
-    <p><b>Do:</b> upload a text-based PDF, remove the password, or save <code>.doc</code> files as <code>.docx</code>. Plain <code>.txt</code> and <code>.md</code> always work.</p></div></details>
+    <p class="why">The file has no recognisable <code>question</code> column.</p>
+    <p><b>Do:</b> use <b>Test Cases &rarr; Import</b>, which lets you pick which column is which; or add <code>column_map=</code> to <code>serve()</code>.</p></div></details>
+<details class="fix"><summary>Generating test cases: &ldquo;no tables could be read&rdquo;, or a file is skipped</summary><div class="body">
+    <p class="why">The schema reader found no <code>CREATE TABLE</code> statements it could read in that file, or the file is the wrong kind or too large. Statements it cannot read are skipped and listed; a file with none readable fails. Only <code>.sql</code>, <code>.ddl</code> and <code>.txt</code> files are accepted (up to 5 files of 10 MB).</p>
+    <p><b>Do:</b> check that the file really holds <code>CREATE TABLE</code> statements and that <code>dialect=</code> matches them (a SQL Server script read as <code>postgres</code> can fail on its brackets and <code>GO</code> lines). Split a huge dump, or remove its data.</p></div></details>
+<details class="fix"><summary>Generated join questions are few, or the join check has little to compare</summary><div class="body">
+    <p class="why">Joins are planned from foreign keys. Without declared keys the generator can only guess links from column names such as <code>customer_id</code>, and a schema with one table has none.</p>
+    <p><b>Do:</b> add <code>FOREIGN KEY</code> clauses (or <code>ALTER TABLE &hellip; ADD FOREIGN KEY</code>) to the DDL you upload.</p></div></details>
 <details class="fix"><summary>The dashboard looks old after an update, or a new option is not recognised</summary><div class="body">
     <p class="why">The environment still has the previous version of nl2sql_evalkit, or the browser kept the old page.</p>
     <p><b>Do:</b> reinstall with <code>pip install --force-reinstall --no-deps git+https://github.com/devanshmakam-youngsoft/nl2sql_evalkit-lib.git</code>, then refresh the page with <kbd>Ctrl</kbd>+<kbd>F5</kbd>.</p></div></details>

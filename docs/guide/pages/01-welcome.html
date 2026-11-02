@@ -1,11 +1,11 @@
 <!--
 part: Start here
 title: Is the new version <mark>really better?</mark>
-lead: nl2sql_evalkit replays your test questions through your own assistant, grades every answer, and tells you which version to ship. This guide walks you from the first run to a pipeline you can trust, with code you can copy at every step.
+lead: nl2sql_evalkit replays your test questions through your own text-to-SQL assistant, checks and grades every query it writes, and tells you which version to ship. It reads the SQL; it never runs it. This guide walks you from the first run to a pipeline you can trust, with code you can copy at every step.
 minutes: 3
 -->
 <div class="story"><b>The story we will follow</b>
-  <p>Priya's team at Acme Shop has a support assistant called <i>Sidekick</i>. Last week they shipped version 2. Since then, customers write in that refund questions get half an answer. Was version 2 worse than version 1? Nobody can say: each person tried a few questions by hand and remembers something different.</p>
+  <p>Priya's team at Acme Shop has an assistant called <i>Sidekick</i>. Colleagues ask it questions in plain English and it writes the SQL for the shop's database. Last week they shipped version 2. Since then people say the revenue questions come back wrong. Was version 2 worse than version 1? Nobody can say: each person tried a few questions by hand and remembers something different.</p>
   <p>By the end of this guide Sidekick has a test set, two measured versions, a clear winner, and a build that stops anyone shipping a worse one.</p>
   <p><small>Priya, Acme Shop and Sidekick are made up, and the numbers are illustrative. The behaviour is real.</small></p></div>
 
@@ -13,24 +13,26 @@ minutes: 3
 <p>You hand it a function. It does the repetitive, error-prone part of testing for you.</p>
 <div class="flow">
   <div><b>Your assistant</b>nl2sql_evalkit calls your function once per test question, in order, like a real user.</div><div class="arrow">&rarr;</div>
-  <div><b>Grading</b>An AI judge scores each answer, and the text your pipeline retrieved. Text metrics run alongside.</div><div class="arrow">&rarr;</div>
+  <div><b>Checks and grading</b>The SQL is read, not run: does it parse, is it read-only, does it use the right tables, columns and joins? An AI judge then scores it.</div><div class="arrow">&rarr;</div>
   <div><b>Versions</b>Every run is saved as a version, so you can see what improved and what broke.</div><div class="arrow">&rarr;</div>
   <div><b>The decision</b>A recommendation says which version to ship, and why.</div>
 </div>
+<div class="note"><b>Static checks only</b><p>No database connection is needed and no query is ever executed. That keeps a run safe and quick; the price is that the judge reads the SQL instead of comparing the rows it would return.</p></div>
 
 <h2>Three words you will meet</h2>
 <div class="cards">
-  <div class="card"><span class="tag">Test case</span><b>A question and what a good answer says</b><span>Optionally the documents it should be found in, and where it sits in a conversation.</span></div>
-  <div class="card"><span class="tag">Version</span><b>One run of your test cases</b><span>You name it (<code>1</code>, <code>v2</code>, <code>rerank-on</code>). Versions are what you compare.</span></div>
+  <div class="card"><span class="tag">Test case</span><b>A question and what a good reply looks like</b><span>The SQL you expect, optionally the tables and columns it should use, and what kind of reply it is: an answer, a question back, or a refusal.</span></div>
+  <div class="card"><span class="tag">Version</span><b>One run of your test cases</b><span>You name it (<code>1</code>, <code>v2</code>, <code>new-prompt</code>). Versions are what you compare.</span></div>
   <div class="card"><span class="tag">Judge</span><b>The grader</b><span>An AI model by default. It can also be your own function, or your own rubric.</span></div>
 </div>
 
 <h2>Where do you want to start?</h2>
 <div class="cards">
   <a class="card" href="#/first-run"><span class="tag">15 minutes</span><b>Run my first evaluation</b><span>Install, serve a function, add test cases, read the result.</span></a>
-  <a class="card" href="#/your-function"><span class="tag">Connect</span><b>I already have a chatbot</b><span>Question-only, with history, or with a session id.</span></a>
+  <a class="card" href="#/your-function"><span class="tag">Connect</span><b>I already have an assistant</b><span>Question-only, with history, or with a session id.</span></a>
   <a class="card" href="#/frameworks"><span class="tag">Frameworks</span><b>I use LangChain or LangGraph</b><span>Steps recorded from inside nodes, threads and async code.</span></a>
-  <a class="card" href="#/agents-and-bots"><span class="tag">Agents</span><b>My bot has tools, or no retrieval</b><span>Greeters, tool loops, and how to grade them.</span></a>
+  <a class="card" href="#/agents-and-bots"><span class="tag">Agents</span><b>My assistant uses tools, asks back or refuses</b><span>Tool loops, vague questions and unsafe ones, and how to grade them.</span></a>
+  <a class="card" href="#/schema-and-checks"><span class="tag">Scores</span><b>What exactly is checked?</b><span>The checks on the SQL and the tables-and-columns score.</span></a>
   <a class="card" href="#/versions-and-recommendation"><span class="tag">Decide</span><b>Which version should ship?</b><span>How versions are compared, and what the recommendation means.</span></a>
   <a class="card" href="#/troubleshooting"><span class="tag">Help</span><b>Something looks off</b><span>Symptoms, likely reasons, what to do.</span></a>
 </div>

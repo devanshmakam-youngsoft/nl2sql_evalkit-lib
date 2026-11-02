@@ -1,42 +1,44 @@
-"""An agent that loops: the model asks for a tool, gets the result, and decides again until it can answer."""
+"""An agent that loops: the model asks for a tool, gets the result, and decides again until it can write the SQL.
+The tools only read the schema; the SQL the agent writes is returned, never run."""
 import nl2sql_evalkit
 
-ORDERS = {"A100": "shipped on 12 March", "A200": "still being packed"}
-RETURN_POLICY = "Items can be returned within 30 days."
+TABLES = {
+    "orders": "orders(id, customer_id, amount, status)",
+    "customers": "customers(id, name, region)",
+}
 MAX_TURNS = 5
 
 
-def lookup_order(order_id: str) -> str:
-    return f"Order {order_id} {ORDERS.get(order_id, 'was not found')}."
+def describe_table(name: str) -> str:
+    return TABLES.get(name, f"{name} does not exist")
 
 
-def lookup_policy(topic: str) -> str:
-    return RETURN_POLICY
+def list_tables(_: str) -> str:
+    return ", ".join(TABLES)
 
 
-TOOLS = {"lookup_order": lookup_order, "lookup_policy": lookup_policy}
+TOOLS = {"describe_table": describe_table, "list_tables": list_tables}
 
 
 def model(question: str, results: list[str]) -> dict:
-    """Stand-in for the LLM call: asks for the tools it needs, then writes the answer from what they returned."""
-    if "order" in question.lower() and not any(r.startswith("Order") for r in results):
-        return {"tool": "lookup_order", "argument": question.rstrip("?").split()[-1]}
-    if "return" in question.lower() and RETURN_POLICY not in results:
-        return {"tool": "lookup_policy", "argument": "returns"}
-    return {"answer": " ".join(results) or "I can help with orders and returns."}
+    """Stand-in for the LLM call: asks for the tools it needs, then writes the SQL from what they returned."""
+    if not results:
+        return {"tool": "list_tables", "argument": ""}
+    if len(results) == 1:
+        return {"tool": "describe_table", "argument": "orders"}
+    return {"sql": "SELECT status, SUM(amount) FROM orders GROUP BY status"}
 
 
-def support_agent(question: str) -> str:
+def sql_agent(question: str) -> str:
     results: list[str] = []
     tools_used: list[str] = []
     for _ in range(MAX_TURNS):
         with nl2sql_evalkit.step("llm"):                      # runs once per loop: its times are added up
             decision = model(question, results)
-        if "answer" in decision:
-            return decision["answer"]
-        with nl2sql_evalkit.step(decision["tool"]) as s:      # one step per tool, named after the tool
+        if "sql" in decision:
+            return decision["sql"]
+        with nl2sql_evalkit.step(decision["tool"]):           # one step per tool, named after the tool
             result = TOOLS[decision["tool"]](decision["argument"])
-            s.material = result                           # the tool results are this agent's "retrieved context"
         results.append(result)
         tools_used.append(decision["tool"])
         nl2sql_evalkit.note("tools_used", ", ".join(tools_used))     # shown next to the question in the results
@@ -44,4 +46,4 @@ def support_agent(question: str) -> str:
 
 
 if __name__ == "__main__":
-    nl2sql_evalkit.serve(support_agent)
+    nl2sql_evalkit.serve(sql_agent, dialect="postgres")

@@ -1,10 +1,10 @@
 <!--
 part: Connect your assistant
 title: Connect your function
-lead: nl2sql_evalkit reads the parameter names of your function to decide what to pass. There are three shapes, and one of them is yours.
+lead: nl2sql_evalkit reads the parameter names of your function to decide what to pass. There are three shapes, and one of them is yours. Whatever the shape, the function returns SQL.
 minutes: 6
 -->
-<div class="story"><b>Chapter 2</b><p>Sidekick keeps each customer's chat on the server, keyed by a session id. That decides which shape Priya needs below.</p></div>
+<div class="story"><b>Chapter 2</b><p>Sidekick keeps each colleague's chat on the server, keyed by a session id, so that &ldquo;and only for the north region?&rdquo; makes sense after a question about sales. That decides which shape Priya needs below.</p></div>
 
 <h2>The three shapes</h2>
 <div class="tabs" data-tabs>
@@ -18,7 +18,7 @@ minutes: 6
     {{example:function_shapes.py#answer_only}}
   </div>
   <div role="tabpanel" hidden>
-    <p>Your chatbot is <b>stateless</b>: it rebuilds the prompt from the earlier turns every time. nl2sql_evalkit keeps the conversation of each <code>chat_id</code> and hands you the earlier turns as <code>history</code> (empty on the first turn).</p>
+    <p>Your assistant is <b>stateless</b>: it rebuilds the prompt from the earlier turns every time. nl2sql_evalkit keeps the conversation of each <code>chat_id</code> and hands you the earlier turns as <code>history</code> (empty on the first turn).</p>
     {{example:function_shapes.py#answer_with_history}}
   </div>
   <div role="tabpanel" hidden>
@@ -39,8 +39,11 @@ minutes: 6
 <p>If a function has both kinds, the session id wins. Any other parameter needs a default value, because nl2sql_evalkit passes only the question and one extra.</p>
 <div class="note"><b>Good to know</b><p>A parameter called <code>context</code> is treated as history. If yours means something else, rename it or list your own names with <code>history_params=[&hellip;]</code>.</p></div>
 
+<h2>What your function returns</h2>
+<p>Return the SQL as a string. A reply counts as SQL when it is inside a <code>```sql</code> fence or starts like a statement (<code>SELECT</code>, <code>WITH name AS (</code>, and so on); any other reply is read as a message to the user. That is how a question back or a refusal is told apart from a query, and <a href="#/schema-and-checks">the next pages</a> say what happens to each.</p>
+
 <h2>Other things your function can do</h2>
 <p>Return a dictionary or a Pydantic model, be <code>async</code>, use parameter names of your own, or receive the history as chat messages.</p>
 {{example:function_shapes.py#answer_as_dict,answer_async,answer_with_other_names,answer_with_openai_history}}
-<p>The keys tried for the answer, in order, are <code>answer</code>, <code>response</code>, <code>output</code>, <code>result</code>, <code>text</code>, <code>content</code>, <code>message</code>, <code>generated_text</code>, <code>generation</code>, <code>completion</code>. Add your own with <code>answer_keys=[&hellip;]</code>.</p>
+<p>The keys tried for the reply, in order, are <code>sql</code>, <code>query</code>, <code>answer</code>, <code>response</code>, <code>output</code>, <code>result</code>, <code>text</code>, <code>content</code>, <code>message</code>, <code>generated_text</code>, <code>generation</code>, <code>completion</code>. Add your own with <code>answer_keys=[&hellip;]</code>.</p>
 <p>If your function raises an error, that question is marked failed, the reason is recorded, and the run carries on with the next question.</p>

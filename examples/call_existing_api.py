@@ -1,4 +1,4 @@
-"""Evaluate a chatbot that is already deployed: your function just calls it over HTTP."""
+"""Evaluate a text-to-SQL service that is already deployed: your function just calls it over HTTP and returns its SQL."""
 import json
 import os
 import urllib.request
@@ -17,4 +17,4 @@ def ask_deployed_bot(question: str, session_id: str) -> str:
 
 
 if __name__ == "__main__":
-    nl2sql_evalkit.serve(ask_deployed_bot)
+    nl2sql_evalkit.serve(ask_deployed_bot, dialect="postgres")
