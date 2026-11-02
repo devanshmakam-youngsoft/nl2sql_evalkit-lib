@@ -1,5 +1,5 @@
 """Run an evaluation from a script (for example in CI) against a nl2sql_evalkit server that is already running,
-and fail the build when quality drops below a bar.
+and fail the build when the SQL score drops below a bar.
 
     python ci_gate.py            # exit code 0: passed, 1: below the bar, 2: no result
 """
@@ -16,7 +16,7 @@ BASE_URL = os.environ.get("EVAL_URL", "http://localhost:8002")
 USERNAME, PASSWORD = os.environ.get("EVAL_USER", ""), os.environ.get("EVAL_PASSWORD", "")
 GROUP = os.environ.get("EVAL_GROUP", "Billing")          # the group of test cases to run
 VERSION = os.environ.get("EVAL_VERSION", "ci-" + time.strftime("%m%d-%H%M"))
-MINIMUM_ANSWER_QUALITY = float(os.environ.get("EVAL_MINIMUM", "7"))
+MINIMUM_SQL_SCORE = float(os.environ.get("EVAL_MINIMUM", "7"))
 WAIT_SECONDS = 1800
 POLL_SECONDS = 5
 
@@ -54,9 +54,9 @@ def run_gate() -> int:
         print(f"No result after {WAIT_SECONDS} seconds: look at the dashboard or in the logs folder of the data directory.")
         return 2
 
-    quality, failed = summary["avg_answer_marks"], summary["failed_rows"]
-    print(f"Version {VERSION}: answer quality {quality}, {failed} failed questions, {summary['total_rows']} questions")
-    return 0 if quality is not None and quality >= MINIMUM_ANSWER_QUALITY and failed == 0 else 1
+    quality, failed = summary["avg_sql_marks"], summary["failed_rows"]
+    print(f"Version {VERSION}: SQL score {quality}, {failed} failed questions, {summary['total_rows']} questions")
+    return 0 if quality is not None and quality >= MINIMUM_SQL_SCORE and failed == 0 else 1
 
 
 if __name__ == "__main__":

@@ -24,7 +24,7 @@ def check_quality_gate(summary: dict | None, rows: list[dict]) -> None:
     if summary is None:
         print("The evaluation failed.")
         return
-    average = summary["avg_answer_marks"]
+    average = summary["avg_sql_marks"]
     print(f"Version {summary['version']}: answer quality {average} over {len(rows)} questions")
     if average is not None and average < 7:
         print("Below the bar of 7: do not release this version.")   # post to Slack, fail a CI job, write to a database...

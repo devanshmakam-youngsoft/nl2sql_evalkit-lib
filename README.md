@@ -92,7 +92,7 @@ The most used `serve()` parameters (the full list, with every default, is in the
 | `judge_model` | `"groq/openai/gpt-oss-120b"` | Any LiteLLM model string for the judge |
 | `judge_api_key` | `None` | Otherwise LiteLLM reads the provider's environment variable |
 | `generator_model` | `None` | Model that writes test cases from documents; defaults to `judge_model` |
-| `answer_weight` / `material_weight` | `0.6` / `0.4` | How the recommendation weighs answer and context quality |
+| `sql_weight` / `schema_weight` | `0.6` / `0.4` | How the recommendation weighs answer and context quality |
 | `recommendation_tolerance` | `0.25` | Versions this close to the best count as tied; the fastest wins |
 | `max_response_time` | `None` | Leave out versions slower than this (seconds) when recommending |
 | `source_check_mode` | `"keyword"` | `"keyword"`, `"llm"` or `"off"` |
@@ -150,7 +150,7 @@ Each test case has a type. **`rag`** (the default) means the answer has to come 
 
 The dashboard's recommendation is computed by the server (`GET /api/recommendation`) every time, from the saved scores of every run that is **not archived** — archive or delete a version and the recommendation, trend charts, deltas and group history update straight away.
 
-**Versions are compared on the test cases they share.** Each run saves its score for every test case, so adding a test case (or running an extra group) in a later version no longer hides it: it is judged on the cases the others also ran, and the dashboard says so ("Compared on the 10 test cases every compared version ran; v4 ran 20"). A case only counts as the same if its question and expected answer are unchanged. If the shared cases are only a thin slice (fewer than half of a typical version's cases, e.g. a 2-question smoke test next to 10-question runs) that version is left out and the reason is shown. Versions that were stopped early, or failed on a shared case, are left out too. The *overall score* is answer quality and context quality weighted by `answer_weight` / `material_weight` from `serve()` (default 60/40); versions within the tie tolerance of the best are tied and the fastest wins. If context quality was not graded for every compared version, all are compared on answer quality alone and the dashboard says so. Changes (the ± figures) and BEST marks use the same shared cases.
+**Versions are compared on the test cases they share.** Each run saves its score for every test case, so adding a test case (or running an extra group) in a later version no longer hides it: it is judged on the cases the others also ran, and the dashboard says so ("Compared on the 10 test cases every compared version ran; v4 ran 20"). A case only counts as the same if its question and expected answer are unchanged. If the shared cases are only a thin slice (fewer than half of a typical version's cases, e.g. a 2-question smoke test next to 10-question runs) that version is left out and the reason is shown. Versions that were stopped early, or failed on a shared case, are left out too. The *overall score* is answer quality and context quality weighted by `sql_weight` / `schema_weight` from `serve()` (default 60/40); versions within the tie tolerance of the best are tied and the fastest wins. If context quality was not graded for every compared version, all are compared on answer quality alone and the dashboard says so. Changes (the ± figures) and BEST marks use the same shared cases.
 
 Each run's summary also has *Watch-outs & suggestions*: AI-written findings, each pairing one thing that needs attention with the next step that answers it (it does not repeat the headline scores). The reply is checked: a finding without its suggestion is sent back to the model, and if one is still missing it is filled in from the run's own numbers. `serve(summary_prompt=...)` changes what it looks for; the JSON reply format is added automatically.
 
@@ -255,12 +255,12 @@ nl2sql_evalkit/
 ├── routers/             one folder per area, each file thin: evaluation/, testcase_library/, testcase_generator/, sign_in/, app_info/
 ├── schemas/             the shape of every request and response, same area folders; internal/ for shapes services share
 ├── services/            what the product does
-│   ├── evaluation/      evaluation_runner, answer_judge, step_recorder, run_summarizer, version_recommender
+│   ├── evaluation/      evaluation_runner, sql_judge, step_recorder, run_summarizer, version_recommender
 │   ├── testcases/       testcase_library, testcase_import, testcase_generator, document_reader, spreadsheet_loader
 │   ├── db_services/     reads and writes the TinyDB JSON store (store.py and one file per kind of record)
 │   ├── llm_client/      one safe way to call any AI model
 │   └── app_info/        the guide page and which dashboard features are on
-├── prompts/             the instructions sent to AI models, one file each: answer_judge/, testcase_generator/
+├── prompts/             the instructions sent to AI models, one file each: sql_judge/, testcase_generator/
 ├── utils/               small shared helpers
 └── web/                 generated, do not edit: dashboard/ (built from frontend/) and guide/ (built from docs/guide/)
 ```

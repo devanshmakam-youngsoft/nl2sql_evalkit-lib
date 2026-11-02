@@ -24,8 +24,8 @@ const figure = (label: React.ReactNode, value: string, unit: string, color: stri
 function scoresOf(v: VersionSummary, group: string | null) {
   const g = group ? v.group_stats?.[group] : undefined;
   return {
-    answer: g ? g.avg_answer_marks : v.avg_answer_marks,
-    material: g ? g.avg_material_marks : v.avg_material_marks,
+    answer: g ? g.avg_sql_marks : v.avg_sql_marks,
+    material: g ? g.avg_schema_marks : v.avg_schema_marks,
     time: (g ? g.avg_total_time : null) ?? v.avg_total_time,
   };
 }
@@ -84,7 +84,7 @@ export function Recommendation({ reco, versions, archivedCount, overrides, onCha
   const list = (ids: string[]) => ids.map((id) => `v${id}`).join(", ");
 
   const weightsText = !reco ? "" : reco.basis === "answer_only"
-    ? "Overall score = answer quality only."
+    ? "Overall score = SQL score only."
     : `Overall score = ${pct(reco.weights.answer)}% ${GLOSSARY.answer.label.toLowerCase()} + ${pct(reco.weights.material)}% ${GLOSSARY.context.label.toLowerCase()}.`;
 
   return (

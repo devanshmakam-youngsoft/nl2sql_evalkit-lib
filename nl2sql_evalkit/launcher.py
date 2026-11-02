@@ -10,7 +10,7 @@ from nl2sql_evalkit.core.config import (
     Config,
     load_dotenv,
 )
-from nl2sql_evalkit.core.constants import DATA_DIR_NAME
+from nl2sql_evalkit.core.constants import DATA_DIR_NAME, DEFAULT_DIALECT, DIALECTS, parse_dialect
 from nl2sql_evalkit.core.diagnostics import configure_logging
 from nl2sql_evalkit.core.exceptions import ConfigError
 from nl2sql_evalkit.main import create_app
@@ -40,8 +40,8 @@ def serve(
     # --- writing test cases from documents ---
     generator_model: str | None = None,
     # --- scoring / recommendation ---
-    answer_weight: float = 0.6,
-    material_weight: float = 0.4,
+    sql_weight: float = 0.6,
+    schema_weight: float = 0.4,
     recommendation_tolerance: float = 0.25,
     recommendation_min_quality: float = 5.0,
     max_response_time: float | None = None,
@@ -60,8 +60,8 @@ def serve(
     history_params: list[str] | None = None,
     session_params: list[str] | None = None,
     history_format: str = "dict",
-    # --- source verification ---
-    source_check_mode: str = "keyword",
+    # --- SQL ---
+    dialect: str = DEFAULT_DIALECT,
     # --- hooks ---
     on_complete: Callable | None = None,
     session_id_fn: Callable | None = None,
@@ -112,18 +112,19 @@ def serve(
         judge_api_key: Explicit API key for the judge. If omitted, LiteLLM reads the
             matching env var (``GROQ_API_KEY``, ``GEMINI_API_KEY``, ``OPENAI_API_KEY``…).
         judge_prompt: Custom system prompt for the grader. Replaces the built-in rubric
-            entirely — useful for non-RAG systems (customer support, coding assistants…).
+            entirely, for the ``answer`` test cases.
         judge_retries: Retries on transient LLM failures before the row is marked failed.
-        judge_fn: Callable that fully replaces the LLM judge::
+        judge_fn: Callable that fully replaces the LLM judge. It gets the question, the expected SQL, the reply and the
+            findings of the checks (the ``sql_checks`` of a result), and returns the SQL score::
 
-                def my_judge(question, expected, generated, material) -> dict:
-                    return {"answer_marks": 8, "answer_comment": "Good."}
+                def my_judge(question, expected_sql, reply, checks) -> dict:
+                    return {"sql_marks": 8, "sql_comment": "Good.", "suggestion": ""}
 
         generator_model: LiteLLM model that writes test cases from uploaded documents (Test Cases →
             Generate from documents). Defaults to ``judge_model``. The text of the documents is sent to it,
             so choose a model you are allowed to send them to (a local ``ollama/...`` model works).
-        answer_weight: Weight of ``answer_marks`` in the version recommendation score.
-        material_weight: Weight of ``material_marks``. Set to ``0`` for systems with no retrieval.
+        sql_weight: Weight of ``sql_marks`` in the version recommendation score.
+        schema_weight: Weight of ``schema_marks`` (the tables and columns score). Set to ``0`` to leave it out of the recommendation.
         recommendation_tolerance: Versions within this quality-score delta are considered tied.
         recommendation_min_quality: A version is only recommended when its overall score (0 to 10) reaches this.
             Below it the dashboard says no version is good enough yet and shows the best so far. Default ``5.0``.
@@ -150,12 +151,9 @@ def serve(
         history_format: Format of the history list passed to ``fn()``.
             ``"dict"`` (default) → ``[{"question": …, "answer": …}]``;
             ``"openai"`` → ``[{"role": "user", …}, {"role": "assistant", …}]``.
-        source_check_mode: How to verify retrieved sources against ``expected_tables`` in
-            the dataset. ``"keyword"`` (default) uses substring matching — separate AND-groups
-            with ``|`` and OR-alternatives within a group with ``,`` (e.g.
-            ``"doc_a | doc_b.pdf,doc_c"`` requires doc_a AND either doc_b or doc_c).
-            ``"llm"`` uses the judge model for fuzzy / alias-tolerant matching.
-            ``"off"`` disables source verification entirely.
+        dialect: The SQL dialect the assistant's queries are read in: ``"postgres"`` (default), ``"mysql"``,
+            ``"tsql"`` (SQL Server) or ``"sqlite"``. It decides whether the SQL parses, and how its tables,
+            columns and joins are read. Nothing is run against a database.
         on_complete: Called once after a run finishes (success or failure)::
 
                 def on_complete(summary: dict, rows: list[dict]) -> None:
@@ -172,18 +170,16 @@ def serve(
             appended automatically, so only describe what to look for and the tone.
     """
     # --- input validation (fail fast with a clear message) ---
-    _VALID_SOURCE_MODES = {"keyword", "llm", "off"}
     if not callable(fn):
         raise ConfigError(f"fn must be callable, got {type(fn).__name__!r}")
-    if source_check_mode not in _VALID_SOURCE_MODES:
+    if parse_dialect(dialect) is None:
         raise ConfigError(
-            f"source_check_mode={source_check_mode!r} is not valid. "
-            f"Choose one of: {sorted(_VALID_SOURCE_MODES)}"
+            f"dialect={dialect!r} is not valid. Choose one of: {', '.join(DIALECTS)}"
         )
     if judge_retries < 1:
         raise ConfigError(f"judge_retries must be >= 1, got {judge_retries}")
-    if answer_weight < 0 or material_weight < 0:
-        raise ConfigError("answer_weight and material_weight must be >= 0")
+    if sql_weight < 0 or schema_weight < 0:
+        raise ConfigError("sql_weight and schema_weight must be >= 0")
     if history_format not in {"dict", "openai"}:
         raise ConfigError(
             f"history_format={history_format!r} is not valid. Choose 'dict' or 'openai'."
@@ -209,7 +205,7 @@ def serve(
         cfg_extra["extra_columns"] = extra_columns
     if summary_prompt is not None:
         cfg_extra["summary_prompt"] = summary_prompt
-    cfg_extra["source_check_mode"] = source_check_mode
+    cfg_extra["dialect"] = parse_dialect(dialect)
     if generator_model:
         cfg_extra["generator_model"] = generator_model
 
@@ -227,8 +223,8 @@ def serve(
         judge_api_key=judge_api_key or "",
         judge_prompt_override=judge_prompt or "",
         judge_retries=judge_retries,
-        answer_weight=answer_weight,
-        material_weight=material_weight,
+        sql_weight=sql_weight,
+        schema_weight=schema_weight,
         recommendation_tolerance=recommendation_tolerance,
         recommendation_min_quality=recommendation_min_quality,
         max_response_time=max_response_time,

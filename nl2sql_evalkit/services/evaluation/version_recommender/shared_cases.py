@@ -17,7 +17,7 @@ def shared_case_keys(views: list[dict]) -> set[str]:
     return set.intersection(*sets) if sets else set()
 
 
-def recommend_on_shared_cases(active: list[dict], *, group, answer_weight, material_weight, tolerance, max_time, min_quality: float = 0.0) -> dict:
+def recommend_on_shared_cases(active: list[dict], *, group, sql_weight, schema_weight, tolerance, max_time, min_quality: float = 0.0) -> dict:
     """Recommend a version by scoring every comparable version on the test cases they all ran.
 
     Versions that were stopped early or had failures on the shared cases are excluded. If the versions share too
@@ -27,8 +27,8 @@ def recommend_on_shared_cases(active: list[dict], *, group, answer_weight, mater
     Args:
         active: Run summaries, oldest first, each with ``case_scores``.
         group: Name of a group to compare on only its test cases, or None for all of them.
-        answer_weight: Weight of the answer score in the overall score.
-        material_weight: Weight of the context score in the overall score.
+        sql_weight: Weight of the answer score in the overall score.
+        schema_weight: Weight of the context score in the overall score.
         tolerance: Overall-score points within which versions tie; speed then breaks the tie.
         max_time: Response-time ceiling in seconds, or None for no ceiling.
         min_quality: Overall score a version needs to be recommended at all.
@@ -47,7 +47,7 @@ def recommend_on_shared_cases(active: list[dict], *, group, answer_weight, mater
             "version": str(summary["version"]), "idx": idx, "stopped": bool(summary.get("stopped")),
             "cases": {e["k"]: e for e in entries}, "ran": len(entries),
         })
-    result = empty_result(answer_weight, material_weight, tolerance, max_time, len(views), min_quality)
+    result = empty_result(sql_weight, schema_weight, tolerance, max_time, len(views), min_quality)
     if not views:
         return result
 
@@ -108,6 +108,6 @@ def recommend_on_shared_cases(active: list[dict], *, group, answer_weight, mater
     newest = views[-1]  # the latest run overall; only meaningful for 'latest is worse' if it was compared
     latest = newest if any(v is newest for v in pool) else None
     return choose_best(
-        complete, result, answer_weight=answer_weight, material_weight=material_weight,
+        complete, result, sql_weight=sql_weight, schema_weight=schema_weight,
         tolerance=tolerance, max_time=max_time, latest=latest, min_quality=min_quality,
     )

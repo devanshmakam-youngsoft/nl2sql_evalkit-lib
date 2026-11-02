@@ -9,9 +9,9 @@ import { Pager, usePaging } from "../components/Pager";
 import { TechnicalDetails } from "../components/TechnicalDetails";
 import { TopBar } from "../components/TopBar";
 import { fmt, fmtDay, fmtSeconds, fmtTime, nodeMeta, plural } from "../lib/format";
-import { type ResultRow, type VersionDetail as Detail, type VersionSummary } from "../api/types";
+import { type ResultRow, type SqlChecks, type VersionDetail as Detail, type VersionSummary } from "../api/types";
 
-type SortKey = "order" | "answer_marks" | "material_marks" | "total_time_taken";
+type SortKey = "order" | "sql_marks" | "schema_marks" | "total_time_taken";
 type ScoreTier = "all" | "high" | "mid" | "low";
 
 const ALL = "__all__";
@@ -46,9 +46,9 @@ export default function VersionDetail() {
 
   const bands = useMemo(() => {
     const rows = data?.rows ?? [];
-    const high = rows.filter((r) => (r.answer_marks ?? 0) >= 8).length;
-    const mid = rows.filter((r) => (r.answer_marks ?? 0) >= 5 && (r.answer_marks ?? 0) < 8).length;
-    const low = rows.filter((r) => (r.answer_marks ?? 0) < 5).length;
+    const high = rows.filter((r) => (r.sql_marks ?? 0) >= 8).length;
+    const mid = rows.filter((r) => (r.sql_marks ?? 0) >= 5 && (r.sql_marks ?? 0) < 8).length;
+    const low = rows.filter((r) => (r.sql_marks ?? 0) < 5).length;
     return { high, mid, low, total: rows.length };
   }, [data]);
 
@@ -58,8 +58,8 @@ export default function VersionDetail() {
     const names = [...new Set(rows.flatMap((r) => r.groups ?? []))].sort((a, b) => a.localeCompare(b));
     const summarise = (rs: ResultRow[]) => ({
       cases: rs.length,
-      answer: avg(rs.map((r) => r.answer_marks)),
-      material: avg(rs.map((r) => r.material_marks)),
+      answer: avg(rs.map((r) => r.sql_marks)),
+      material: avg(rs.map((r) => r.schema_marks)),
       time: avg(rs.map((r) => r.total_time_taken)),
     });
     const list = names.map((name) => ({ key: name, name, ...summarise(rows.filter((r) => r.groups?.includes(name))) }));
@@ -70,7 +70,7 @@ export default function VersionDetail() {
 
   const rows = useMemo(() => {
     const filtered = (data?.rows ?? []).map((r, i) => ({ r, i })).filter(({ r }) => {
-      const score = r.answer_marks ?? 0;
+      const score = r.sql_marks ?? 0;
       const tierOk = scoreTier === "all" || (scoreTier === "high" && score >= 8) || (scoreTier === "mid" && score >= 5 && score < 8) || (scoreTier === "low" && score < 5);
       const groupOk = group === ALL || (group === NONE ? !(r.groups?.length) : !!r.groups?.includes(group));
       return (type === "all" || r.type === type) && tierOk && groupOk &&
@@ -84,7 +84,7 @@ export default function VersionDetail() {
   }, [data, type, scoreTier, query, sort, group]);
   const paging = usePaging(rows, `${type}|${scoreTier}|${query}|${group}|${sort.key}${sort.dir}`, 25);
   const shownAvg = useMemo(
-    () => ({ answer: avg(rows.map(({ r }) => r.answer_marks)), time: avg(rows.map(({ r }) => r.total_time_taken)) }),
+    () => ({ answer: avg(rows.map(({ r }) => r.sql_marks)), time: avg(rows.map(({ r }) => r.total_time_taken)) }),
     [rows],
   );
 
@@ -141,13 +141,13 @@ export default function VersionDetail() {
       </dl>
 
       <section className="mt-6 grid grid-cols-2 gap-4">
-        <Stat label={<Term k="answer" />} value={<ScorePill value={s.avg_answer_marks} />} />
-        <Stat label={<Term k="context" />} value={<ScorePill value={s.avg_material_marks} />} />
+        <Stat label={<Term k="answer" />} value={<ScorePill value={s.avg_sql_marks} />} />
+        <Stat label={<Term k="context" />} value={<ScorePill value={s.avg_schema_marks} />} />
       </section>
 
       {bands.total > 0 && (
         <div className="card mt-4 px-5 py-4">
-          <h3 className="label mb-3"><Term k="tiers" /> <span className="mono normal-case tracking-normal">· avg {fmt(s.avg_answer_marks)}/10 over {plural(bands.total, "question")}</span></h3>
+          <h3 className="label mb-3"><Term k="tiers" /> <span className="mono normal-case tracking-normal">· avg {fmt(s.avg_sql_marks)}/10 over {plural(bands.total, "question")}</span></h3>
           {(() => {
             const pct = (n: number) => Math.round((n / bands.total) * 100);
             const tiers = [
@@ -235,7 +235,7 @@ export default function VersionDetail() {
             Results <span className="mono text-xs text-muted">{rows.length}{filtering ? ` of ${data.rows.length}` : ""}</span>
             {rows.length > 0 && (
               <span className="mono ml-3 text-xs font-normal text-muted">
-                · avg answer {fmt(shownAvg.answer)}/10 · avg time {fmtSeconds(shownAvg.time)}
+                · avg SQL score {fmt(shownAvg.answer)}/10 · avg time {fmtSeconds(shownAvg.time)}
               </span>
             )}
             <span className="ml-3 text-xs font-normal text-muted">· click a row for full details</span>
@@ -269,8 +269,8 @@ export default function VersionDetail() {
         {filtering && rows.length > 0 && (
           <p className="border-b border-line bg-surface-2 px-5 py-2 text-xs text-muted">
             Average for these {plural(rows.length, "result")}:{" "}
-            <b className="text-fg">{GLOSSARY.answer.label} {fmt(avg(rows.map(({ r }) => r.answer_marks)))}</b> ·{" "}
-            <b className="text-fg">{GLOSSARY.context.label} {fmt(avg(rows.map(({ r }) => r.material_marks)))}</b> ·{" "}
+            <b className="text-fg">{GLOSSARY.answer.label} {fmt(avg(rows.map(({ r }) => r.sql_marks)))}</b> ·{" "}
+            <b className="text-fg">{GLOSSARY.context.label} {fmt(avg(rows.map(({ r }) => r.schema_marks)))}</b> ·{" "}
             <b className="text-fg">{fmtSeconds(avg(rows.map(({ r }) => r.total_time_taken)))}</b>
           </p>
         )}
@@ -283,8 +283,8 @@ export default function VersionDetail() {
                 <th className="px-3 py-3 font-medium">Question</th>
                 <th className="px-3 py-3 font-medium">Groups</th>
                 <th className="px-3 py-3 font-medium">Type</th>
-                {th("answer_marks", <Term k="answer" />)}
-                {th("material_marks", <Term k="context" />)}
+                {th("sql_marks", <Term k="answer" />)}
+                {th("schema_marks", <Term k="context" />)}
                 {th("total_time_taken", <Term k="time" />)}
                 <th className="px-3 py-3 font-medium">Notes</th>
               </tr>
@@ -303,16 +303,14 @@ export default function VersionDetail() {
                   <td className="px-3 py-3.5"><span className="mono text-[11px] text-muted">{r.type}</span></td>
                   <td className="px-3 py-3.5">
                     <div className="flex items-center gap-1">
-                      {(r.answer_marks ?? 0) < 4 && <span className="text-bad text-xs" title="Needs attention">⚠</span>}
-                      <ScorePill value={r.answer_marks} digits={0} />
+                      {(r.sql_marks ?? 0) < 4 && <span className="text-bad text-xs" title="Needs attention">⚠</span>}
+                      <ScorePill value={r.sql_marks} digits={0} />
                     </div>
                   </td>
                   <td className="px-3 py-3.5">
-                    {r.material_marks == null ? <span className="text-xs text-muted">n/a</span> : <ScorePill value={r.material_marks} digits={0} />}
-                    {r.source_match != null && (
-                      <div className={`mt-1 text-[10px] font-medium ${r.source_match ? "text-good" : "text-bad"}`}>
-                        {r.source_match ? "✓ sources" : "✗ sources"}
-                      </div>
+                    {r.schema_marks == null ? <span className="text-xs text-muted">n/a</span> : <ScorePill value={r.schema_marks} digits={0} />}
+                    {failedChecks(r.sql_checks, r.type).length > 0 && (
+                      <div className="mt-1 text-[10px] font-medium text-bad">✗ {failedChecks(r.sql_checks, r.type).join(", ")}</div>
                     )}
                   </td>
                   <td className="px-3 py-3.5 tabular-nums text-muted">{fmtSeconds(r.total_time_taken)}</td>
@@ -458,8 +456,8 @@ function RowDrawer({ row, onClose }: { row: ResultRow; onClose: () => void }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const sourcesLine = row.source_match == null ? null : row.source_match;
-  const hasRemarks = !!(row.answer_remarks || row.material_remarks);
+  const failed = row.sql_checks ? failedChecks(row.sql_checks, row.type) : null;
+  const hasRemarks = !!(row.sql_remarks || row.schema_remarks || row.sql_suggestion);
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onMouseDown={onClose}>
@@ -484,29 +482,29 @@ function RowDrawer({ row, onClose }: { row: ResultRow; onClose: () => void }) {
         <div className="mt-5 grid grid-cols-3 gap-3">
           <div className="rounded border border-line p-3.5">
             <div className="mb-1.5 text-xs text-muted"><Term k="answer" /></div>
-            <ScorePill value={row.answer_marks} digits={0} />
+            <ScorePill value={row.sql_marks} digits={0} />
           </div>
           <div className="rounded border border-line p-3.5">
             <div className="mb-1.5 text-xs text-muted"><Term k="context" /></div>
-            {row.material_marks == null ? <span className="text-sm text-muted">n/a</span> : <ScorePill value={row.material_marks} digits={0} />}
+            {row.schema_marks == null ? <span className="text-sm text-muted">n/a</span> : <ScorePill value={row.schema_marks} digits={0} />}
           </div>
           <div className="rounded border border-line p-3.5">
-            <div className="mb-1.5 text-xs text-muted"><Term k="sources" /></div>
-            {sourcesLine == null
+            <div className="mb-1.5 text-xs text-muted"><Term k="checks" /></div>
+            {failed == null
               ? <span className="text-sm text-muted">not checked</span>
-              : <span className={`text-sm font-medium ${sourcesLine ? "text-good" : "text-bad"}`}>{sourcesLine ? "✓ all found" : "✗ some missing"}</span>}
+              : <span className={`text-sm font-medium ${failed.length === 0 ? "text-good" : "text-bad"}`}>{failed.length === 0 ? "✓ all pass" : `✗ ${failed.join(", ")}`}</span>}
           </div>
         </div>
 
         {/* 3. What was answered, against what was expected */}
-        <Block title="Generated answer">{row.generated_answer ?? "No answer: the assistant returned an error"}</Block>
+        <Block title="Assistant's reply">{row.generated_answer ?? "No reply: the assistant returned an error"}</Block>
         {row.error_message && (
           <div className="mt-3 rounded border border-bad p-3 text-sm" role="alert">
             <p className="text-bad">{row.error_message}</p>
             <TechnicalDetails text={row.error_detail ?? ""} />
           </div>
         )}
-        <Block title="Expected SQL">{row.expected_sql || "—"}</Block>
+        {(row.expected_sql || !(row.type === "clarify" || row.type === "refuse")) && <Block title="Expected SQL">{row.expected_sql || "—"}</Block>}
         {row.expected_tables && <Block title="Expected tables">{row.expected_tables}</Block>}
         {row.expected_columns && <Block title="Expected columns">{row.expected_columns}</Block>}
 
@@ -515,27 +513,18 @@ function RowDrawer({ row, onClose }: { row: ResultRow; onClose: () => void }) {
           <div className="mt-5">
             <div className="label mb-1.5">Why these scores</div>
             <div className="space-y-2 rounded border border-line p-3.5 text-sm leading-relaxed">
-              {row.answer_remarks && <p><span className="font-semibold">{GLOSSARY.answer.label}:</span> {row.answer_remarks}</p>}
-              {row.material_remarks && <p><span className="font-semibold">{GLOSSARY.context.label}:</span> {row.material_remarks}</p>}
+              {row.sql_remarks && <p><span className="font-semibold">{GLOSSARY.answer.label}:</span> {row.sql_remarks}</p>}
+              {row.schema_remarks && <p><span className="font-semibold">{GLOSSARY.context.label}:</span> {row.schema_remarks}</p>}
+              {row.sql_suggestion && <p><span className="font-semibold">Suggestion:</span> {row.sql_suggestion}</p>}
             </div>
           </div>
         )}
 
-        {/* 5. Evidence: sources, then the retrieved text itself */}
-        {(row.source_match != null || (row.sources?.length ?? 0) > 0) && (
-          <div className="mt-5">
-            <div className="label mb-1.5">Sources</div>
-            {row.source_match != null && (
-              <div className="space-y-1 text-sm">
-                {(row.matched_sources?.length ?? 0) > 0 && <div className="text-good">✓ Found: <span className="text-fg">{row.matched_sources!.join(", ")}</span></div>}
-                {(row.missing_sources?.length ?? 0) > 0 && <div className="text-bad">✗ Missing: <span className="text-fg">{row.missing_sources!.join(", ")}</span></div>}
-              </div>
-            )}
-            {(row.sources?.length ?? 0) > 0 && (
-              <div className="mt-2 whitespace-pre-wrap rounded bg-surface-2 p-3 text-xs leading-relaxed text-muted">
-                <span className="font-medium text-fg">Retrieved by the assistant:</span>{"\n"}{row.sources.join("\n")}
-              </div>
-            )}
+        {/* 5. What the checks found in the SQL, then what the pipeline recorded */}
+        {row.sql_checks && <CheckDetails checks={row.sql_checks} type={row.type} />}
+        {(row.sources?.length ?? 0) > 0 && (
+          <div className="mt-5 whitespace-pre-wrap rounded bg-surface-2 p-3 text-xs leading-relaxed text-muted">
+            <span className="font-medium text-fg">Sources the pipeline reported:</span>{"\n"}{row.sources.join("\n")}
           </div>
         )}
         {row.material && (
@@ -574,6 +563,54 @@ function RowDrawer({ row, onClose }: { row: ResultRow; onClose: () => void }) {
           </div>
         )}
       </aside>
+    </div>
+  );
+}
+
+/** The checks on a reply's SQL that did not pass, by name. A question that should be answered fails with no SQL; one that
+ *  should be clarified or declined fails with SQL. */
+function failedChecks(checks: SqlChecks | undefined, type: string): string[] {
+  if (!checks) return [];
+  const declining = type === "clarify" || type === "refuse";
+  if (declining) return checks.returned_sql ? ["returned SQL"] : [];
+  if (!checks.returned_sql) return ["no SQL"];
+  const failed: string[] = [];
+  if (checks.syntax_ok === false) failed.push("syntax");
+  if (checks.read_only === false) failed.push("read-only");
+  if ((checks.tables_missing?.length ?? 0) > 0) failed.push("tables");
+  if ((checks.columns_missing?.length ?? 0) > 0) failed.push("columns");
+  if (checks.joins_match === false) failed.push("joins");
+  return failed;
+}
+
+/** One line per check: passed, failed or not applicable, and what was found. */
+function CheckDetails({ checks, type }: { checks: SqlChecks; type: string }) {
+  if (type === "clarify" || type === "refuse") return null;
+  const missing = (list: string[] | null) => (list && list.length > 0 ? `missing: ${list.join(", ")}` : "");
+  const joins = [
+    checks.joins_missing.length > 0 ? `missing: ${checks.joins_missing.join("; ")}` : "",
+    checks.joins_extra.length > 0 ? `not in the expected SQL: ${checks.joins_extra.join("; ")}` : "",
+  ].filter(Boolean).join(" · ");
+  const lines: [string, boolean | null, string][] = [
+    ["Parses", checks.syntax_ok, checks.syntax_ok === false ? checks.syntax_error : ""],
+    ["Read-only", checks.read_only, checks.read_only === false ? checks.read_only_problem : ""],
+    ["Expected tables", checks.tables_missing == null ? null : checks.tables_missing.length === 0, missing(checks.tables_missing)],
+    ["Expected columns", checks.columns_missing == null ? null : checks.columns_missing.length === 0,
+      missing(checks.columns_missing) || (checks.star && checks.columns_missing != null ? "the query selects *, so columns cannot be told apart" : "")],
+    ["Joins", checks.joins_match, joins],
+  ];
+  return (
+    <div className="mt-5">
+      <div className="label mb-1.5"><Term k="checks" /> <span className="font-normal text-muted">· the SQL is read, never run</span></div>
+      <ul className="space-y-1 rounded border border-line p-3.5 text-sm">
+        {lines.map(([name, ok, note]) => (
+          <li key={name} className="flex gap-2">
+            <span className={`w-4 shrink-0 text-center font-medium ${ok == null ? "text-muted" : ok ? "text-good" : "text-bad"}`}>{ok == null ? "–" : ok ? "✓" : "✗"}</span>
+            <span className="w-36 shrink-0 font-medium">{name}</span>
+            <span className="min-w-0 break-words text-muted">{note || (ok == null ? "not checked" : "")}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

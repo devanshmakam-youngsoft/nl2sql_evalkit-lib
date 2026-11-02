@@ -26,7 +26,7 @@ minutes: 0
     <p><b>Do:</b> the same checks as above (key, model name, network). The scores and every answer are saved; only the written findings are missing.</p></div></details>
 <details class="fix"><summary>Context quality is blank or very low</summary><div class="body">
     <p class="why">No step declared the retrieved text, or the case type says no retrieval is expected.</p>
-    <p><b>Do:</b> in your retrieval step set <code>s.material = &hellip;</code> (or use <code>@nl2sql_evalkit.step("retrieval", material=True)</code>). If the bot has no retrieval, mark the cases <code>non-rag</code> and use <code>material_weight=0</code>. See <a href="#/material-and-sources">Say which step retrieved the text</a>.</p></div></details>
+    <p><b>Do:</b> in your retrieval step set <code>s.material = &hellip;</code> (or use <code>@nl2sql_evalkit.step("retrieval", material=True)</code>). If the bot has no retrieval, mark the cases <code>non-rag</code> and use <code>schema_weight=0</code>. See <a href="#/material-and-sources">Say which step retrieved the text</a>.</p></div></details>
 <details class="fix"><summary>Context quality is lower than the retrieval deserves</summary><div class="body">
     <p class="why">More than one step declares material, so the judge reads routing details, search settings or the same text twice, and the end can be cut off at <code>material_chars</code>.</p>
     <p><b>Do:</b> open a question&rsquo;s <em>Retrieved text</em> and check it holds only the passages. Let one step declare the material; keep the other steps timing-only and put their details in <code>nl2sql_evalkit.note()</code>.</p></div></details>
@@ -36,9 +36,6 @@ minutes: 0
 <details class="fix"><summary>Step times add up to more than the response time</summary><div class="body">
     <p class="why">One step sits inside another (the outer one includes the inner one&rsquo;s time), or steps run in parallel.</p>
     <p><b>Do:</b> for nesting, make the steps follow each other instead of wrapping each other. Parallel steps are expected to overlap.</p></div></details>
-<details class="fix"><summary>Sources say &ldquo;not checked&rdquo;, or &ldquo;some missing&rdquo; when they were found</summary><div class="body">
-    <p class="why">Not checked: the test case has no <code>expected_tables</code>, <code>source_check_mode</code> is <code>"off"</code>, or no step reported sources. Missing although retrieved: the names differ.</p>
-    <p><b>Do:</b> report sources with a <code>with</code> block and <code>s.sources = [&hellip;]</code> (decorators cannot report them). Compare the names the step reported with <code>expected_tables</code>; the keyword check ignores case, folders and file extensions, so <code>docs/Refunds.pdf</code> matches <code>refunds</code>. Different spellings of the same document? Try <code>source_check_mode="llm"</code>.</p></div></details>
 <details class="fix"><summary>A step shows no inputs or output</summary><div class="body">
     <p class="why">Inputs and outputs are recorded only for decorated functions.</p>
     <p><b>Do:</b> use the decorator for that step, or record what you need with <code>nl2sql_evalkit.note()</code>. Arguments named like secrets show as <code>[REDACTED]</code> on purpose.</p></div></details>

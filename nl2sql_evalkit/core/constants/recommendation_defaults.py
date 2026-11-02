@@ -1,10 +1,10 @@
 """The defaults the recommendation uses when serve() does not override them."""
 
 
-DEFAULT_ANSWER_WEIGHT = 0.6
+DEFAULT_SQL_WEIGHT = 0.6
 
 
-DEFAULT_MATERIAL_WEIGHT = 0.4
+DEFAULT_SCHEMA_WEIGHT = 0.4
 
 
 DEFAULT_TOLERANCE = 0.25

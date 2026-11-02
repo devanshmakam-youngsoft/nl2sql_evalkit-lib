@@ -6,12 +6,12 @@ import { useState } from "react";
  */
 export const GLOSSARY = {
   answer: {
-    label: "Answer quality",
-    hint: "How well the SQL the assistant wrote answers the question, scored 0–10 by an AI reviewer. Higher is better; below 5 means the answer is mostly wrong or missing the point.",
+    label: "SQL score",
+    hint: "How well the SQL the assistant wrote answers the question, scored 0–10 by an AI reviewer who reads it. Higher is better; below 5 means the query is mostly wrong or misses the point. A reply with no SQL, SQL that does not parse, or SQL that is not read-only scores 0.",
   },
   context: {
-    label: "Context quality",
-    hint: "Whether the documents the assistant looked up contained what it needed to answer, scored 0–10. A low score means the right information was not found, so even a good assistant could not answer well.",
+    label: "Tables and columns",
+    hint: "Whether the SQL used the tables and columns the test case expects, 0–10: the share of them it used. Blank when a test case expects none.",
   },
   time: {
     label: "Response time",
@@ -19,11 +19,11 @@ export const GLOSSARY = {
   },
   steps: {
     label: "Timing of steps",
-    hint: "Where the time goes: every stage the assistant goes through (for example searching documents, then writing the answer), with the average seconds each takes and its share of the whole response time. Time outside any step shows as “Not in a step”, and steps that run at the same time can add up to more than 100%.",
+    hint: "Where the time goes: every stage the assistant goes through (for example finding the tables, then writing the SQL), with the average seconds each takes and its share of the whole response time. Time outside any step shows as “Not in a step”, and steps that run at the same time can add up to more than 100%.",
   },
   overall: {
     label: "Overall score",
-    hint: "Answer quality and context quality combined into one number out of 10 (the mix is shown next to it). It decides the recommended version; speed only breaks near-ties.",
+    hint: "SQL score and tables and columns score combined into one number out of 10 (the mix is shown next to it). It decides the recommended version; speed only breaks near-ties.",
   },
   tolerance: {
     label: "Treat as tied within",
@@ -33,13 +33,13 @@ export const GLOSSARY = {
     label: "Slowest allowed",
     hint: "Optional limit in seconds. Versions slower than this are not recommended, however well they score.",
   },
-  sources: {
-    label: "Sources",
-    hint: "Whether the assistant looked up the documents it was expected to use for this question.",
+  checks: {
+    label: "Checks",
+    hint: "The program reads the SQL without running it: does it parse, is it read-only, does it use the expected tables and columns, and join the way the expected SQL does.",
   },
   tiers: {
     label: "How answers scored",
-    hint: "Every question's answer grouped by score: strong (8–10), fair (5–7) or weak (0–4).",
+    hint: "Every question's SQL grouped by score: strong (8–10), fair (5–7) or weak (0–4).",
   },
   groupScores: {
     label: "Scores by group",

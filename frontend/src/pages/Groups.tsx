@@ -247,7 +247,7 @@ function RunCell({ run, when = false }: { run: GroupRunStat | null; when?: boole
     <div>
       <span className="mono font-medium text-brand">v{run.version}</span>
       <div className="mt-0.5 text-xs text-muted">
-        {when ? fmtDate(run.date) : `overall ${run.quality == null ? "—" : run.quality.toFixed(1)} · answer ${fmt(run.avg_answer_marks)}`}
+        {when ? fmtDate(run.date) : `overall ${run.quality == null ? "—" : run.quality.toFixed(1)} · answer ${fmt(run.avg_sql_marks)}`}
       </div>
     </div>
   );

@@ -189,12 +189,6 @@ def test_the_type_is_answer_clarify_or_refuse():
     assert not any(is_declining(v) for v in ("answer", "sql", "", None))
 
 
-def test_clarify_and_refuse_cases_skip_retrieval_scoring(client):
-    manager = client.app.state.manager
-    assert all(manager._is_conversational(t) for t in ("clarify", "Refuse", "vague", "unsafe"))
-    assert not any(manager._is_conversational(t) for t in ("answer", "sql", ""))
-
-
 def test_new_cases_default_to_answer_and_can_be_clarify_or_refuse(client):
     made = client.post("/api/test-cases", json={"chat_id": "c1", "turn_no": 1, "question": "Total sales per region",
                                                 "expected_tables": "orders, customers"}).json()

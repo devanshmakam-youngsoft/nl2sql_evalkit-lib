@@ -10,7 +10,7 @@ def mean_of_present(values: Iterable) -> float | None:
     return sum(vals) / len(vals) if vals else None
 
 
-def overall_quality(view: dict, answer_weight: float, material_weight: float, use_material: bool) -> float | None:
+def overall_quality(view: dict, sql_weight: float, schema_weight: float, use_material: bool) -> float | None:
     """Return the overall score of one version's ``view``, or ``None`` if its answers were not graded.
 
     The score is the weighted mean of answer and context marks. When ``use_material`` is false, the context
@@ -19,14 +19,14 @@ def overall_quality(view: dict, answer_weight: float, material_weight: float, us
     answer, material = view["answer"], view["material"]
     if answer is None:
         return None
-    total = answer_weight + material_weight
+    total = sql_weight + schema_weight
     if not use_material or material is None or total <= 0:
         return answer
-    return (answer_weight * answer + material_weight * material) / total
+    return (sql_weight * answer + schema_weight * material) / total
 
 
 def empty_result(
-    answer_weight: float, material_weight: float, tolerance: float, max_time: float | None, considered: int,
+    sql_weight: float, schema_weight: float, tolerance: float, max_time: float | None, considered: int,
     min_quality: float = 0.0,
 ) -> dict:
     """Return the recommendation result with nothing chosen yet, ready for the comparison to fill in.
@@ -34,8 +34,8 @@ def empty_result(
     The comparison paths add the keys ``_all`` and ``_views``, which ``choose_best`` removes again.
 
     Args:
-        answer_weight: Weight of the answer score, echoed in the result's ``weights``.
-        material_weight: Weight of the context score, echoed in the result's ``weights``.
+        sql_weight: Weight of the answer score, echoed in the result's ``weights``.
+        schema_weight: Weight of the context score, echoed in the result's ``weights``.
         tolerance: Overall-score points within which versions tie; echoed in the result.
         max_time: Response-time ceiling in seconds, or None for no ceiling; echoed in the result.
         considered: How many versions took part in the comparison.
@@ -49,7 +49,7 @@ def empty_result(
         "min_quality": min_quality, "below_minimum": False, "best_so_far": None,
         "not_comparable": [], "not_comparable_detail": {}, "not_comparable_scores": {}, "excluded": [], "excluded_detail": {},
         "budget_miss": False, "basis": "weighted", "basis_note": "",
-        "weights": {"answer": answer_weight, "material": material_weight},
+        "weights": {"answer": sql_weight, "material": schema_weight},
         "tolerance": tolerance, "max_time": max_time, "qualities": {}, "considered": considered,
         # what the comparison was actually made on
         "compared_cases": None, "partial": [], "scores": {},
@@ -62,26 +62,26 @@ def _delta(latest: float | None, best: float | None) -> float | None:
 
 
 def choose_best(
-    best_pool: list[dict], result: dict, *, answer_weight, material_weight, tolerance, max_time, latest, min_quality: float = 0.0,
+    best_pool: list[dict], result: dict, *, sql_weight, schema_weight, tolerance, max_time, latest, min_quality: float = 0.0,
 ) -> dict:
     """Shared by both comparison paths: from versions with ``answer``/``material``/``time``/``idx`` pick the winner."""
     eligible = best_pool
     have_material = [x for x in eligible if x["material"] is not None]
-    use_material = bool(eligible) and len(have_material) == len(eligible) and material_weight > 0
+    use_material = bool(eligible) and len(have_material) == len(eligible) and schema_weight > 0
     if not use_material:
         result["basis"] = "answer_only"
         result["weights"] = {"answer": 1.0, "material": 0.0}
-        if have_material and len(have_material) != len(eligible) and material_weight > 0:
+        if have_material and len(have_material) != len(eligible) and schema_weight > 0:
             missing = ", ".join(f"v{x['version']}" for x in eligible if x["material"] is None)
             result["basis_note"] = (
                 f"Context quality was not graded for {missing}, so versions are compared on answer quality only."
             )
     else:
-        total = answer_weight + material_weight
-        result["weights"] = {"answer": answer_weight / total, "material": material_weight / total}
+        total = sql_weight + schema_weight
+        result["weights"] = {"answer": sql_weight / total, "material": schema_weight / total}
 
     for x in result.pop("_all"):
-        x["q"] = overall_quality(x, answer_weight, material_weight, use_material)
+        x["q"] = overall_quality(x, sql_weight, schema_weight, use_material)
     result["qualities"] = {x["version"]: (round(x["q"], 3) if x["q"] is not None else None) for x in result["_views"]}
     result["scores"] = {
         x["version"]: {
@@ -149,8 +149,8 @@ def version_view(summary: dict, group: str | None) -> dict | None:
         return {
             "rows": summary.get("total_rows", 0),
             "failed": summary.get("failed_rows", 0),
-            "answer": summary.get("avg_answer_marks"),
-            "material": summary.get("avg_material_marks"),
+            "answer": summary.get("avg_sql_marks"),
+            "material": summary.get("avg_schema_marks"),
             "time": summary.get("avg_total_time"),
         }
     stats = (summary.get("group_stats") or {}).get(group)
@@ -160,7 +160,7 @@ def version_view(summary: dict, group: str | None) -> dict | None:
     return {
         "rows": stats.get("total_rows", 0),
         "failed": stats.get("failed_rows", summary.get("failed_rows", 0)),
-        "answer": stats.get("avg_answer_marks"),
-        "material": stats.get("avg_material_marks"),
+        "answer": stats.get("avg_sql_marks"),
+        "material": stats.get("avg_schema_marks"),
         "time": time if time is not None else summary.get("avg_total_time"),
     }

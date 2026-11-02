@@ -32,5 +32,5 @@ def support_bot(question: str) -> str:
 
 
 if __name__ == "__main__":
-    # material_weight=0: the recommendation looks at answer quality only, because there is no context to score.
-    nl2sql_evalkit.serve(support_bot, material_weight=0)
+    # schema_weight=0: the recommendation looks at answer quality only, because there is no context to score.
+    nl2sql_evalkit.serve(support_bot, schema_weight=0)

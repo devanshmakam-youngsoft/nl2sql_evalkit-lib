@@ -32,6 +32,7 @@ dependencies = [
     # versions we have tested; raise the upper bound only after checking a newer release is clean.
     "litellm>=1.104,<1.107",
     "pandas>=2.2",
+    "sqlglot>=25",
     "openpyxl>=3.1",
     "pypdf>=4.0",
     "python-docx>=1.1",

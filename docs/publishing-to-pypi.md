@@ -192,7 +192,7 @@ cat > try.py <<'EOF'
 import NAME
 def bot(question: str) -> str:
     return "Refunds are allowed within 30 days."
-NAME.serve(bot, port=8031, require_login=False, judge_fn=lambda q, e, g, m: {"answer_marks": 9, "material_marks": 8})
+NAME.serve(bot, port=8031, require_login=False, judge_fn=lambda q, e, g, m: {"sql_marks": 9, "schema_marks": 8})
 EOF
 python try.py
 ```

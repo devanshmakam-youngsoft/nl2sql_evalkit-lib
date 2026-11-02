@@ -42,8 +42,8 @@ def build_summary(
         "dataset_id": dataset_id,
         "total_rows": len(rows),
         "failed_rows": sum(1 for r in rows if r["status"] != "ok"),
-        "avg_answer_marks": mean_of(column_of(rows, "answer_marks")),
-        "avg_material_marks": mean_of(column_of(rows, "material_marks")),
+        "avg_sql_marks": mean_of(column_of(rows, "sql_marks")),
+        "avg_schema_marks": mean_of(column_of(rows, "schema_marks")),
         "avg_total_time": mean_of(column_of(rows, "total_time_taken"), 3),
         # Traceability fields — enables "did the questions change?" dashboard warnings.
         "judge_model": judge_model,

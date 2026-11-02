@@ -21,11 +21,10 @@ if __name__ == "__main__":
         judge_model="openai/gpt-4o-mini",
         generator_model="ollama/llama3",         # writes test cases from documents: the text stays on this machine
         # --- how the recommendation decides ---
-        answer_weight=0.7,                       # answer quality counts for 70%...
-        material_weight=0.3,                     # ...and context quality for 30%
+        sql_weight=0.7,                       # answer quality counts for 70%...
+        schema_weight=0.3,                     # ...and context quality for 30%
         recommendation_tolerance=0.2,            # versions this close to the best are tied: the fastest wins
         max_response_time=8.0,                   # versions slower than this (seconds) are never recommended
-        source_check_mode="keyword",
         show_guide=True,                         # the Help page
         open_browser=False,
     )

@@ -9,21 +9,26 @@ def default_suggestions(summary: dict, rows: list[dict]) -> list[str]:
     failed = summary.get("failed_rows") or 0
     if failed:
         out.append(f"Open the {failed} failed question{'s' if failed != 1 else ''} in the results to see what went wrong before comparing versions.")
+    checks = (summary.get("scores") or {}).get("checks") or {}
+    if checks.get("syntax_failed"):
+        out.append("Some SQL does not parse: check that the dialect set in serve() matches the database and fix the query the assistant writes.")
+    if checks.get("not_read_only"):
+        out.append("Some SQL is not read-only: only let a single SELECT through, and reject anything that changes data.")
+    if checks.get("declines_with_sql"):
+        out.append("Vague or harmful questions got SQL: teach the assistant to ask back or decline before it writes a query.")
+    if checks.get("tables_missing") or checks.get("columns_missing"):
+        out.append("Expected tables or columns were left out: check the schema text the assistant is given describes them clearly.")
+    if checks.get("joins_differ"):
+        out.append("Some joins differ from the expected SQL: add the foreign keys to the schema text the assistant is given.")
     low = ((summary.get("scores") or {}).get("tiers") or {}).get("low", 0)
     if low:
-        out.append("Open the weak answers (filter the results by Weak) and compare each with the expected answer to see what is missing.")
-    sources = (summary.get("scores") or {}).get("sources") or {}
-    if sources.get("checked") and sources.get("matched", 0) < sources["checked"]:
-        out.append("Some expected documents were not retrieved: check that they are indexed and that the search finds them.")
-    material = summary.get("avg_material_marks")
-    if material is not None and material < 7:
-        out.append("Context quality is low, so the right passages are often not found: review how documents are split and how the search is set up.")
+        out.append("Open the weak answers (filter the results by Weak) and compare each query with the expected SQL to see what is missing.")
     total = summary.get("avg_total_time") or 0
     slow = max(summary_nodes(summary), key=lambda n: n["avg"], default=None)
     if slow and total and slow["avg"] >= 0.5 * total:
         out.append(f"{slow['name'].replace('_', ' ').capitalize()} takes {slow['avg'] / total:.0%} of the response time: start there to make answers faster.")
     if not out:
-        out.append("Keep this version as the baseline and add harder test cases (indirect and multi-turn questions) to find where it breaks.")
+        out.append("Keep this version as the baseline and add harder test cases (joins, dates, vague and harmful questions) to find where it breaks.")
     return out[:3]
 
 

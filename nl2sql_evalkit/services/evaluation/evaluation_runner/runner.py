@@ -8,12 +8,11 @@ from typing import Callable
 import pandas as pd
 
 from nl2sql_evalkit.core.config import Config
-from nl2sql_evalkit.core.constants import is_declining
+from nl2sql_evalkit.core.constants import ANSWER, parse_type
 from nl2sql_evalkit.core.diagnostics import EventLog
 from nl2sql_evalkit.core.exceptions import JudgeError, RunBusy
 from nl2sql_evalkit.services.db_services import EvalStore
 from nl2sql_evalkit.services.evaluation import step_recorder
-from nl2sql_evalkit.services.evaluation.answer_judge import Judge, finish_insights, stats_for_llm
 from nl2sql_evalkit.services.evaluation.evaluation_runner.function_adapter import (
     answer_text_of,
     call_sync,
@@ -23,11 +22,9 @@ from nl2sql_evalkit.services.evaluation.evaluation_runner.function_adapter impor
 )
 from nl2sql_evalkit.services.evaluation.evaluation_runner.material import select_material
 from nl2sql_evalkit.services.evaluation.evaluation_runner.run import Run, light_row
-from nl2sql_evalkit.services.evaluation.evaluation_runner.source_check import (
-    check_sources_by_keyword,
-    parse_source_groups,
-)
 from nl2sql_evalkit.services.evaluation.run_summarizer import build_group_stats, build_summary
+from nl2sql_evalkit.services.evaluation.sql_checks import check_sql, gate, schema_use_marks
+from nl2sql_evalkit.services.evaluation.sql_judge import Judge, finish_insights, stats_for_llm
 
 logger = logging.getLogger(__name__)
 
@@ -38,11 +35,11 @@ class RunManager:
 
     Runtime hooks (all optional, passed via ``create_app``):
 
-    * ``judge_fn(question, expected, generated, material) -> dict``
-        Replaces the LLM judge for grading answers.  The dict must contain at least
-        ``answer_marks`` (int 0–10).  Optional keys: ``answer_comment``,
-        ``material_marks``, ``material_comment``.  The judge model is still used
-        for the run's written findings and, in ``llm`` source-check mode, for source checks.
+    * ``judge_fn(question, expected_sql, reply, checks) -> dict``
+        Replaces the LLM judge for scoring replies.  The dict must contain at least
+        ``sql_marks`` (int 0–10).  Optional keys: ``sql_comment``, ``suggestion``.  A reply that fails a basic check
+        (no SQL, SQL that does not parse, SQL that is not read-only) is scored 0 without calling it.  The judge model
+        is still used for the run's written findings.
 
     * ``extra_metrics: dict[str, Callable[[str, str], float]]``
         Additional metrics run alongside built-ins.
@@ -110,9 +107,6 @@ class RunManager:
         if self._llm_judge is None:
             self._llm_judge = Judge(self.config)
         return self._llm_judge
-
-    def _is_conversational(self, row_type: str) -> bool:
-        return is_declining(row_type)
 
     def active(self) -> Run | None:
         """Return the run that is currently going, or None. Only one run may be active at a time."""
@@ -225,37 +219,30 @@ class RunManager:
         step_outputs = {s["name"]: s.get("output",  "") for s in steps}
         return answer, elapsed, node_timings, material, sources, step_inputs, step_outputs, flags
 
-    def _grade(
-        self, question: str, expected: str, generated: str | None,
-        material: str, material_applicable: bool, run: Run, where: str,
-    ) -> dict:
-        """Grade using judge_fn if provided, otherwise the LLM judge."""
+    def _grade_sql(self, row, out: dict, case_type: str, run: Run, where: str) -> dict:
+        """The SQL score of one reply with the reason and a suggestion: 0 for a failed question or a reply that fails a basic
+        check, else judge_fn if provided, otherwise the LLM judge."""
+        if out["status"] != "ok":
+            return {"sql_marks": 0, "sql_comment": "No reply: the function raised an error.", "suggestion": ""}
+        checks = out["sql_checks"]
+        stopped = gate(checks, case_type, self.config.dialect)
+        if stopped:
+            return {"sql_marks": stopped[0], "sql_comment": stopped[1], "suggestion": stopped[2]}
+        reply = out.get("generated_answer") or ""
         if self._judge_fn is not None:
             try:
-                raw = call_sync(self._judge_fn, question, expected, generated, material)
+                raw = call_sync(self._judge_fn, row.question, row.expected_sql, reply, checks)
                 if not isinstance(raw, dict):
-                    raw = {"answer_marks": int(raw)}
-                return {
-                    "answer_marks":    int(raw.get("answer_marks", 0)),
-                    "answer_comment":  str(raw.get("answer_comment", "")),
-                    "material_marks":  raw.get("material_marks") if material_applicable else None,
-                    "material_comment": str(raw.get("material_comment",
-                        "Not applicable (no retrieval expected)." if not material_applicable else "")),
-                }
+                    raw = {"sql_marks": int(raw)}
+                return {"sql_marks": int(raw.get("sql_marks", 0)), "sql_comment": str(raw.get("sql_comment", "")),
+                        "suggestion": str(raw.get("suggestion", ""))}
             except Exception as e:
                 issue = run.log.issue("custom_judge", e, where)
-                return {
-                    "answer_marks": 0, "answer_comment": issue.message,
-                    "material_marks": None, "material_comment": "",
-                }
-
-        grade = self.judge.grade(question, expected, generated, material, material_applicable)
-        return {
-            "answer_marks":    grade.answer_marks,
-            "answer_comment":  grade.answer_comment,
-            "material_marks":  grade.material_marks,
-            "material_comment": grade.material_comment,
-        }
+                return {"sql_marks": 0, "sql_comment": issue.message, "suggestion": ""}
+        case = {"type": case_type, "expected_sql": row.expected_sql,
+                "expected_tables": out.get("expected_tables", ""), "expected_columns": out.get("expected_columns", "")}
+        grade = self.judge.grade_sql(row.question, case, reply, checks)
+        return {"sql_marks": grade.sql_marks, "sql_comment": grade.sql_comment, "suggestion": grade.suggestion}
 
     def _process_row(self, row, session_id: str, history: list[dict], run: Run) -> dict:
         where = f"Question {run.done + 1} of {run.total} (chat {row.chat_id}, turn {row.turn_no})"
@@ -300,26 +287,6 @@ class RunManager:
             if flags:
                 out["flags"] = flags
 
-            # Source check — only if the dataset row has expected_tables
-            expected_tables = str(getattr(row, "expected_tables", "") or "").strip()
-            if expected_tables and expected_tables.lower() != "nan":
-                mode = self.config.source_check_mode
-                if mode == "llm":
-                    try:
-                        result = self.judge.check_sources(parse_source_groups(expected_tables), sources)
-                        out.update(
-                            source_match=result.source_match,
-                            matched_sources=result.matched_sources,
-                            missing_sources=result.missing_sources,
-                            source_score=result.source_score,
-                            source_comment=result.source_comment,
-                        )
-                    except Exception as e:
-                        run.log.issue("source_check", e, where, severity="warning")
-                        out.update(check_sources_by_keyword(expected_tables, sources))
-                elif mode != "off":
-                    out.update(check_sources_by_keyword(expected_tables, sources))
-
         except Exception as e:
             issue = run.log.issue("answer", e, where)
             out.update(
@@ -334,7 +301,14 @@ class RunManager:
                 step_outputs={},
             )
 
-        conversational = self._is_conversational(row.type)
+        # What the SQL says, read without running it, and the tables and columns score
+        case_type = parse_type(row.type) or ANSWER
+        if out["status"] == "ok":
+            checks = check_sql(out.get("generated_answer"), dialect=self.config.dialect, expected_sql=row.expected_sql,
+                               expected_tables=out.get("expected_tables", ""), expected_columns=out.get("expected_columns", ""))
+            out["sql_checks"], out["generated_sql"] = checks, checks["sql"]
+            out["schema_marks"], out["schema_remarks"] = schema_use_marks(
+                checks, out.get("expected_tables", ""), out.get("expected_columns", ""), case_type)
 
         # Extra / custom metrics
         if out["status"] == "ok" and self._extra_metrics:
@@ -346,24 +320,15 @@ class RunManager:
                     run.log.issue("metric", e, f"{where}, {name}", severity="warning")
                     out[name] = None
 
-        # Grading (LLM judge or custom judge_fn)
+        # The SQL score (gates, then LLM judge or custom judge_fn)
         try:
-            grade = self._grade(
-                row.question, row.expected_sql,
-                out.get("generated_answer"), out.get("material", ""),
-                not conversational, run, where,
-            )
-            out.update(
-                answer_marks=grade["answer_marks"],
-                answer_remarks=grade["answer_comment"],
-                material_marks=grade["material_marks"],
-                material_remarks=grade["material_comment"],
-            )
+            grade = self._grade_sql(row, out, case_type, run, where)
+            out.update(sql_marks=grade["sql_marks"], sql_remarks=grade["sql_comment"], sql_suggestion=grade["suggestion"])
         except Exception as e:
             issue = run.log.issue("grading", e, where)
             if out["status"] == "ok":
                 out["status"] = "grading_failed"
-            out.update(answer_remarks=issue.message, material_remarks="Grading failed", error_message=issue.message, error_detail=issue.technical)
+            out.update(sql_remarks=issue.message, error_message=issue.message, error_detail=issue.technical)
 
         return out
 
@@ -417,7 +382,7 @@ class RunManager:
                 run.log.info(
                     "Question %d of %d | chat %s turn %s | %s | answer %s, material %s | %ss",
                     run.done, run.total, row.chat_id, row.turn_no, result["status"],
-                    result.get("answer_marks"), result.get("material_marks"), result.get("total_time_taken", "-"),
+                    result.get("sql_marks"), result.get("schema_marks"), result.get("total_time_taken", "-"),
                 )
                 run.emit("progress", row=light_row(result))
 

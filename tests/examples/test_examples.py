@@ -20,7 +20,7 @@ from nl2sql_evalkit.main import create_app
 
 EXAMPLES = Path(__file__).parents[2] / "examples"
 COLUMNS = ["chat_id", "turn_no", "type", "question", "expected_sql"]
-JUDGE = lambda question, expected, generated, material: {"answer_marks": 8, "material_marks": 8}   # noqa: E731
+JUDGE = lambda question, expected, generated, material: {"sql_marks": 8, "schema_marks": 8}   # noqa: E731
 
 
 @pytest.fixture
@@ -163,36 +163,38 @@ def test_steps_inside_langgraph_nodes_are_recorded(serve_example):
 def test_a_bot_with_no_retrieval_is_graded_on_the_answer_alone(serve_example):
     app = serve_example("no_retrieval_bot.py")
     rows = evaluate(app, [("c1", 1, "Hello there", "greets"), ("c2", 1, "Where is order A100?", "shipped")], case_type="clarify")
-    assert [r["material_marks"] for r in rows] == [None, None] and [r["answer_marks"] for r in rows] == [8, 8]
+    assert [r["schema_marks"] for r in rows] == [None, None] and [r["sql_marks"] for r in rows] == [8, 8]
     assert rows[1]["flags"] == {"intent": "order_status", "tool_called": "order_lookup"}
     assert steps_of(rows[1]) == ["intent", "order_lookup"] and rows[1]["generated_answer"] == "Order A100 is shipped."
-    assert app.state.config.material_weight == 0
+    assert app.state.config.schema_weight == 0
 
 
 # ---- custom_judge.py and custom_judge_prompt.py -----------------------------------------------------------------
 
 def test_a_custom_judge_function_replaces_the_ai_judge(serve_example):
     app = serve_example("custom_judge.py")
-    assert app.state.manager._judge_fn.__name__ == "valid_json_with_fields"
-    rows = evaluate(app, [("c1", 1, "Where is my order?", "status, eta"), ("c2", 1, "Where is my order?", "status, eta, carrier")])
-    assert [r["answer_marks"] for r in rows] == [10, 7]
-    assert "carrier" in rows[1]["answer_remarks"]
+    assert app.state.manager._judge_fn.__name__ == "strict_about_joins"
+    same = "SELECT region, SUM(amount) FROM orders GROUP BY region"
+    joined = "SELECT c.region, SUM(o.amount) FROM orders o JOIN customers c ON o.customer_id = c.id GROUP BY c.region"
+    rows = evaluate(app, [("c1", 1, "Sales per region?", same), ("c2", 1, "Sales per customer region?", joined)])
+    assert [r["sql_marks"] for r in rows] == [10, 4]
+    assert "customers.id = orders.customer_id" in rows[1]["sql_remarks"] and rows[1]["sql_suggestion"]
 
 
 def test_the_other_judges_in_the_example_grade_as_described():
     judges = runpy.run_path(str(EXAMPLES / "custom_judge.py"))
-    contains, both = judges["contains_expected_sql"], judges["grade_answer_and_context"]
-    assert contains("q", "30 days", "Within 30 days.", "")["answer_marks"] == 10
-    assert contains("q", "30 days", "Never.", "")["answer_marks"] == 0
-    assert judges["valid_json_with_fields"]("q", "a", "not json", "")["answer_comment"] == "The reply is not valid JSON."
-    graded = both("q", "30 days", "Within 30 days.", "Policy: 30 days.")
-    assert (graded["answer_marks"], graded["material_marks"]) == (10, 10)
+    same, star, joins = judges["same_as_expected"], judges["no_select_star"], judges["strict_about_joins"]
+    assert same("q", "SELECT a FROM t", "select a  from t;", {})["sql_marks"] == 10
+    assert same("q", "SELECT a FROM t", "SELECT b FROM t", {})["sql_marks"] == 3
+    assert star("q", "", "SELECT * FROM t", {"star": True})["sql_marks"] == 4
+    assert star("q", "", "SELECT a FROM t", {"star": False})["sql_marks"] == 10
+    assert joins("q", "", "SELECT 1", {"joins_match": None})["sql_marks"] == 8
 
 
 def test_a_custom_rubric_gets_the_reply_format_added(serve_example):
     app = serve_example("custom_judge_prompt.py", fake_judge=False)
     prompt = app.state.manager.judge._grader_prompt
-    assert "customer-support assistant" in prompt and "Respond ONLY with a JSON object" in prompt
+    assert "finance team" in prompt and "Respond ONLY with a JSON object" in prompt
     assert app.state.config.summary_prompt.startswith("You are reviewing one test run") and app.state.config.judge_model == "openai/gpt-4o-mini"
 
 
@@ -263,19 +265,6 @@ def test_the_sample_test_case_file_imports_as_described(served_function):
     assert sorted(g["name"] for g in client.get("/api/groups").json()) == ["Attacks", "Orders", "Sales", "Vague"]
 
 
-# ---- source_checks.py -------------------------------------------------------------------------------------------
-
-def test_expected_tables_with_and_or_are_checked(serve_example):
-    app = serve_example("source_checks.py")
-    rows = evaluate(app, [
-        ("c1", 1, "Can I get a refund?", "30 days"),
-        ("c2", 1, "Can I get a refund?", "30 days"),
-        ("c3", 1, "Can I get a refund?", "30 days"),
-    ], extra={"expected_tables": ["refunds.pdf", "refunds.pdf | shipping.pdf", "refunds_v2.pdf , Refunds.PDF"]})
-    assert [r["source_match"] for r in rows] == [True, False, True]
-    assert rows[1]["missing_sources"] == ["shipping.pdf"]
-
-
 # ---- shared_pipeline.py, production_app.py, eval_entry.py -------------------------------------------------------
 
 @pytest.fixture
@@ -328,7 +317,7 @@ def test_steps_in_parallel_langchain_branches_are_recorded(serve_example):
 def test_the_team_setup_example_is_a_valid_configuration(serve_example):
     config = serve_example("team_setup.py").state.config
     assert config.eval_users == "alice:pw-for-alice,bob:pw-for-bob" and config.eval_secret == "change-me"
-    assert (config.answer_weight, config.material_weight, config.recommendation_tolerance, config.max_response_time) == (0.7, 0.3, 0.2, 8.0)
+    assert (config.sql_weight, config.schema_weight, config.recommendation_tolerance, config.max_response_time) == (0.7, 0.3, 0.2, 8.0)
     assert config.generator_model == "ollama/llama3" and config.logs_dir == Path("evals/logs") and config.store_path == Path("evals/store.json")
 
 
@@ -338,7 +327,7 @@ def test_the_team_setup_example_is_a_valid_configuration(serve_example):
 def running_server(tmp_path):
     """A real server on a free port, with a group of test cases, the way ci_gate.py meets it."""
     config = Config(data_dir=tmp_path / "ci_store", require_login=False)
-    app = create_app(config, fn=lambda question: "Refunds are allowed within 30 days.", judge_fn=JUDGE)
+    app = create_app(config, fn=lambda question: "SELECT amount FROM refunds", judge_fn=JUDGE)
     app.state.manager._llm_judge = SimpleNamespace(summarize_run=lambda stats: None)
     store = app.state.store
     group = store.create_group("Billing")
@@ -359,14 +348,14 @@ def running_server(tmp_path):
 
 
 @pytest.mark.parametrize("minimum,exit_code", [("7", 0), ("9", 1)])
-def test_the_ci_script_passes_or_fails_the_build_on_answer_quality(running_server, monkeypatch, minimum, exit_code, capsys):
+def test_the_ci_script_passes_or_fails_the_build_on_the_sql_score(running_server, monkeypatch, minimum, exit_code, capsys):
     monkeypatch.setenv("EVAL_URL", running_server)
     monkeypatch.setenv("EVAL_MINIMUM", minimum)
     monkeypatch.setenv("EVAL_VERSION", f"ci-{minimum}")
     script = runpy.run_path(str(EXAMPLES / "ci_gate.py"), run_name="ci_gate")
     script["POLL_SECONDS"] = 0.2
     assert script["run_gate"]() == exit_code
-    assert "answer quality 8" in capsys.readouterr().out
+    assert "SQL score 8" in capsys.readouterr().out
 
 
 # ---- versions_workflow.py ---------------------------------------------------------------------------------------

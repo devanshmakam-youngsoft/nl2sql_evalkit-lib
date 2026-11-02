@@ -8,6 +8,7 @@ from nl2sql_evalkit.core.config.logs import LogSettings
 from nl2sql_evalkit.core.config.recording import RecordingSettings
 from nl2sql_evalkit.core.config.scoring import ScoringSettings
 from nl2sql_evalkit.core.config.server import ServerSettings
+from nl2sql_evalkit.core.config.sql import SqlSettings
 
 
 class Config(
@@ -18,6 +19,7 @@ class Config(
     JudgeSettings,
     GenerationSettings,
     ScoringSettings,
+    SqlSettings,
     FunctionAdapterSettings,
     DatasetSettings,
 ):

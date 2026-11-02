@@ -4,9 +4,9 @@ from __future__ import annotations
 from typing import Iterable
 
 from nl2sql_evalkit.core.constants import (
-    DEFAULT_ANSWER_WEIGHT,
-    DEFAULT_MATERIAL_WEIGHT,
     DEFAULT_MIN_QUALITY,
+    DEFAULT_SCHEMA_WEIGHT,
+    DEFAULT_SQL_WEIGHT,
     DEFAULT_TOLERANCE,
 )
 from nl2sql_evalkit.services.evaluation.version_recommender.engine import recommend
@@ -34,8 +34,8 @@ def group_overview(
     versions: Iterable[dict],
     group: str,
     *,
-    answer_weight: float = DEFAULT_ANSWER_WEIGHT,
-    material_weight: float = DEFAULT_MATERIAL_WEIGHT,
+    sql_weight: float = DEFAULT_SQL_WEIGHT,
+    schema_weight: float = DEFAULT_SCHEMA_WEIGHT,
     tolerance: float = DEFAULT_TOLERANCE,
     max_time: float | None = None,
     min_quality: float = DEFAULT_MIN_QUALITY,
@@ -46,7 +46,7 @@ def group_overview(
     cases the compared versions share (None for a version that could not be compared)."""
     versions = list(versions)
     reco = recommend(
-        versions, answer_weight=answer_weight, material_weight=material_weight,
+        versions, sql_weight=sql_weight, schema_weight=schema_weight,
         tolerance=tolerance, max_time=max_time, min_quality=min_quality, group=group,
     )
     qualities = reco["qualities"]
@@ -59,7 +59,7 @@ def group_overview(
         version = str(summary["version"])
         history.append({
             "version": version, "date": summary.get("date"), "total_rows": stats["rows"], "failed_rows": stats["failed"],
-            "avg_answer_marks": stats["answer"], "avg_material_marks": stats["material"], "avg_total_time": stats["time"],
+            "avg_sql_marks": stats["answer"], "avg_schema_marks": stats["material"], "avg_total_time": stats["time"],
             "quality": qualities.get(version), "stopped": bool(summary.get("stopped")),
         })
     by_version = {h["version"]: h for h in history}

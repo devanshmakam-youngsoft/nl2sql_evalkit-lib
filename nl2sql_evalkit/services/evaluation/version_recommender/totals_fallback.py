@@ -20,7 +20,7 @@ def _reference_rows(views: list[dict]) -> int:
     return best_rows
 
 
-def recommend_on_totals(active: list[dict], *, group, answer_weight, material_weight, tolerance, max_time, min_quality: float = 0.0) -> dict:
+def recommend_on_totals(active: list[dict], *, group, sql_weight, schema_weight, tolerance, max_time, min_quality: float = 0.0) -> dict:
     """Recommend a version by comparing whole-run averages, for runs saved without per-case scores.
 
     Only runs that covered the most common number of test cases are compared, and runs that were stopped early,
@@ -30,8 +30,8 @@ def recommend_on_totals(active: list[dict], *, group, answer_weight, material_we
     Args:
         active: Run summaries, oldest first.
         group: Name of a group to compare on only that group's statistics, or None for the whole run.
-        answer_weight: Weight of the answer score in the overall score.
-        material_weight: Weight of the context score in the overall score.
+        sql_weight: Weight of the answer score in the overall score.
+        schema_weight: Weight of the context score in the overall score.
         tolerance: Overall-score points within which versions tie; speed then breaks the tie.
         max_time: Response-time ceiling in seconds, or None for no ceiling.
         min_quality: Overall score a version needs to be recommended at all.
@@ -46,7 +46,7 @@ def recommend_on_totals(active: list[dict], *, group, answer_weight, material_we
             continue
         views.append({**view, "version": str(summary["version"]), "date": summary.get("date"),
                       "stopped": bool(summary.get("stopped")), "idx": idx})
-    result = empty_result(answer_weight, material_weight, tolerance, max_time, len(views), min_quality)
+    result = empty_result(sql_weight, schema_weight, tolerance, max_time, len(views), min_quality)
     if not views:
         return result
 
@@ -62,6 +62,6 @@ def recommend_on_totals(active: list[dict], *, group, answer_weight, material_we
     result["_all"] = views
     result["_views"] = views
     return choose_best(
-        eligible, result, answer_weight=answer_weight, material_weight=material_weight,
+        eligible, result, sql_weight=sql_weight, schema_weight=schema_weight,
         tolerance=tolerance, max_time=max_time, latest=views[-1], min_quality=min_quality,
     )

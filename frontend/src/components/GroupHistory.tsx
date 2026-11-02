@@ -19,7 +19,7 @@ function Figure({ label, run, children }: { label: string; run: GroupRunStat | n
             <span className="text-xs text-muted">{fmtDate(run.date)}</span>
           </div>
           <div className="mono mt-1.5 text-xs text-muted">
-            answer {fmt(run.avg_answer_marks)} · context {fmt(run.avg_material_marks)} · {fmtSeconds(run.avg_total_time)}
+            answer {fmt(run.avg_sql_marks)} · context {fmt(run.avg_schema_marks)} · {fmtSeconds(run.avg_total_time)}
           </div>
           {children}
         </>
@@ -109,8 +109,8 @@ export function GroupHistory({ groupId, onRun }: { groupId: string; onRun: () =>
                   </td>
                   <td className="px-3 py-2.5 text-xs text-muted">{fmtDate(r.date)}</td>
                   <td className="mono px-3 py-2.5 text-xs">{r.total_rows}</td>
-                  <td className="mono px-3 py-2.5">{fmt(r.avg_answer_marks)}</td>
-                  <td className="mono px-3 py-2.5">{fmt(r.avg_material_marks)}</td>
+                  <td className="mono px-3 py-2.5">{fmt(r.avg_sql_marks)}</td>
+                  <td className="mono px-3 py-2.5">{fmt(r.avg_schema_marks)}</td>
                   <td className="mono px-3 py-2.5">{fmtSeconds(r.avg_total_time)}</td>
                   <td className="mono px-3 py-2.5">{r.quality == null ? "—" : r.quality.toFixed(2)}</td>
                 </tr>

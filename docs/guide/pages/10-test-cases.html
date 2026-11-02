@@ -14,7 +14,7 @@ minutes: 6
     <tr><td><code>expected_sql</code></td><td>What a good answer says. Wording can differ; the judge compares meaning.</td></tr>
     <tr><td><code>chat_id</code>, <code>turn_no</code></td><td>Cases with the same <code>chat_id</code> form one conversation, replayed in <code>turn_no</code> order. Leave them out and every question is its own chat.</td></tr>
     <tr><td><code>type</code></td><td><code>rag</code> (default: the answer comes from your documents) or <code>non-rag</code> (greetings, small talk, tools: graded on the answer only).</td></tr>
-    <tr><td><code>expected_tables</code></td><td>Documents the pipeline should retrieve. See <a href="#/source-checks">Source checks</a>.</td></tr>
+    <tr><td><code>expected_tables</code></td><td>Documents the pipeline should retrieve. See the checks on the SQL.</td></tr>
     <tr><td><code>groups</code></td><td>Labels, for example <code>Billing; Refunds</code>. A case can carry any number of groups.</td></tr>
   </tbody>
 </table></div>

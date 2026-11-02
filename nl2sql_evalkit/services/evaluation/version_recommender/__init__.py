@@ -32,9 +32,9 @@ are needed (see ``EvalStore.list_versions_for_comparison``). If a run has none a
 whole-run comparison (same number of questions) is used instead.
 """
 from nl2sql_evalkit.core.constants import (
-    DEFAULT_ANSWER_WEIGHT,
-    DEFAULT_MATERIAL_WEIGHT,
     DEFAULT_MIN_QUALITY,
+    DEFAULT_SCHEMA_WEIGHT,
+    DEFAULT_SQL_WEIGHT,
     DEFAULT_TOLERANCE,
 )
 from nl2sql_evalkit.services.evaluation.version_recommender.engine import recommend
@@ -46,6 +46,6 @@ from nl2sql_evalkit.services.evaluation.version_recommender.recommendation_views
 )
 
 __all__ = [
-    "DEFAULT_ANSWER_WEIGHT", "DEFAULT_MATERIAL_WEIGHT", "DEFAULT_MIN_QUALITY", "DEFAULT_TOLERANCE",
+    "DEFAULT_SQL_WEIGHT", "DEFAULT_SCHEMA_WEIGHT", "DEFAULT_MIN_QUALITY", "DEFAULT_TOLERANCE",
     "group_overview", "groups_with_history", "history_of_group", "recommend", "recommend_version"
 ]

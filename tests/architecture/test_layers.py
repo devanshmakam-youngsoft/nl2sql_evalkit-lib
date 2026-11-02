@@ -59,7 +59,7 @@ def test_a_layer_only_imports_from_the_layers_below_it():
 
 
 def _feature(parts: tuple[str, ...]) -> str | None:
-    """The service feature a path or dotted module belongs to ("evaluation/answer_judge", "db_services"), from its segments
+    """The service feature a path or dotted module belongs to ("evaluation/sql_judge", "db_services"), from its segments
     after `nl2sql_evalkit/services`."""
     if not parts:
         return None

@@ -44,7 +44,7 @@ def answer_text_of(result, answer_keys: list[str]) -> str:
             pass
     if isinstance(result, dict):
         for key in keys:
-            if key in result:
+            if result.get(key) not in (None, ""):
                 return str(result[key]) if not isinstance(result[key], str) else result[key]
         import json
         try:

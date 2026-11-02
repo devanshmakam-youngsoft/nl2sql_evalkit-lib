@@ -369,7 +369,7 @@ export function ExecuteModal({ onClose, initial }: { onClose: () => void; initia
         {/* Notes */}
         <label className="label mt-5 block">Run notes <span className="normal-case font-normal text-muted">(optional)</span></label>
         <input value={notes} onChange={(e) => setNotes(e.target.value)}
-          placeholder="What changed in this version? e.g. Switched to GPT-4o, tuned retrieval k=5"
+          placeholder="What changed in this version? e.g. Switched to GPT-4o, added the foreign keys to the schema text"
           className="mt-1.5 w-full rounded border border-line bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/25" />
 
         {error && <div className="mt-3 border border-bad p-3 text-xs text-bad">{error}</div>}

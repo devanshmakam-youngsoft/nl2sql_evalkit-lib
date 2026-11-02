@@ -8,9 +8,7 @@ import pandas as pd
 from nl2sql_evalkit.utils import node_order
 
 # Optional receipt columns — included in Excel when at least one row has a value.
-OPTIONAL_RECEIPT_COLUMNS = [
-    "source_match", "matched_sources", "missing_sources", "flags",
-]
+OPTIONAL_RECEIPT_COLUMNS = ["flags"]
 
 
 EXCEL_CELL_LIMIT = 32000
@@ -43,15 +41,17 @@ def build_results_workbook(data: dict) -> bytes:
     # The question/answer triplet — the heart of every row
     QA_COLS   = ["question", "expected_sql", "expected_tables", "expected_columns", "generated_answer"]
     # Judge scores + comments right after the answers
-    JUDGE_COLS = ["answer_marks", "answer_remarks", "material_marks", "material_remarks"]
+    JUDGE_COLS = ["sql_marks", "sql_remarks", "sql_suggestion", "schema_marks", "schema_remarks"]
+    # What the checks found in the SQL (kept on each row as ``sql_checks``)
+    CHECK_COLS = ["syntax_ok", "read_only", "tables_missing", "columns_missing", "joins_match"]
     # Retrieved context and sources
     CTX_COLS  = ["retrieved_context", "sources"]
     # Timing
     TIME_COLS = ["total_time_taken", *[f"node_{n}" for n in nodes]]
-    # Optional: source verification
+    # Optional: anything the run flagged
     OPT_PRESENT = [c for c in OPTIONAL_RECEIPT_COLUMNS if any(r.get(c) is not None for r in rows)]
     # Anything else logged that isn't already covered
-    _covered = set(ID_COLS + QA_COLS + JUDGE_COLS + ["material"] + CTX_COLS +
+    _covered = set(ID_COLS + QA_COLS + JUDGE_COLS + CHECK_COLS + ["material", "sql_checks", "generated_sql"] + CTX_COLS +
                    ["total_time_taken"] + OPT_PRESENT +
                    ["session_id", "tc_id", "step_inputs", "step_outputs", "node_timings", "version"])
     extra: list[str] = []
@@ -60,7 +60,7 @@ def build_results_workbook(data: dict) -> bytes:
             if k not in _covered and k not in extra:
                 extra.append(k)
 
-    columns = [*ID_COLS, *QA_COLS, *JUDGE_COLS, *CTX_COLS,
+    columns = [*ID_COLS, *QA_COLS, *JUDGE_COLS, *CHECK_COLS, *CTX_COLS,
                *TIME_COLS, *OPT_PRESENT, *extra]
 
     records = []
@@ -72,6 +72,9 @@ def build_results_workbook(data: dict) -> bytes:
             rec[c] = cell_value(r.get(c))
         for c in JUDGE_COLS:
             rec[c] = cell_value(r.get(c))
+        checks = r.get("sql_checks") or {}
+        for c in CHECK_COLS:
+            rec[c] = cell_value(checks.get(c))
         # "material" stored internally → rename to "retrieved_context" for clarity
         rec["retrieved_context"] = cell_value(r.get("material"))
         rec["sources"] = cell_value(r.get("sources"))
@@ -94,8 +97,8 @@ def build_results_workbook(data: dict) -> bytes:
             "dataset": s.get("dataset"), "notes": s.get("notes", ""),
             "groups": ", ".join(s.get("group_names") or []),
             "total_questions": s.get("total_rows"), "failed": s.get("failed_rows"),
-            "avg_answer_marks": s.get("avg_answer_marks"),
-            "avg_material_marks": s.get("avg_material_marks"),
+            "avg_sql_marks": s.get("avg_sql_marks"),
+            "avg_schema_marks": s.get("avg_schema_marks"),
             "avg_total_time_s": s.get("avg_total_time"),
             "judge_model": s.get("judge_model"),
             "duration_seconds": s.get("duration_seconds"),
@@ -111,7 +114,7 @@ def build_results_workbook(data: dict) -> bytes:
         from openpyxl.styles import Alignment, Font, PatternFill
         from openpyxl.utils import get_column_letter
         WRAP_COLS = {"question", "expected_sql", "generated_answer",
-                     "answer_remarks", "material_remarks", "retrieved_context"}
+                     "sql_remarks", "schema_remarks", "retrieved_context"}
         HEADER_FILL = PatternFill("solid", fgColor="1A5276")
         HEADER_FONT = Font(bold=True, color="FFFFFF")
 

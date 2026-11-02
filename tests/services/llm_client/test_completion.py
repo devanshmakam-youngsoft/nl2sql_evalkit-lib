@@ -3,7 +3,7 @@ import sys
 import types
 
 from nl2sql_evalkit.core.config import Config
-from nl2sql_evalkit.services.evaluation.answer_judge import Judge
+from nl2sql_evalkit.services.evaluation.sql_judge import Judge
 from nl2sql_evalkit.services.llm_client import completion
 from nl2sql_evalkit.services.testcases.testcase_generator import GenerationModelClient
 

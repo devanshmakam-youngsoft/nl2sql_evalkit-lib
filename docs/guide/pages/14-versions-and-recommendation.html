@@ -42,7 +42,7 @@ TOP_K=3 python versions_workflow.py      # run it as version 2: three passages p
 <div class="table-wrap"><table>
   <thead><tr><th>Option</th><th>Default</th><th>Use it to&hellip;</th></tr></thead>
   <tbody>
-    <tr><td><code>answer_weight</code> / <code>material_weight</code></td><td>0.6 / 0.4</td><td>decide how much answer quality and context quality count. Set <code>material_weight=0</code> for assistants with no retrieval.</td></tr>
+    <tr><td><code>sql_weight</code> / <code>schema_weight</code></td><td>0.6 / 0.4</td><td>decide how much answer quality and context quality count. Set <code>schema_weight=0</code> for assistants with no retrieval.</td></tr>
     <tr><td><code>recommendation_tolerance</code></td><td>0.25</td><td>widen or narrow what counts as a tie. A wider tolerance favours speed.</td></tr>
     <tr><td><code>recommendation_min_quality</code></td><td>5.0</td><td>raise the bar for what may be recommended at all.</td></tr>
     <tr><td><code>max_response_time</code></td><td>none</td><td>never recommend a version slower than this many seconds.</td></tr>

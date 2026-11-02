@@ -3,7 +3,7 @@ from nl2sql_evalkit.core.config.base import Settings
 
 
 class JudgeSettings(Settings):
-    """Options for the LLM judge: model, credentials, prompts and how retrieved sources are checked."""
+    """Options for the LLM judge: model, credentials and prompts."""
 
     # Any LiteLLM model string: "groq/...", "gemini/...", "openai/...", "ollama/..."
     judge_model: str = "groq/openai/gpt-oss-120b"
@@ -14,9 +14,3 @@ class JudgeSettings(Settings):
 
     # Override the LLM summary prompt (the one that writes the run's watch-outs and suggestions).
     summary_prompt: str = ""
-
-    # Source check mode
-    # "keyword" — fast substring match on pipe-separated expected_tables (default)
-    # "llm"     — LLM decides whether retrieved sources cover expected sources; adds source_score + source_comment
-    # "off"     — skip source verification entirely
-    source_check_mode: str = "keyword"

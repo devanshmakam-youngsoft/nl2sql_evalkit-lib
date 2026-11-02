@@ -8,8 +8,8 @@ from nl2sql_evalkit.services.evaluation.version_recommender import group_overvie
 def recommendation_settings(cfg: Config, tolerance: float | None = None, max_time: float | None = None) -> dict:
     """Weights, tolerance and time ceiling from serve(), overridable per request."""
     return {
-        "answer_weight": cfg.answer_weight,
-        "material_weight": cfg.material_weight,
+        "sql_weight": cfg.sql_weight,
+        "schema_weight": cfg.schema_weight,
         "tolerance": cfg.recommendation_tolerance if tolerance is None else tolerance,
         "min_quality": cfg.recommendation_min_quality,
         "max_time": cfg.max_response_time if max_time is None else (max_time if max_time > 0 else None),

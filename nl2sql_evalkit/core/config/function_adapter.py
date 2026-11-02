@@ -7,7 +7,7 @@ class FunctionAdapterSettings(Settings):
 
     # Answer extraction: keys tried when fn() returns a dict/object
     answer_keys: list[str] = [
-        "answer", "response", "output", "result", "text",
+        "sql", "query", "answer", "response", "output", "result", "text",
         "content", "message", "generated_text", "generation", "completion",
     ]
 

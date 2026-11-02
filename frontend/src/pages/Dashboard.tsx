@@ -76,7 +76,7 @@ export default function Dashboard() {
     if (groupFilter && versions && !availableGroups.includes(groupFilter)) setGroupFilter(null);
   }, [availableGroups, groupFilter, versions]);
 
-  const scoreOf = (v: VersionSummary, key: "avg_answer_marks" | "avg_material_marks" | "avg_total_time"): number | null => {
+  const scoreOf = (v: VersionSummary, key: "avg_sql_marks" | "avg_schema_marks" | "avg_total_time"): number | null => {
     if (!groupFilter) return (v[key] as number | null | undefined) ?? null;
     return (v.group_stats?.[groupFilter] as Record<string, number | null> | undefined)?.[key] ?? null;
   };
@@ -120,8 +120,8 @@ export default function Dashboard() {
         case "version": return Number.isNaN(Number(v.version)) ? null : Number(v.version);
         case "date": return Date.parse(v.date);
         case "questions": return v.total_rows;
-        case "answer": return v.avg_answer_marks;
-        case "material": return v.avg_material_marks;
+        case "answer": return v.avg_sql_marks;
+        case "material": return v.avg_schema_marks;
         case "time": return v.avg_total_time;
       }
     };
@@ -140,11 +140,11 @@ export default function Dashboard() {
   // best value per column, shown as a small "best" marker so the table can be scanned
   const bests = useMemo(() => {
     const ok = activeVersions.filter((v) => v.failed_rows === 0 && !v.stopped);
-    const pick = (key: "avg_answer_marks" | "avg_material_marks" | "avg_total_time", fn: (...n: number[]) => number) => {
+    const pick = (key: "avg_sql_marks" | "avg_schema_marks" | "avg_total_time", fn: (...n: number[]) => number) => {
       const vals = ok.map((v) => scoreOf(v, key)).filter((x): x is number => x != null);
       return vals.length > 1 ? fn(...vals) : null;
     };
-    return { answer: pick("avg_answer_marks", Math.max), material: pick("avg_material_marks", Math.max), time: pick("avg_total_time", Math.min) };
+    return { answer: pick("avg_sql_marks", Math.max), material: pick("avg_schema_marks", Math.max), time: pick("avg_total_time", Math.min) };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeVersions, groupFilter]);
   const latest = activeVersions[activeVersions.length - 1];
@@ -159,7 +159,7 @@ export default function Dashboard() {
     for (let j = activeVersions.indexOf(v) - 1; j >= 0; j--) if (reco?.scores[String(activeVersions[j].version)]) return activeVersions[j];
     return undefined;
   };
-  const deltaProps = (v: VersionSummary, key: Metric, field: "avg_answer_marks" | "avg_material_marks" | "avg_total_time") => {
+  const deltaProps = (v: VersionSummary, key: Metric, field: "avg_sql_marks" | "avg_schema_marks" | "avg_total_time") => {
     if (hasShared) {
       const p = prevShared(v);
       const cur = sharedScore(v, key);
@@ -173,7 +173,7 @@ export default function Dashboard() {
     const p = prevOf.get(v);
     return { current: scoreOf(v, field), previous: p ? scoreOf(p, field) : undefined };
   };
-  const isBestFor = (v: VersionSummary, key: Metric, field: "avg_answer_marks" | "avg_material_marks" | "avg_total_time", legacy: number | null) => {
+  const isBestFor = (v: VersionSummary, key: Metric, field: "avg_sql_marks" | "avg_schema_marks" | "avg_total_time", legacy: number | null) => {
     if (hasShared) {
       const vals = Object.values(reco!.scores).map((x) => x[key]).filter((n): n is number => n != null);
       const cur = sharedScore(v, key);
@@ -201,7 +201,7 @@ export default function Dashboard() {
       : null;
 
   const trend = useMemo(() => activeVersions.map((v) => ({
-    name: `v${v.version}`, "Answer quality": v.avg_answer_marks, "Context quality": v.avg_material_marks,
+    name: `v${v.version}`, "SQL score": v.avg_sql_marks, "Tables and columns": v.avg_schema_marks,
   })), [activeVersions]);
   const allNodes = useMemo(() => unionNodes(activeVersions), [activeVersions]);
   const timing = useMemo(() => activeVersions.map((v) => ({
@@ -262,10 +262,10 @@ export default function Dashboard() {
       {latest && (
         <section className="mt-2 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Stat label={<Term k="answer" />} accent="var(--brand)"
-            value={<><Mark color="var(--hl-good)">{fmt(scoreOf(latest, "avg_answer_marks"))}</Mark><span className="mono text-xs text-muted">/10</span><Delta {...deltaProps(latest, "answer", "avg_answer_marks")} /></>}
-            sub="average score out of 10, against the expected answers" />
+            value={<><Mark color="var(--hl-good)">{fmt(scoreOf(latest, "avg_sql_marks"))}</Mark><span className="mono text-xs text-muted">/10</span><Delta {...deltaProps(latest, "answer", "avg_sql_marks")} /></>}
+            sub="average score out of 10, how well the SQL answers the questions" />
           <Stat label={<Term k="context" />} accent="var(--sun)"
-            value={<><Mark color="var(--hl)">{fmt(scoreOf(latest, "avg_material_marks"))}</Mark><span className="mono text-xs text-muted">/10</span><Delta {...deltaProps(latest, "material", "avg_material_marks")} /></>}
+            value={<><Mark color="var(--hl)">{fmt(scoreOf(latest, "avg_schema_marks"))}</Mark><span className="mono text-xs text-muted">/10</span><Delta {...deltaProps(latest, "material", "avg_schema_marks")} /></>}
             sub="did it find the information it needed?" />
           <Stat label={<>Avg response time<Hint text={GLOSSARY.time.hint} /></>} accent="var(--coral)"
             value={<><Mark color="var(--hl-bad)">{fmtSeconds(scoreOf(latest, "avg_total_time"))}</Mark><Delta {...deltaProps(latest, "time", "avg_total_time")} invert digits={2} unit="s" /></>}
@@ -279,7 +279,7 @@ export default function Dashboard() {
         <section className="mt-3 grid gap-3 lg:grid-cols-2">
           <div className="card p-5">
             <h3 className="label">Quality trend{latest && (
-              <> <span className="mono normal-case tracking-normal">· latest v{latest.version} · answer {fmt(scoreOf(latest, "avg_answer_marks"))} · context {fmt(scoreOf(latest, "avg_material_marks"))}</span></>
+              <> <span className="mono normal-case tracking-normal">· latest v{latest.version} · answer {fmt(scoreOf(latest, "avg_sql_marks"))} · context {fmt(scoreOf(latest, "avg_schema_marks"))}</span></>
             )}</h3>
             <p className="mb-3 mt-1 text-xs text-muted">Average score out of 10 for each version</p>
             <div className="h-56">
@@ -290,8 +290,8 @@ export default function Dashboard() {
                   <YAxis domain={[0, 10]} tick={{ fill: "var(--muted)", fontSize: 12 }} axisLine={false} tickLine={false} />
                   <Tooltip contentStyle={tooltipStyle} />
                   <Legend iconType="square" iconSize={9} wrapperStyle={{ fontSize: 12 }} />
-                  <Line type="linear" dataKey="Answer quality" stroke="var(--coral)" strokeWidth={2.5} dot={{ r: 4, fill: "var(--coral)" }} />
-                  <Line type="linear" dataKey="Context quality" stroke="var(--brand)" strokeWidth={2.5} dot={{ r: 4, fill: "var(--brand)" }} />
+                  <Line type="linear" dataKey="SQL score" stroke="var(--coral)" strokeWidth={2.5} dot={{ r: 4, fill: "var(--coral)" }} />
+                  <Line type="linear" dataKey="Tables and columns" stroke="var(--brand)" strokeWidth={2.5} dot={{ r: 4, fill: "var(--brand)" }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -393,8 +393,8 @@ export default function Dashboard() {
                       )}
                     </td>
                     <td className="mono px-3 py-4">{v.total_rows}</td>
-                    <td className="px-3 py-4"><div className="flex flex-col items-start gap-1"><ScorePill value={scoreOf(v, "avg_answer_marks")} /><Delta {...deltaProps(v, "answer", "avg_answer_marks")} />{sharedNote(v, "answer", isBestFor(v, "answer", "avg_answer_marks", bests.answer))}{!partialOf(v) && isBestFor(v, "answer", "avg_answer_marks", bests.answer) && <BestTag />}</div></td>
-                    <td className="px-3 py-4"><div className="flex flex-col items-start gap-1"><ScorePill value={scoreOf(v, "avg_material_marks")} /><Delta {...deltaProps(v, "material", "avg_material_marks")} />{sharedNote(v, "material", isBestFor(v, "material", "avg_material_marks", bests.material))}{!partialOf(v) && isBestFor(v, "material", "avg_material_marks", bests.material) && <BestTag />}</div></td>
+                    <td className="px-3 py-4"><div className="flex flex-col items-start gap-1"><ScorePill value={scoreOf(v, "avg_sql_marks")} /><Delta {...deltaProps(v, "answer", "avg_sql_marks")} />{sharedNote(v, "answer", isBestFor(v, "answer", "avg_sql_marks", bests.answer))}{!partialOf(v) && isBestFor(v, "answer", "avg_sql_marks", bests.answer) && <BestTag />}</div></td>
+                    <td className="px-3 py-4"><div className="flex flex-col items-start gap-1"><ScorePill value={scoreOf(v, "avg_schema_marks")} /><Delta {...deltaProps(v, "material", "avg_schema_marks")} />{sharedNote(v, "material", isBestFor(v, "material", "avg_schema_marks", bests.material))}{!partialOf(v) && isBestFor(v, "material", "avg_schema_marks", bests.material) && <BestTag />}</div></td>
                     <td className="px-3 py-4"><div className="flex flex-col items-start gap-1"><div className="mono">{fmtSeconds(scoreOf(v, "avg_total_time"))}</div><Delta {...deltaProps(v, "time", "avg_total_time")} invert digits={2} unit="s" />{sharedNote(v, "time", isBestFor(v, "time", "avg_total_time", bests.time))}{!partialOf(v) && isBestFor(v, "time", "avg_total_time", bests.time) && <BestTag />}</div></td>
                     <td className="px-3 py-4"><NodeTimings v={v} compact /></td>
                     <td className="px-3 py-4 align-middle" onClick={(e) => e.stopPropagation()}>
@@ -481,8 +481,8 @@ export default function Dashboard() {
                         </td>
                         <td className="px-3 py-4 text-xs text-muted">{fmtDate(v.date)}</td>
                         <td className="mono px-3 py-4">{v.total_rows}</td>
-                        <td className="px-3 py-4"><ScorePill value={v.avg_answer_marks} /></td>
-                        <td className="px-3 py-4"><ScorePill value={v.avg_material_marks} /></td>
+                        <td className="px-3 py-4"><ScorePill value={v.avg_sql_marks} /></td>
+                        <td className="px-3 py-4"><ScorePill value={v.avg_schema_marks} /></td>
                         <td className="px-3 py-4"><div className="mono">{fmtSeconds(v.avg_total_time)}</div></td>
                         <td className="px-3 py-4"><NodeTimings v={v} compact /></td>
                         <td className="px-3 py-4 align-middle" onClick={(e) => e.stopPropagation()}>
@@ -552,9 +552,9 @@ function ComparePanel({ runs }: { runs: import("../api/types").VersionSummary[] 
   );
 
   const overallFor = (v: import("../api/types").VersionSummary): number | null => {
-    if (commonGroups.length === 0) return v.avg_answer_marks;
-    const vals = commonGroups.map((g) => v.group_stats?.[g]?.avg_answer_marks).filter((x): x is number => x != null);
-    return vals.length > 0 ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10 : v.avg_answer_marks;
+    if (commonGroups.length === 0) return v.avg_sql_marks;
+    const vals = commonGroups.map((g) => v.group_stats?.[g]?.avg_sql_marks).filter((x): x is number => x != null);
+    return vals.length > 0 ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10 : v.avg_sql_marks;
   };
 
   const bestVal = (vals: (number | null)[]) => {
@@ -570,7 +570,7 @@ function ComparePanel({ runs }: { runs: import("../api/types").VersionSummary[] 
       <div className="border-b border-line px-5 py-4">
         <h2 className="font-serif text-xl font-medium">Group Comparison</h2>
         <p className="mt-0.5 text-xs text-muted">
-          Answer quality, out of 10 · ★ = best in row
+          SQL score, out of 10 · ★ = best in row
           {commonGroups.length < allGroups.length && allGroups.length > 0 && " · Overall averages common groups only"}
         </p>
       </div>
@@ -593,7 +593,7 @@ function ComparePanel({ runs }: { runs: import("../api/types").VersionSummary[] 
           </thead>
           <tbody className="divide-y divide-line">
             {allGroups.map((group) => {
-              const vals = runs.map((v) => v.group_stats?.[group]?.avg_answer_marks ?? null);
+              const vals = runs.map((v) => v.group_stats?.[group]?.avg_sql_marks ?? null);
               const best = bestVal(vals);
               return (
                 <tr key={group} className="align-middle">

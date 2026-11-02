@@ -6,11 +6,11 @@ import pandas as pd
 import pytest
 
 from nl2sql_evalkit.services.db_services import EvalStore
-from nl2sql_evalkit.services.evaluation.answer_judge import Judge, parse_insights
 from nl2sql_evalkit.services.evaluation.run_summarizer import (
     build_group_stats,
     build_results_workbook,
 )
+from nl2sql_evalkit.services.evaluation.sql_judge import Judge, parse_insights
 
 
 @pytest.fixture
@@ -37,7 +37,7 @@ def _rows(selection, marks):
     for r in selection.df.itertuples(index=False):
         out.append({
             "chat_id": r.chat_id, "turn_no": r.turn_no, "question": r.question, "status": "ok", "tc_id": r.tc_id,
-            "groups": list(r.groups), "answer_marks": marks[r.question], "material_marks": 5,
+            "groups": list(r.groups), "sql_marks": marks[r.question], "schema_marks": 5,
             "total_time_taken": 1.0,
         })
     return out
@@ -57,8 +57,8 @@ def test_group_scores_count_an_overlapping_case_in_each_of_its_groups_but_once_o
     assert sel.total == 3                                            # q2 runs once
     rows = _rows(sel, {"q1": 10, "q2": 6, "q3": 2})
     stats = build_group_stats(store, sel.group_names, rows)
-    assert stats["A"]["total_rows"] == 2 and stats["A"]["avg_answer_marks"] == 8.0     # q1 + q2
-    assert stats["B"]["total_rows"] == 2 and stats["B"]["avg_answer_marks"] == 4.0     # q2 + q3
+    assert stats["A"]["total_rows"] == 2 and stats["A"]["avg_sql_marks"] == 8.0     # q1 + q2
+    assert stats["B"]["total_rows"] == 2 and stats["B"]["avg_sql_marks"] == 4.0     # q2 + q3
 
 
 def test_group_scores_follow_labels_at_run_time_not_the_library_afterwards(store):
@@ -107,7 +107,7 @@ def test_parse_insights_rejects_replies_with_nothing_usable(raw):
 
 
 def test_summarize_run_returns_bullets_retries_bad_replies_and_gives_up_cleanly(monkeypatch):
-    monkeypatch.setattr("nl2sql_evalkit.services.evaluation.answer_judge.judge.time.sleep", lambda s: None)
+    monkeypatch.setattr("nl2sql_evalkit.services.evaluation.sql_judge.judge.time.sleep", lambda s: None)
     judge = Judge(SimpleNamespace(judge_prompt_override="", judge_retries=2, summary_prompt=""))
     replies = iter(["garbage", json.dumps({"pitfalls": ["a"], "suggestions": ["b"]})])
     sent = []
@@ -134,7 +134,7 @@ def make_judge(retries=3):
 
 
 def test_a_summary_without_suggestions_is_sent_back_with_the_reason_until_it_has_them(monkeypatch):
-    monkeypatch.setattr("nl2sql_evalkit.services.evaluation.answer_judge.judge.time.sleep", lambda s: None)
+    monkeypatch.setattr("nl2sql_evalkit.services.evaluation.sql_judge.judge.time.sleep", lambda s: None)
     judge = make_judge()
     replies = iter([json.dumps({"pitfalls": ["Slow search."], "suggestions": []}),
                     json.dumps({"pitfalls": ["Slow search."], "suggestions": ["Check the search index."]})])
@@ -148,14 +148,14 @@ def test_a_summary_without_suggestions_is_sent_back_with_the_reason_until_it_has
 
 
 def test_when_the_model_never_gives_suggestions_what_it_did_give_is_kept(monkeypatch):
-    monkeypatch.setattr("nl2sql_evalkit.services.evaluation.answer_judge.judge.time.sleep", lambda s: None)
+    monkeypatch.setattr("nl2sql_evalkit.services.evaluation.sql_judge.judge.time.sleep", lambda s: None)
     judge = make_judge(retries=2)
     judge._call = lambda messages, json_mode=False: json.dumps({"pitfalls": ["Slow search."]})
     assert judge.summarize_run("stats") == {"pitfalls": ["Slow search."], "suggestions": []}      # the runner fills the gap
 
 
 def test_a_failing_call_is_retried_then_the_summary_gives_up_cleanly(monkeypatch):
-    monkeypatch.setattr("nl2sql_evalkit.services.evaluation.answer_judge.judge.time.sleep", lambda s: None)
+    monkeypatch.setattr("nl2sql_evalkit.services.evaluation.sql_judge.judge.time.sleep", lambda s: None)
     judge = make_judge(retries=2)
     calls = []
 
@@ -176,36 +176,36 @@ PAIR = {"pitfalls": ["a slow step"], "suggestions": ["speed it up"], "items": [{
     ({"pitfalls": ["a slow step", "a slow step", "None."], "suggestions": "- speed it up"}, PAIR),
 ])
 def test_summary_replies_are_read_whatever_names_and_shapes_the_model_used(reply, expected):
-    from nl2sql_evalkit.services.evaluation.answer_judge import check_insights
+    from nl2sql_evalkit.services.evaluation.sql_judge import check_insights
     found, problem = check_insights(json.dumps(reply))
     assert problem == "" and found == expected
 
 
 def test_the_summary_prompt_asks_for_actions_never_empty_and_no_jargon():
-    from nl2sql_evalkit.prompts.answer_judge import run_summary_format, run_summary_prompt
+    from nl2sql_evalkit.prompts.sql_judge import run_summary_format, run_summary_prompt
     text = run_summary_prompt + run_summary_format
-    for needle in ("do NOT restate", "never empty", "starting with a verb", "no jargon", "every item needs both parts", "THAT watch-out",
-                   "Never write retrieval", "Example of one finding"):
+    for needle in ("do NOT restate", "never empty", "starting with a verb", "plain everyday language", "every item needs both parts", "THAT watch-out",
+                   "Never write LLM", "Example of one finding"):
         assert needle in text
 
 
 def test_suggestions_read_from_the_numbers_are_never_empty_and_fit_the_run():
-    from nl2sql_evalkit.services.evaluation.answer_judge.fallback_insights import (
+    from nl2sql_evalkit.services.evaluation.sql_judge.fallback_insights import (
         default_suggestions,
     )
-    clean = {"failed_rows": 0, "avg_material_marks": 9.5, "avg_total_time": 2.0, "scores": {"tiers": {"low": 0}}}
-    assert default_suggestions(clean, []) == ["Keep this version as the baseline and add harder test cases (indirect and multi-turn questions) to find where it breaks."]
-    troubled = {"failed_rows": 2, "avg_material_marks": 5.0, "avg_total_time": 4.0, "avg_retrieval": 3.0, "avg_llm": 0.5,
-                "scores": {"tiers": {"low": 3}, "sources": {"checked": 4, "matched": 2}}}
+    clean = {"failed_rows": 0, "avg_schema_marks": 9.5, "avg_total_time": 2.0, "scores": {"tiers": {"low": 0}}}
+    assert default_suggestions(clean, []) == ["Keep this version as the baseline and add harder test cases (joins, dates, vague and harmful questions) to find where it breaks."]
+    troubled = {"failed_rows": 2, "avg_schema_marks": 5.0, "avg_total_time": 4.0, "avg_retrieval": 3.0, "avg_llm": 0.5,
+                "scores": {"tiers": {"low": 3}, "checks": {"answers": 4, "syntax_failed": 1}}}
     out = default_suggestions(troubled, [])
-    assert len(out) == 3 and out[0].startswith("Open the 2 failed questions") and any("weak answers" in t for t in out)
-    slow = default_suggestions({"failed_rows": 0, "avg_material_marks": 9, "avg_total_time": 4.0, "avg_retrieval": 3.0, "avg_llm": 0.5, "scores": {}}, [])
+    assert len(out) == 3 and out[0].startswith("Open the 2 failed questions") and any("does not parse" in t for t in out) and any("weak answers" in t for t in out)
+    slow = default_suggestions({"failed_rows": 0, "avg_schema_marks": 9, "avg_total_time": 4.0, "avg_retrieval": 3.0, "avg_llm": 0.5, "scores": {}}, [])
     assert slow == ["Retrieval takes 75% of the response time: start there to make answers faster."]
 
 
 def test_the_model_is_told_each_steps_share_of_the_response_time():
-    from nl2sql_evalkit.services.evaluation.answer_judge import stats_for_llm
-    summary = {"total_rows": 2, "failed_rows": 0, "avg_answer_marks": 9, "avg_material_marks": 9,
+    from nl2sql_evalkit.services.evaluation.sql_judge import stats_for_llm
+    summary = {"total_rows": 2, "failed_rows": 0, "avg_sql_marks": 9, "avg_schema_marks": 9,
                "avg_total_time": 4.0, "avg_retrieval": 3.0, "scores": {}}
     assert "retrieval=3.0s (75% of the response time)" in stats_for_llm(summary, [])
 
@@ -217,14 +217,14 @@ PAIRED = {"items": [{"watch_out": "The multi-turn group scores lowest.", "sugges
 
 
 def test_paired_findings_are_accepted_and_keep_their_pairing():
-    from nl2sql_evalkit.services.evaluation.answer_judge import check_insights
+    from nl2sql_evalkit.services.evaluation.sql_judge import check_insights
     found, problem = check_insights(json.dumps(PAIRED))
     assert problem == "" and found["items"] == PAIRED["items"]
     assert found["pitfalls"] == [i["watch_out"] for i in PAIRED["items"]] and found["suggestions"] == [i["suggestion"] for i in PAIRED["items"]]
 
 
 def test_a_finding_without_its_suggestion_is_sent_back_naming_the_item(monkeypatch):
-    monkeypatch.setattr("nl2sql_evalkit.services.evaluation.answer_judge.judge.time.sleep", lambda s: None)
+    monkeypatch.setattr("nl2sql_evalkit.services.evaluation.sql_judge.judge.time.sleep", lambda s: None)
     judge = make_judge()
     broken = {"items": [PAIRED["items"][0], {"watch_out": "Finding documents takes most of the time.", "suggestion": ""}]}
     replies = iter([json.dumps(broken), json.dumps(PAIRED)])
@@ -235,14 +235,14 @@ def test_a_finding_without_its_suggestion_is_sent_back_naming_the_item(monkeypat
 
 
 def test_unequal_parallel_lists_are_asked_to_use_the_paired_shape():
-    from nl2sql_evalkit.services.evaluation.answer_judge import check_insights
+    from nl2sql_evalkit.services.evaluation.sql_judge import check_insights
     found, problem = check_insights(json.dumps({"pitfalls": ["a", "b"], "suggestions": ["c"]}))
     assert found is None and '"items"' in problem and "its own suggestion" in problem
 
 
 def test_a_watch_out_left_without_a_suggestion_gets_one_from_the_numbers():
-    from nl2sql_evalkit.services.evaluation.answer_judge import finish_insights
-    summary = {"failed_rows": 2, "avg_material_marks": 9, "avg_total_time": 2.0, "scores": {"tiers": {"low": 0}}}
+    from nl2sql_evalkit.services.evaluation.sql_judge import finish_insights
+    summary = {"failed_rows": 2, "avg_schema_marks": 9, "avg_total_time": 2.0, "scores": {"tiers": {"low": 0}}}
     half = {"items": [{"watch_out": "Some questions failed.", "suggestion": ""}, {"watch_out": "Slow.", "suggestion": "Look at the slowest step."}],
             "pitfalls": ["Some questions failed.", "Slow."], "suggestions": ["Look at the slowest step."]}
     done = finish_insights(half, summary, [])
@@ -251,14 +251,14 @@ def test_a_watch_out_left_without_a_suggestion_gets_one_from_the_numbers():
 
 
 def test_older_style_lists_are_paired_by_position_and_never_left_blank():
-    from nl2sql_evalkit.services.evaluation.answer_judge import finish_insights
+    from nl2sql_evalkit.services.evaluation.sql_judge import finish_insights
     done = finish_insights({"pitfalls": ["One.", "Two."], "suggestions": ["Fix one."]}, {"failed_rows": 0, "scores": {}}, [])
     assert done["items"][0] == {"watch_out": "One.", "suggestion": "Fix one."}
     assert done["items"][1]["watch_out"] == "Two." and done["items"][1]["suggestion"]
 
 
 def test_the_model_is_told_the_figures_in_plain_words():
-    from nl2sql_evalkit.services.evaluation.answer_judge import stats_for_llm
-    text = stats_for_llm({"total_rows": 1, "failed_rows": 0, "avg_answer_marks": 9, "avg_material_marks": 9,
+    from nl2sql_evalkit.services.evaluation.sql_judge import stats_for_llm
+    text = stats_for_llm({"total_rows": 1, "failed_rows": 0, "avg_sql_marks": 9, "avg_schema_marks": 9,
                           "avg_total_time": 2.0, "scores": {}}, [])
-    assert "bm25" not in text.lower() and "recall" not in text.lower() and "Step names" in text
+    assert "bm25" not in text.lower() and "recall" not in text.lower() and "Checks: no checks ran" in text and "SQL" in text

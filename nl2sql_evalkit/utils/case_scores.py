@@ -23,8 +23,8 @@ def build_case_scores(rows: list[dict]) -> list[dict]:
         out.append({
             "k": case_key(r.get("chat_id", ""), r.get("turn_no", 1), r.get("question", ""), r.get("expected_sql", ""),
                          r.get("expected_tables", ""), r.get("expected_columns", "")),
-            "a": r.get("answer_marks"),
-            "m": r.get("material_marks"),
+            "a": r.get("sql_marks"),
+            "m": r.get("schema_marks"),
             "t": None if t is None or is_nan(t) else t,
             "ok": r.get("status") == "ok",
             "g": list(r.get("groups") or []),

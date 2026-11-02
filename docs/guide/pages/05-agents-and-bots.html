@@ -19,7 +19,7 @@ minutes: 6
 <ol>
   <li><b>Mark the test cases <code>non-rag</code></b> (a <code>type</code> column when importing, or the type box on a test case). Their context quality is then left out instead of scored as 0.</li>
   <li><b>Do not declare material</b> in these steps. Intent checks and tool calls are timing-only.</li>
-  <li><b>Set <code>material_weight=0</code></b>, so the recommendation looks at answer quality only.</li>
+  <li><b>Set <code>schema_weight=0</code></b>, so the recommendation looks at answer quality only.</li>
   <li><b>Write the expected answer as a behaviour</b> when exact words do not matter: <em>&ldquo;Greets the user politely and offers help&rdquo;</em>, <em>&ldquo;States that order A100 has shipped&rdquo;</em>. The judge grades the behaviour.</li>
 </ol>
 <div class="note tip"><b>Tip</b><p>A mixed assistant, with both knowledge questions and small talk, is the common case. Keep one test set and mark each case <code>rag</code> or <code>non-rag</code>; each is graded the right way.</p></div>

@@ -103,8 +103,8 @@ def test_group_overview_lists_each_run_and_uses_the_shared_cases_for_best():
 # ---- saving and reading per-case scores ------------------------------------------------------
 
 def test_case_scores_are_saved_compactly_with_run_time_groups():
-    rows = [{"chat_id": "c", "turn_no": 1, "question": "q", "expected_sql": "a", "answer_marks": 8,
-             "material_marks": None, "total_time_taken": 1.5, "status": "ok", "groups": ["G"]},
+    rows = [{"chat_id": "c", "turn_no": 1, "question": "q", "expected_sql": "a", "sql_marks": 8,
+             "schema_marks": None, "total_time_taken": 1.5, "status": "ok", "groups": ["G"]},
             {"chat_id": "c", "turn_no": 2, "question": "q2", "expected_sql": "a", "status": "generation_failed"}]
     first, second = build_case_scores(rows)
     assert first == {"k": case_key("c", 1, "q", "a"), "a": 8, "m": None, "t": 1.5, "ok": True, "g": ["G"]}
@@ -121,10 +121,10 @@ def client(tmp_path):
 
 def test_older_runs_are_filled_in_from_their_results_and_the_big_list_stays_out_of_the_api(client):
     store: EvalStore = client.app.state.store
-    rows = [{"chat_id": "c", "turn_no": i, "question": f"q{i}", "expected_sql": "a", "answer_marks": 9, "material_marks": 8,
+    rows = [{"chat_id": "c", "turn_no": i, "question": f"q{i}", "expected_sql": "a", "sql_marks": 9, "schema_marks": 8,
              "total_time_taken": 1.0, "status": "ok"} for i in range(1, 4)]
     summary = {"version": "1", "date": "2026-01-01T00:00:00+00:00", "total_rows": 3, "failed_rows": 0,
-               "avg_answer_marks": 9, "avg_material_marks": 8, "avg_total_time": 1.0}
+               "avg_sql_marks": 9, "avg_schema_marks": 8, "avg_total_time": 1.0}
     store.write("1", summary, rows)                          # a run saved before per-case scores existed
     assert "case_scores" not in store.runs.all()[0]
     full = store.list_versions_for_comparison()

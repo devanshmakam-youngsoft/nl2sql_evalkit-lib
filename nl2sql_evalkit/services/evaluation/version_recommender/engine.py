@@ -4,9 +4,9 @@ from __future__ import annotations
 from typing import Iterable
 
 from nl2sql_evalkit.core.constants import (
-    DEFAULT_ANSWER_WEIGHT,
-    DEFAULT_MATERIAL_WEIGHT,
     DEFAULT_MIN_QUALITY,
+    DEFAULT_SCHEMA_WEIGHT,
+    DEFAULT_SQL_WEIGHT,
     DEFAULT_TOLERANCE,
 )
 from nl2sql_evalkit.services.evaluation.version_recommender.shared_cases import (
@@ -26,8 +26,8 @@ def _recommend_active(active: list[dict], **settings) -> dict:
 def recommend(
     versions: Iterable[dict],
     *,
-    answer_weight: float = DEFAULT_ANSWER_WEIGHT,
-    material_weight: float = DEFAULT_MATERIAL_WEIGHT,
+    sql_weight: float = DEFAULT_SQL_WEIGHT,
+    schema_weight: float = DEFAULT_SCHEMA_WEIGHT,
     tolerance: float = DEFAULT_TOLERANCE,
     max_time: float | None = None,
     min_quality: float = DEFAULT_MIN_QUALITY,
@@ -44,7 +44,7 @@ def recommend(
     whether the latest run changed the answer.
     """
     active = sorted((v for v in versions if not v.get("archived")), key=lambda v: str(v.get("date", "")))
-    settings = dict(group=group, answer_weight=answer_weight, material_weight=material_weight,
+    settings = dict(group=group, sql_weight=sql_weight, schema_weight=schema_weight,
                     tolerance=tolerance, max_time=max_time, min_quality=min_quality)
     result = _recommend_active(active, **settings)
     if len(active) > 1:

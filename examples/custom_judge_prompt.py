@@ -1,35 +1,34 @@
-"""Keep the AI judge but change how it grades: your own rubric, your own model, your own wording for the findings."""
+"""Keep the AI judge but change how it scores: your own rubric, your own model, your own wording for the findings."""
 import nl2sql_evalkit
 
 
-def support_bot(question: str) -> str:
-    return "You can return items within 30 days. Would you like me to start a return?"
+def finance_assistant(question: str) -> str:
+    return "SELECT month, revenue FROM v_monthly_revenue WHERE year = 2025 ORDER BY month"
 
 
-# Only describe HOW to grade. nl2sql_evalkit adds the reply format (the JSON with answer_marks and the comments) itself.
-SUPPORT_RUBRIC = """You grade replies from a customer-support assistant for an online shop.
-You receive the customer's question, the reply the support team wrote as the expected answer, and the assistant's reply.
+# Only describe HOW to score. nl2sql_evalkit adds the reply format (the JSON with sql_marks, sql_comment and suggestion) itself.
+FINANCE_RUBRIC = """You review SQL written by an assistant for a finance team.
+You receive the question, what the test case expects, the assistant's SQL and the results of the checks already run.
 
-answer_marks (0-10):
-  10 = states the same facts and the same next step as the expected reply, politely.
-  7-9 = correct but missing a small detail or slightly curt.
-  4-6 = partly right, or right but rude or confusing.
-  0-3 = wrong policy, invented facts, or no help at all.
-Never reward a long reply for being long. A reply that promises something the expected reply does not (a refund, a
-discount) gets at most 3.
-material_marks: use null, this assistant does not retrieve documents."""
+sql_marks (0-10):
+  10 = answers the question exactly, reading from the reporting views (names starting with v_).
+  7-9 = right, with a small flaw such as an unneeded column or an unclear alias.
+  4-6 = partly right, or right but reads a raw table where a reporting view exists.
+  0-3 = wrong figures, a missing date filter, or a query that would double count through a join.
+Money is summed per currency: a query that adds amounts in different currencies together gets at most 3.
+suggestion: one change to the SQL, starting with a verb."""
 
 # What the AI-written findings of a run should look at. The reply format is added for you here too.
-SUMMARY_FOCUS = """You are reviewing one test run of a customer-support assistant for the support manager.
-Point out which kinds of questions went worst and what to change in the assistant's instructions. Mention promises
-the assistant made that the policy does not allow. Plain language, no technical terms."""
+SUMMARY_FOCUS = """You are reviewing one test run of a finance reporting assistant for the finance lead.
+Point out which kinds of questions went worst and what to change in the instructions the assistant is given. Mention
+queries that read raw tables instead of the reporting views. Plain language."""
 
 
 if __name__ == "__main__":
     nl2sql_evalkit.serve(
-        support_bot,
+        finance_assistant,
+        dialect="postgres",
         judge_model="openai/gpt-4o-mini",      # any LiteLLM model: "groq/...", "gemini/...", "ollama/llama3", ...
-        judge_prompt=SUPPORT_RUBRIC,
+        judge_prompt=FINANCE_RUBRIC,
         summary_prompt=SUMMARY_FOCUS,
-        material_weight=0,                     # nothing is retrieved, so the recommendation uses answer quality only
     )

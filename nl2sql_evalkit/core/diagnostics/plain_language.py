@@ -6,7 +6,6 @@ STAGE_SENTENCES = {
     "answer": "Your chatbot or pipeline returned an error for this question, so there is no answer to grade.",
     "grading": "The question was answered, but the AI judge could not grade it.",
     "custom_judge": "Your own judge function returned an error, so this answer was scored 0.",
-    "source_check": "Checking the sources with the AI model failed, so a simple keyword check was used instead.",
     "metric": "One of the scores could not be calculated for this question.",
     "summary": "The AI could not write the findings for this run.",
     "save": "The results could not be saved.",

@@ -12,8 +12,8 @@ export interface VersionSummary {
   dataset: string;
   total_rows: number;
   failed_rows: number;
-  avg_answer_marks: number | null;
-  avg_material_marks: number | null;
+  avg_sql_marks: number | null;
+  avg_schema_marks: number | null;
   avg_total_time: number | null;
   comment: string;
   /** Problems met during the run, and the name of its log file (see the Download log link). */
@@ -33,8 +33,8 @@ export interface VersionSummary {
   group_names?: string[];
   /** Per-group score breakdown (present when the run covered named test-case groups). */
   group_stats?: Record<string, {
-    avg_answer_marks: number | null;
-    avg_material_marks: number | null;
+    avg_sql_marks: number | null;
+    avg_schema_marks: number | null;
     avg_total_time: number | null;
     total_rows: number;
     failed_rows?: number;
@@ -86,8 +86,8 @@ export interface GroupRunStat {
   date: string;
   total_rows: number;
   failed_rows: number;
-  avg_answer_marks: number | null;
-  avg_material_marks: number | null;
+  avg_sql_marks: number | null;
+  avg_schema_marks: number | null;
   avg_total_time: number | null;
   quality: number | null;
   stopped: boolean;
@@ -121,10 +121,10 @@ export interface ResultRow {
   total_time_taken: number | null;
   /** Seconds per node for this question, in execution order. */
   node_timings: Record<string, number>;
-  answer_marks: number | null;
-  answer_remarks: string | null;
-  material_marks: number | null;
-  material_remarks: string | null;
+  sql_marks: number | null;
+  sql_remarks: string | null;
+  schema_marks: number | null;
+  schema_remarks: string | null;
   /** Groups this test case belonged to when it ran. */
   groups?: string[];
   /** Set when the test case has been deleted since this version ran (the question and answer here are kept). */
@@ -134,10 +134,31 @@ export interface ResultRow {
   error_detail?: string;
   /** Free-form notes attached via nl2sql_evalkit.note() during the pipeline run. */
   flags?: Record<string, string>;
-  /** Whether recorded sources matched expected_tables from the dataset. */
-  source_match?: boolean | null;
-  matched_sources?: string[];
-  missing_sources?: string[];
+  /** The SQL in the reply, without any text around it (empty when there is none). */
+  generated_sql?: string;
+  /** The one change the judge suggests. */
+  sql_suggestion?: string;
+  /** What the checks on the SQL found. The SQL is read, never run. */
+  sql_checks?: SqlChecks;
+}
+
+/** The findings of the checks on one reply. `null` means the check did not apply. */
+export interface SqlChecks {
+  sql: string;
+  message: string;
+  returned_sql: boolean;
+  syntax_ok: boolean | null;
+  syntax_error: string;
+  read_only: boolean | null;
+  read_only_problem: string;
+  tables_used: string[];
+  columns_used: string[];
+  star: boolean;
+  tables_missing: string[] | null;
+  columns_missing: string[] | null;
+  joins_match: boolean | null;
+  joins_missing: string[];
+  joins_extra: string[];
 }
 
 /** A problem met while something ran: `message` is for anyone, `technical` is shown on request. */

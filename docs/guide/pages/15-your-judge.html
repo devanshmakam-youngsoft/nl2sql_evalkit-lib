@@ -20,6 +20,6 @@ minutes: 6
 {{example:custom_judge_prompt.py}}
 
 <h2 id="level-3">Level 3: your own function</h2>
-<p>For exact checks, rules, a JSON schema, or your own scoring service, replace the AI judge with a function. It receives the question, the expected answer, the generated answer and the retrieved material, and returns <code>answer_marks</code> (0&ndash;10) with an optional comment, plus <code>material_marks</code> if you grade the context too.</p>
+<p>For exact checks, rules, a JSON schema, or your own scoring service, replace the AI judge with a function. It receives the question, the expected answer, the generated answer and the retrieved material, and returns <code>sql_marks</code> (0&ndash;10) with an optional comment, plus <code>schema_marks</code> if you grade the context too.</p>
 {{example:custom_judge.py}}
 <div class="note"><b>Good to know</b><p>The written findings at the end of a run are produced by the judge <em>model</em>, even when you use <code>judge_fn</code>. Without a key for it the run still finishes, and the version says the findings could not be written.</p></div>

@@ -38,7 +38,7 @@ def _finished(manager, df):
 
 
 def _manager(config, store, fn):
-    manager = RunManager(config, store, fn, judge_fn=lambda q, e, g, m: {"answer_marks": 8})
+    manager = RunManager(config, store, fn, judge_fn=lambda q, e, g, m: {"sql_marks": 8})
     manager._llm_judge = SimpleNamespace(summarize_run=lambda stats: None)       # no model is called in tests
     return manager
 
