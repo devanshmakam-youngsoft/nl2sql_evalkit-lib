@@ -49,7 +49,7 @@ SAMPLE = Path(__file__).parents[2] / "examples" / "test_cases.csv"
 
 @pytest.fixture
 def served(tmp_path):
-    config = Config(data_dir=tmp_path, require_login=False, run_semantic_similarity=False, run_bm25=False)
+    config = Config(data_dir=tmp_path, require_login=False)
     app = create_app(config, fn=lambda q: "Refunds are allowed within 30 days.",
                      judge_fn=lambda q, e, g, m: {"answer_marks": 8, "material_marks": 7})
     app.state.manager._llm_judge = SimpleNamespace(summarize_run=lambda stats: None)

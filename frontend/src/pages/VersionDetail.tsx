@@ -140,12 +140,9 @@ export default function VersionDetail() {
         {s.notes && <Meta label="Run note"><span className="italic">{s.notes}</span></Meta>}
       </dl>
 
-      <section className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-5">
+      <section className="mt-6 grid grid-cols-2 gap-4">
         <Stat label={<Term k="answer" />} value={<ScorePill value={s.avg_answer_marks} />} />
         <Stat label={<Term k="context" />} value={<ScorePill value={s.avg_material_marks} />} />
-        <Stat label={<Term k="keywords" />} accent="var(--sun)" value={<Mark>{fmt(s.avg_keyword_recall, 2)}</Mark>} sub="of the key words are present" />
-        <Stat label={<Term k="wording" />} accent="var(--coral)" value={<Mark>{fmt(s.avg_bm25_score, 2)}</Mark>} sub="similar phrasing · 0 to 1" />
-        <Stat label={<Term k="meaning" />} accent="var(--plum)" value={<Mark>{fmt(s.avg_semantic_similarity, 2)}</Mark>} sub="similar meaning · 0 to 1" />
       </section>
 
       {bands.total > 0 && (
@@ -547,16 +544,6 @@ function RowDrawer({ row, onClose }: { row: ResultRow; onClose: () => void }) {
             <div className="max-h-72 overflow-auto whitespace-pre-wrap border-t border-line bg-surface-2 p-3.5 font-mono text-xs leading-relaxed">{row.material}</div>
           </details>
         )}
-
-        {/* 6. Technical detail */}
-        <div className="mt-5 grid grid-cols-3 gap-3 text-center">
-          {([["keywords", row.keyword_recall], ["wording", row.bm25_score], ["meaning", row.semantic_similarity]] as const).map(([k, v]) => (
-            <div key={k} className="rounded border border-line p-3">
-              <div className="num text-xl">{fmt(v, 2)}</div>
-              <div className="text-[11px] text-muted"><Term k={k} /></div>
-            </div>
-          ))}
-        </div>
 
         <div className="mt-5">
           <div className="label mb-1.5"><Term k="steps" /> · {fmtSeconds(row.total_time_taken)} total</div>

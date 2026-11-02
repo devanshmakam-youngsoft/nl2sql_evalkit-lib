@@ -15,9 +15,6 @@ export interface VersionSummary {
   avg_answer_marks: number | null;
   avg_material_marks: number | null;
   avg_total_time: number | null;
-  avg_keyword_recall: number | null;
-  avg_bm25_score: number | null;
-  avg_semantic_similarity: number | null;
   comment: string;
   /** Problems met during the run, and the name of its log file (see the Download log link). */
   issues?: Issue[];
@@ -39,9 +36,6 @@ export interface VersionSummary {
     avg_answer_marks: number | null;
     avg_material_marks: number | null;
     avg_total_time: number | null;
-    avg_keyword_recall: number | null;
-    avg_bm25_score: number | null;
-    avg_semantic_similarity: number | null;
     total_rows: number;
     failed_rows?: number;
   }>;
@@ -129,9 +123,6 @@ export interface ResultRow {
   answer_remarks: string | null;
   material_marks: number | null;
   material_remarks: string | null;
-  keyword_recall: number | null;
-  bm25_score: number | null;
-  semantic_similarity: number | null;
   /** Groups this test case belonged to when it ran. */
   groups?: string[];
   /** Set when the test case has been deleted since this version ran (the question and answer here are kept). */

@@ -45,9 +45,6 @@ def build_summary(
         "avg_answer_marks": mean_of(column_of(rows, "answer_marks")),
         "avg_material_marks": mean_of(column_of(rows, "material_marks")),
         "avg_total_time": mean_of(column_of(rows, "total_time_taken"), 3),
-        "avg_keyword_recall": mean_of(column_of(rows, "keyword_recall"), 3),
-        "avg_bm25_score": mean_of(column_of(rows, "bm25_score"), 3),
-        "avg_semantic_similarity": mean_of(column_of(rows, "semantic_similarity"), 3),
         # Traceability fields — enables "did the questions change?" dashboard warnings.
         "judge_model": judge_model,
         "question_fingerprint": question_fingerprint,

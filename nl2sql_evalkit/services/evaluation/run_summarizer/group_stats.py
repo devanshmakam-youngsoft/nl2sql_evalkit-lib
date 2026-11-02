@@ -27,9 +27,6 @@ def build_group_stats(store, group_names: list[str], rows: list[dict]) -> dict:
                 "avg_answer_marks": mean_of(column_of(group_rows, "answer_marks")),
                 "avg_material_marks": mean_of(column_of(group_rows, "material_marks")),
                 "avg_total_time": mean_of(column_of(group_rows, "total_time_taken"), 3),
-                "avg_keyword_recall": mean_of(column_of(group_rows, "keyword_recall"), 3),
-                "avg_bm25_score": mean_of(column_of(group_rows, "bm25_score"), 3),
-                "avg_semantic_similarity": mean_of(column_of(group_rows, "semantic_similarity"), 3),
                 "total_rows": len(group_rows),
                 "failed_rows": sum(1 for r in group_rows if r.get("status") != "ok"),
             }

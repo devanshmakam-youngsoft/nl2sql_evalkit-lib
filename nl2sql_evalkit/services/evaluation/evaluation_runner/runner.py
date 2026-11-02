@@ -11,7 +11,6 @@ from nl2sql_evalkit.core.config import Config
 from nl2sql_evalkit.core.constants import is_non_rag
 from nl2sql_evalkit.core.diagnostics import EventLog
 from nl2sql_evalkit.core.exceptions import JudgeError, RunBusy
-from nl2sql_evalkit.services import text_metrics
 from nl2sql_evalkit.services.db_services import EvalStore
 from nl2sql_evalkit.services.evaluation import step_recorder
 from nl2sql_evalkit.services.evaluation.answer_judge import Judge, finish_insights, stats_for_llm
@@ -334,21 +333,6 @@ class RunManager:
             )
 
         conversational = self._is_conversational(row.type)
-
-        # Built-in lexical metrics (non-conversational only)
-        if out["status"] == "ok" and not conversational:
-            gen = out["generated_answer"]
-            if self.config.run_keyword_recall:
-                out["keyword_recall"] = text_metrics.keyword_recall(row.expected_answer, gen)
-            if self.config.run_bm25:
-                out["bm25_score"] = text_metrics.bm25_score(row.expected_answer, gen)
-            if self.config.semantic_similarity_enabled:
-                try:
-                    out["semantic_similarity"] = text_metrics.semantic_similarity(
-                        row.expected_answer, gen, self.config.embedding_model
-                    )
-                except Exception as e:
-                    run.log.issue("metric", e, f"{where}, semantic similarity", severity="warning")
 
         # Extra / custom metrics
         if out["status"] == "ok" and self._extra_metrics:

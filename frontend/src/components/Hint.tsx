@@ -21,18 +21,6 @@ export const GLOSSARY = {
     label: "Timing of steps",
     hint: "Where the time goes: every stage the assistant goes through (for example searching documents, then writing the answer), with the average seconds each takes and its share of the whole response time. Time outside any step shows as “Not in a step”, and steps that run at the same time can add up to more than 100%.",
   },
-  keywords: {
-    label: "Key facts found",
-    hint: "The share (0–1) of the important words in the expected answer that also appear in the actual answer. A quick check that ignores meaning: 1.00 means every key word is there.",
-  },
-  wording: {
-    label: "Wording match",
-    hint: "How closely the answer's wording overlaps with the expected answer (0–1). High when the same phrases are used; can be low for a correct answer that is worded differently.",
-  },
-  meaning: {
-    label: "Meaning match",
-    hint: "How close the answer's meaning is to the expected answer (0–1), even when the words differ. High means it says essentially the same thing.",
-  },
   overall: {
     label: "Overall score",
     hint: "Answer quality and context quality combined into one number out of 10 (the mix is shown next to it). It decides the recommended version; speed only breaks near-ties.",

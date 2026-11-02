@@ -7,10 +7,8 @@ from pathlib import Path
 from typing import Callable
 
 from nl2sql_evalkit.core.config import (
-    SEMANTIC_INSTALL_COMMAND,
     Config,
     load_dotenv,
-    semantic_extra_installed,
 )
 from nl2sql_evalkit.core.constants import DATA_DIR_NAME
 from nl2sql_evalkit.core.diagnostics import configure_logging
@@ -47,12 +45,7 @@ def serve(
     recommendation_tolerance: float = 0.25,
     recommendation_min_quality: float = 5.0,
     max_response_time: float | None = None,
-    # --- built-in metrics ---
-    run_keyword_recall: bool = True,
-    run_bm25: bool = True,
-    run_semantic_similarity: bool | None = None,
-    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
-    # --- custom / extra metrics ---
+    # --- custom metrics ---
     extra_metrics: dict[str, Callable] | None = None,
     # --- access control ---
     users: str = "admin:admin123",
@@ -137,14 +130,7 @@ def serve(
         recommendation_min_quality: A version is only recommended when its overall score (0 to 10) reaches this.
             Below it the dashboard says no version is good enough yet and shows the best so far. Default ``5.0``.
         max_response_time: Exclude version candidates slower than this (seconds) from recommendation.
-        run_keyword_recall: Compute keyword recall between expected and generated answers.
-        run_bm25: Compute BM25 lexical similarity score.
-        run_semantic_similarity: Compute the meaning score (cosine similarity from a small local embedding model).
-            ``None`` (the default) turns it on when the optional extra is installed
-            (``pip install "nl2sql_evalkit[semantic]"``) and leaves it off otherwise. ``True`` without the extra
-            stops ``serve()`` with a message saying how to install it.
-        embedding_model: ``sentence-transformers`` model name for semantic similarity.
-        extra_metrics: Additional scoring functions run alongside built-ins::
+        extra_metrics: Additional scoring functions, run on every answer::
 
                 extra_metrics={"rouge_1": lambda exp, gen: rouge(exp, gen)}
 
@@ -167,7 +153,7 @@ def serve(
             ``"dict"`` (default) → ``[{"question": …, "answer": …}]``;
             ``"openai"`` → ``[{"role": "user", …}, {"role": "assistant", …}]``.
         conversational_types: Row ``type`` values (case-insensitive) that skip material
-            scoring and lexical metrics, e.g. ``["conversational", "greeting"]``.
+            scoring, e.g. ``["conversational", "greeting"]``.
         source_check_mode: How to verify retrieved sources against ``expected_sources`` in
             the dataset. ``"keyword"`` (default) uses substring matching — separate AND-groups
             with ``|`` and OR-alternatives within a group with ``,`` (e.g.
@@ -202,11 +188,6 @@ def serve(
         raise ConfigError(f"judge_retries must be >= 1, got {judge_retries}")
     if answer_weight < 0 or material_weight < 0:
         raise ConfigError("answer_weight and material_weight must be >= 0")
-    if run_semantic_similarity and not semantic_extra_installed():
-        raise ConfigError(
-            "run_semantic_similarity=True needs the optional semantic extra. "
-            f"Install it with: {SEMANTIC_INSTALL_COMMAND}  (or leave the option unset to skip the meaning score)"
-        )
     if history_format not in {"dict", "openai"}:
         raise ConfigError(
             f"history_format={history_format!r} is not valid. Choose 'dict' or 'openai'."
@@ -257,10 +238,6 @@ def serve(
         recommendation_tolerance=recommendation_tolerance,
         recommendation_min_quality=recommendation_min_quality,
         max_response_time=max_response_time,
-        run_keyword_recall=run_keyword_recall,
-        run_bm25=run_bm25,
-        run_semantic_similarity=run_semantic_similarity,
-        embedding_model=embedding_model,
         eval_users=users,
         eval_secret=secret or secrets.token_hex(32),
         require_login=require_login,

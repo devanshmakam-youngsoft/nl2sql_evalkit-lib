@@ -1,6 +1,5 @@
 """Library configuration: one small file per group of options, assembled into ``Config``."""
 from nl2sql_evalkit.core.config.dotenv import load_dotenv
-from nl2sql_evalkit.core.config.scoring import SEMANTIC_INSTALL_COMMAND, semantic_extra_installed
 from nl2sql_evalkit.core.config.settings import Config
 
-__all__ = ["Config", "SEMANTIC_INSTALL_COMMAND", "load_dotenv", "semantic_extra_installed"]
+__all__ = ["Config", "load_dotenv"]

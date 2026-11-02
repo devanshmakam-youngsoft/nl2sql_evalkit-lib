@@ -19,11 +19,6 @@ def build_scores(rows: list[dict]) -> dict:
         "graded_rows": len(graded),
         "answer_marks": mean_of(marks),
         "material_marks": mean_of(column_of(rows, "material_marks")),
-        "lexical": {
-            "keyword_recall": mean_of(column_of(rows, "keyword_recall"), 3),
-            "bm25_score": mean_of(column_of(rows, "bm25_score"), 3),
-            "semantic_similarity": mean_of(column_of(rows, "semantic_similarity"), 3),
-        },
         "tiers": {
             "high": sum(1 for m in marks if m >= 8),
             "mid": sum(1 for m in marks if 5 <= m < 8),

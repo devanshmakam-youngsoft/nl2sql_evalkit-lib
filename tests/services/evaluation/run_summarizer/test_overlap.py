@@ -185,7 +185,7 @@ def test_the_summary_prompt_asks_for_actions_never_empty_and_no_jargon():
     from nl2sql_evalkit.prompts.answer_judge import run_summary_format, run_summary_prompt
     text = run_summary_prompt + run_summary_format
     for needle in ("do NOT restate", "never empty", "starting with a verb", "no jargon", "every item needs both parts", "THAT watch-out",
-                   "Never write BM25", "Example of one finding"):
+                   "Never write retrieval", "Example of one finding"):
         assert needle in text
 
 
@@ -205,8 +205,8 @@ def test_suggestions_read_from_the_numbers_are_never_empty_and_fit_the_run():
 
 def test_the_model_is_told_each_steps_share_of_the_response_time():
     from nl2sql_evalkit.services.evaluation.answer_judge import stats_for_llm
-    summary = {"total_rows": 2, "failed_rows": 0, "avg_answer_marks": 9, "avg_material_marks": 9, "avg_keyword_recall": 0.5,
-               "avg_semantic_similarity": 0.5, "avg_total_time": 4.0, "avg_retrieval": 3.0, "scores": {}}
+    summary = {"total_rows": 2, "failed_rows": 0, "avg_answer_marks": 9, "avg_material_marks": 9,
+               "avg_total_time": 4.0, "avg_retrieval": 3.0, "scores": {}}
     assert "retrieval=3.0s (75% of the response time)" in stats_for_llm(summary, [])
 
 
@@ -259,6 +259,6 @@ def test_older_style_lists_are_paired_by_position_and_never_left_blank():
 
 def test_the_model_is_told_the_figures_in_plain_words():
     from nl2sql_evalkit.services.evaluation.answer_judge import stats_for_llm
-    text = stats_for_llm({"total_rows": 1, "failed_rows": 0, "avg_answer_marks": 9, "avg_material_marks": 9, "avg_keyword_recall": 0.5,
-                          "avg_semantic_similarity": 0.4, "avg_total_time": 2.0, "scores": {}}, [])
-    assert "semantic" not in text.lower() and "recall" not in text.lower() and "meaning match" in text and "Step names" in text
+    text = stats_for_llm({"total_rows": 1, "failed_rows": 0, "avg_answer_marks": 9, "avg_material_marks": 9,
+                          "avg_total_time": 2.0, "scores": {}}, [])
+    assert "bm25" not in text.lower() and "recall" not in text.lower() and "Step names" in text

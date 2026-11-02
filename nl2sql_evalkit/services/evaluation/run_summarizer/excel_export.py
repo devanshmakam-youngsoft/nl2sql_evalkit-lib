@@ -46,15 +46,13 @@ def build_results_workbook(data: dict) -> bytes:
     JUDGE_COLS = ["answer_marks", "answer_remarks", "material_marks", "material_remarks"]
     # Retrieved context and sources
     CTX_COLS  = ["retrieved_context", "sources"]
-    # Lexical / embedding metrics
-    METRIC_COLS = ["keyword_recall", "bm25_score", "semantic_similarity"]
     # Timing
     TIME_COLS = ["total_time_taken", *[f"node_{n}" for n in nodes]]
     # Optional: source verification
     OPT_PRESENT = [c for c in OPTIONAL_RECEIPT_COLUMNS if any(r.get(c) is not None for r in rows)]
     # Anything else logged that isn't already covered
     _covered = set(ID_COLS + QA_COLS + JUDGE_COLS + ["material"] + CTX_COLS +
-                   METRIC_COLS + ["total_time_taken"] + OPT_PRESENT +
+                   ["total_time_taken"] + OPT_PRESENT +
                    ["session_id", "tc_id", "step_inputs", "step_outputs", "node_timings", "version"])
     extra: list[str] = []
     for r in rows:
@@ -62,7 +60,7 @@ def build_results_workbook(data: dict) -> bytes:
             if k not in _covered and k not in extra:
                 extra.append(k)
 
-    columns = [*ID_COLS, *QA_COLS, *JUDGE_COLS, *CTX_COLS, *METRIC_COLS,
+    columns = [*ID_COLS, *QA_COLS, *JUDGE_COLS, *CTX_COLS,
                *TIME_COLS, *OPT_PRESENT, *extra]
 
     records = []
@@ -77,8 +75,6 @@ def build_results_workbook(data: dict) -> bytes:
         # "material" stored internally → rename to "retrieved_context" for clarity
         rec["retrieved_context"] = cell_value(r.get("material"))
         rec["sources"] = cell_value(r.get("sources"))
-        for c in METRIC_COLS:
-            rec[c] = cell_value(r.get(c))
         rec["total_time_taken"] = cell_value(r.get("total_time_taken"))
         nt = r.get("node_timings") or {}
         for n in nodes:
@@ -101,9 +97,6 @@ def build_results_workbook(data: dict) -> bytes:
             "avg_answer_marks": s.get("avg_answer_marks"),
             "avg_material_marks": s.get("avg_material_marks"),
             "avg_total_time_s": s.get("avg_total_time"),
-            "avg_keyword_recall": s.get("avg_keyword_recall"),
-            "avg_bm25_score": s.get("avg_bm25_score"),
-            "avg_semantic_similarity": s.get("avg_semantic_similarity"),
             "judge_model": s.get("judge_model"),
             "duration_seconds": s.get("duration_seconds"),
             "comment": s.get("comment"),

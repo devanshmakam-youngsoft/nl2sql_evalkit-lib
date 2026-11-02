@@ -19,8 +19,8 @@ Example of one finding: {"watch_out": "The multi-turn group scores lowest (5.8):
 earlier answer.", "suggestion": "Add the previous answer to the prompt for each follow-up question and run this group
 again."}
 
-Rules: plain everyday language, no jargon. Never write BM25, embeddings, recall, semantic similarity, retrieval, LLM,
-token or latency; say "key words", "meaning", "finding documents", "the AI model" and "response time" instead. One
+Rules: plain everyday language, no jargon. Never write retrieval, LLM,
+token or latency; say "finding documents", "the AI model" and "response time" instead. One
 sentence per part, with at most one number in it. No markdown. Use only the facts provided and do not invent causes the
 data does not show."""
 

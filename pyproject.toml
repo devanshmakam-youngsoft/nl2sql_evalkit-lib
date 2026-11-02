@@ -38,9 +38,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# The meaning-similarity score runs a small local model. sentence-transformers brings PyTorch, a very large download,
-# so it is opt-in: pip install "nl2sql_evalkit[semantic]"
-semantic = ["sentence-transformers>=3.0"]
 dev = ["pytest", "httpx", "pytest-asyncio", "ruff"]
 
 [project.urls]

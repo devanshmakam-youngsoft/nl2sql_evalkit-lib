@@ -20,10 +20,6 @@ pip install git+https://github.com/devanshmakam-youngsoft/nl2sql_evalkit-lib.git
 
 To pin a release, add a tag, for example `@v0.1.3` (tags: `v0.1.0` to `v0.1.4`). `v0.1.4` is the first release with the backend layout described below and the `data_dir` option in place of `store_path` and `log_dir`; code written for an earlier tag that passes those two options needs the one change.
 
-The meaning-similarity score needs a small local model, which brings PyTorch (a very large download), so it is optional:
-`pip install "nl2sql_evalkit[semantic] @ git+https://github.com/devanshmakam-youngsoft/nl2sql_evalkit-lib.git"`. Without it everything else
-works and that one score is left blank.
-
 In `requirements.txt`:
 
 ```
@@ -263,7 +259,6 @@ nl2sql_evalkit/
 │   ├── testcases/       testcase_library, testcase_import, testcase_generator, document_reader, spreadsheet_loader
 │   ├── db_services/     reads and writes the TinyDB JSON store (store.py and one file per kind of record)
 │   ├── llm_client/      one safe way to call any AI model
-│   ├── text_metrics/    key words, BM25, meaning similarity (used by both groups)
 │   └── app_info/        the guide page and which dashboard features are on
 ├── prompts/             the instructions sent to AI models, one file each: answer_judge/, testcase_generator/
 ├── utils/               small shared helpers

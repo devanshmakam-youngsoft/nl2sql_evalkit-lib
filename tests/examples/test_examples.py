@@ -31,7 +31,6 @@ def serve_example(tmp_path, monkeypatch):
     monkeypatch.setattr("uvicorn.run", lambda app, **options: caught.update(app=app))
     monkeypatch.setattr("nl2sql_evalkit.launcher.configure_logging", lambda config: None)
     monkeypatch.setattr("nl2sql_evalkit.launcher.llm_client.load_litellm", lambda: None)
-    monkeypatch.setattr("nl2sql_evalkit.services.text_metrics.semantic_similarity", lambda *args, **options: 0.5)   # no model download
     monkeypatch.setattr("nl2sql_evalkit.launcher.threading.Timer", lambda *args, **options: SimpleNamespace(start=lambda: None))
 
     def serve(name, fake_judge=True):
@@ -53,8 +52,7 @@ def served_function(tmp_path):
     apps = []
 
     def build(fn, config_options=None, **options):
-        config = Config(data_dir=tmp_path / f"store{len(apps)}", require_login=False,
-                        run_semantic_similarity=False, run_bm25=False, **(config_options or {}))
+        config = Config(data_dir=tmp_path / f"store{len(apps)}", require_login=False, **(config_options or {}))
         app = create_app(config, fn=fn, judge_fn=options.pop("judge_fn", JUDGE), **options)
         app.state.manager._llm_judge = SimpleNamespace(summarize_run=lambda stats: None)
         apps.append(app)
@@ -338,7 +336,7 @@ def test_the_team_setup_example_is_a_valid_configuration(serve_example):
 @pytest.fixture
 def running_server(tmp_path):
     """A real server on a free port, with a group of test cases, the way ci_gate.py meets it."""
-    config = Config(data_dir=tmp_path / "ci_store", require_login=False, run_semantic_similarity=False, run_bm25=False)
+    config = Config(data_dir=tmp_path / "ci_store", require_login=False)
     app = create_app(config, fn=lambda question: "Refunds are allowed within 30 days.", judge_fn=JUDGE)
     app.state.manager._llm_judge = SimpleNamespace(summarize_run=lambda stats: None)
     store = app.state.store

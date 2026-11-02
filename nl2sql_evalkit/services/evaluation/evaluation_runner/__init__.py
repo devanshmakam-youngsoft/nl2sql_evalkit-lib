@@ -19,7 +19,6 @@ CALL FLOW (one question)
     └─ _process_row()
          ├─ _call_fn()             ← calls developer's fn(); recording captures steps + flags
          ├─ check_sources_by_keyword()        ← compares expected_sources against recorded sources (if column present)
-         ├─ lexical metrics        ← keyword_recall, bm25_score, semantic_similarity
          ├─ extra_metrics          ← any custom metric fns passed to serve()
          └─ _grade()              ← LLM judge or custom judge_fn
 

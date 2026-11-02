@@ -78,7 +78,7 @@ def create_app(
         config: All options. The store, logs and uploads are placed under ``config.data_dir``.
         fn: The pipeline function under evaluation, called once per test question.
         judge_fn: Replaces the LLM judge when given.
-        extra_metrics: Extra scoring functions run next to the built-in ones, by metric name.
+        extra_metrics: Extra scoring functions to run on every answer, by metric name.
         on_complete: Called once after each run finishes, with the run's summary and result rows.
         session_id_fn: Returns the session ID to use for a ``chat_id``; defaults to a random UUID per chat.
         generation_llm: Replaces the model that writes test cases from documents. Called with a list of chat

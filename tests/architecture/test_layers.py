@@ -82,7 +82,7 @@ def _rank(feature: str) -> int:
 
 
 def test_a_service_group_only_uses_the_groups_below_it():
-    """top-level services (db_services, llm_client, text_metrics, app_info) < testcases < evaluation."""
+    """top-level services (db_services, llm_client, app_info) < testcases < evaluation."""
     broken = sorted({f"{mine} must not import {theirs}" for mine, theirs in _service_imports() if _rank(theirs) > _rank(mine)})
     assert not broken, "\n".join(broken)
 

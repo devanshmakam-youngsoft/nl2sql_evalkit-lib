@@ -12,7 +12,7 @@ from nl2sql_evalkit.services.evaluation.evaluation_runner import RunManager
 
 @pytest.fixture
 def config(tmp_path):
-    return Config(data_dir=tmp_path / "data", run_semantic_similarity=False, run_bm25=False)
+    return Config(data_dir=tmp_path / "data")
 
 
 @pytest.fixture

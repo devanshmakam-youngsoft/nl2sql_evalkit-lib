@@ -1,4 +1,4 @@
-"""Splitting text into the lower-case words the text metrics compare."""
+"""Splitting text into the lower-case words the generator's checks compare."""
 import re
 
 STOPWORDS = set(

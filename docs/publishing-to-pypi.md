@@ -162,8 +162,7 @@ For this repository the wheel should contain only the package folder (about 200 
 `services/`, `prompts/`, `utils/`, `web/dashboard/`, `web/guide/`, `py.typed`, plus the `.dist-info` folder. It must **not**
 contain `tests/`, `frontend/`, `docs/`, `examples/` or `scripts/`. The source distribution also contains the dashboard files.
 
-Optional extras are declared in `pyproject.toml`: `semantic` (the meaning score, which brings PyTorch) and `dev`. The wheel
-metadata lists `sentence-transformers` only under the `semantic` extra, so a plain install stays small.
+The only optional extra declared in `pyproject.toml` is `dev`.
 
 ## 5. Rehearse on TestPyPI
 
@@ -199,8 +198,7 @@ python try.py
 ```
 
 Open `http://localhost:8031`: the dashboard must load (a blank page means the dashboard files were not built or committed), the
-Help page must open, and a run on a test case must finish. Repeat once with `pip install "NAME[semantic]"` to try the meaning
-score. Note a TestPyPI version, like a PyPI one, can never be uploaded twice. If the rehearsal shows a problem, fix it and
+Help page must open, and a run on a test case must finish. Note a TestPyPI version, like a PyPI one, can never be uploaded twice. If the rehearsal shows a problem, fix it and
 bump the version (for example `0.2.0.dev1`, `0.2.0.dev2`) before the next rehearsal.
 
 ## 6. Publish for real
@@ -232,7 +230,7 @@ you cannot delete it and reuse the version number. Triple-check the version and 
 3. **Replace the project-scoped token.** On PyPI: *Account settings → API tokens*, delete the "entire account" token, create one
    limited to this project.
 4. **Update the docs:** the README and `docs/guide/pages/02-first-run.html` currently say
-   `pip install git+https://github.com/...`. Change them to `pip install NAME`, add the `NAME[semantic]` line, run
+   `pip install git+https://github.com/...`. Change them to `pip install NAME`, run
    `python scripts/build_guide.py`, commit and push.
 5. **Create a GitHub release** from the tag (optional but useful): *Releases → Draft a new release → choose the tag →
    write the changes in plain words*.
@@ -333,5 +331,5 @@ before `python -m build`.
 ---
 
 *Checked against this repository on 2 Nov 2026: `python -m build` produces a wheel and a source distribution, `twine check` passes on both, the
-wheel contains `web/dashboard/` and `web/guide/` and no tests, and `sentence-transformers` appears only under the `semantic` extra.
+wheel contains `web/dashboard/` and `web/guide/` and no tests.
 The repository has no `LICENSE` file yet (item 3.1).*
