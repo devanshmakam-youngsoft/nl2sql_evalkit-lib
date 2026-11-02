@@ -1,6 +1,6 @@
 """Errors raised while reading a test case spreadsheet."""
-from nl2sql_evalkit.core.exceptions.base import RagevalError
+from nl2sql_evalkit.core.exceptions.base import EvalKitError
 
 
-class DatasetError(RagevalError):
+class DatasetError(EvalKitError):
     """Dataset file is missing, unreadable, or fails column validation."""

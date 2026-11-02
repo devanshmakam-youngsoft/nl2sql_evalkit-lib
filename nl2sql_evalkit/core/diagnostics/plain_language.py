@@ -1,5 +1,5 @@
 """Turn an exception into a sentence a person running an evaluation can act on."""
-from nl2sql_evalkit.core.exceptions import RagevalError
+from nl2sql_evalkit.core.exceptions import EvalKitError
 
 # What went wrong, by the part of the run it happened in
 STAGE_SENTENCES = {
@@ -57,6 +57,6 @@ def cause_sentence(error: BaseException) -> str:
 
 def explain(error: BaseException, stage: str) -> str:
     """A plain-language message for an error that happened during ``stage`` (a key of ``STAGE_SENTENCES``)."""
-    if stage in ("generation", "documents") and isinstance(error, RagevalError) and not cause_sentence(error):
+    if stage in ("generation", "documents") and isinstance(error, EvalKitError) and not cause_sentence(error):
         return str(error)      # reading a document already says why in plain words
     return " ".join(part for part in (STAGE_SENTENCES.get(stage, STAGE_SENTENCES["run"]), cause_sentence(error)) if part)

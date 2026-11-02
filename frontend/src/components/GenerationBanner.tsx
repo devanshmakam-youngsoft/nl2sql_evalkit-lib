@@ -36,7 +36,7 @@ export function GenerationBanner({ refreshKey, onOpen }: { refreshKey: number; o
       {batches.map((b) => (
         <div key={b.batch_id} className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded border border-brand bg-brand-soft px-4 py-3 text-sm" role="status">
           {b.status === "running" ? (
-            <span><b>Writing test cases…</b> {b.total_tasks ? `${b.done_tasks} of ${b.total_tasks} done` : "reading your documents"}</span>
+            <span><b>Writing test cases…</b> {b.total_tasks ? `${b.done_tasks} of ${b.total_tasks} done` : "reading your schema"}</span>
           ) : b.status === "failed" ? (
             <span className="text-bad"><b>Generating test cases failed.</b> {b.error}</span>
           ) : (

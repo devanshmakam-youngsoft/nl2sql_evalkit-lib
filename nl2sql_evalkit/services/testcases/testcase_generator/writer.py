@@ -5,6 +5,7 @@ import logging
 import time
 from typing import Callable
 
+from nl2sql_evalkit.core.constants import case_type_of
 from nl2sql_evalkit.core.exceptions import GenerationError
 from nl2sql_evalkit.prompts.testcase_generator import retry_instruction
 from nl2sql_evalkit.services.testcases.testcase_generator.checks import validate
@@ -17,12 +18,12 @@ logger = logging.getLogger(__name__)
 MAX_ATTEMPTS = 3
 
 
-def generate_item(task: Task, llm: Callable, *, turns: int, avoid: list[str], sleep: Callable | None = None) -> dict:
+def generate_item(task: Task, llm: Callable, *, turns: int, avoid: list[str], dialect: str, sleep: Callable | None = None) -> dict:
     """One finished item for a task, retrying with the reason whenever the model's reply is rejected.
 
     Raises GenerationError with the last reason when every attempt fails."""
     sleep = sleep or time.sleep
-    messages = build_messages(task, turns, avoid)
+    messages = build_messages(task, turns, avoid, dialect)
     reason = "no reply"
     for attempt in range(MAX_ATTEMPTS):
         try:
@@ -32,9 +33,9 @@ def generate_item(task: Task, llm: Callable, *, turns: int, avoid: list[str], sl
             logger.warning("generation call failed (attempt %d): %s", attempt + 1, e)
             sleep(1.5 * (attempt + 1))
             continue
-        checked, reason = validate(task, parse_reply(raw), turns=turns, avoid=avoid)
+        checked, reason = validate(task, parse_reply(raw), turns=turns, avoid=avoid, dialect=dialect)
         if checked is not None:
-            return {"category": task.category, "file": task.doc, "number": task.number, "turns": checked}
+            return {"category": task.category, "file": task.file, "number": task.number, "type": case_type_of(task.category), "turns": checked}
         messages = messages + [
             {"role": "assistant", "content": raw or ""},
             {"role": "user", "content": retry_instruction.format(reason=reason)},

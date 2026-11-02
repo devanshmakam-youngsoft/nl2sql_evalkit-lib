@@ -1,8 +1,8 @@
 """Errors raised by the results store."""
-from nl2sql_evalkit.core.exceptions.base import NotFoundError, RagevalError
+from nl2sql_evalkit.core.exceptions.base import EvalKitError, NotFoundError
 
 
-class StoreError(RagevalError):
+class StoreError(EvalKitError):
     """TinyDB storage operation failed."""
 
 

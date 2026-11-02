@@ -1,8 +1,8 @@
 """Errors raised while starting or running an evaluation."""
-from nl2sql_evalkit.core.exceptions.base import RagevalError
+from nl2sql_evalkit.core.exceptions.base import EvalKitError
 
 
-class RunError(RagevalError):
+class RunError(EvalKitError):
     """Eval run could not start or complete."""
 
 

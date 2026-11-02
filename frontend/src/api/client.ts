@@ -174,7 +174,7 @@ export const api = {
     fetch(apiPath(`test-cases/${tcId}`), {
       method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updates),
     }).then((r) => json<TestCase>(r)),
-  // Writing test cases from documents
+  // Writing test cases from schema files
   generateLimits: () => fetch(apiPath("generate/limits")).then((r) => json<GenLimits>(r)),
   generateList: () => fetch(apiPath("generate")).then((r) => json<GenSummary[]>(r)),
   generateStart: (files: File[], o: { perCategory: number; categories: string[]; turns: number }) => {

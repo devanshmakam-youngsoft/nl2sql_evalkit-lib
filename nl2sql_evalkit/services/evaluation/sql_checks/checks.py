@@ -2,14 +2,14 @@
 import re
 
 from nl2sql_evalkit.core.constants import CLARIFY, REFUSE, parse_type
-from nl2sql_evalkit.services.evaluation.sql_checks.analysis import (
+from nl2sql_evalkit.services.evaluation.sql_checks.reply import split_reply
+from nl2sql_evalkit.services.sql_analysis import (
     columns_used,
     join_keys,
     parse_statements,
     read_only_problem,
     tables_used,
 )
-from nl2sql_evalkit.services.evaluation.sql_checks.reply import split_reply
 
 
 def split_names(text) -> list[str]:

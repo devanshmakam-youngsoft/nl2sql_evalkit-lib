@@ -3,11 +3,12 @@
 A *review batch* (stored in ``store.batches``) looks like::
 
     {batch_id, status: running|ready|failed|cancelled|interrupted, created_at, expires_at,
-     options: {per_category, categories, turns}, model, files: [{name, pages, passages, error}],
+     options: {per_category, categories, turns}, model, files: [{name, tables, relations, skipped, error}],
      total_tasks, done_tasks, errors: [{category, file, reason}], error,
-     items: [{item_id, category, file, number,
-              turns: [{question, expected_sql, evidence: [{quote, file, page, passage}], needs_context}]}]}
+     items: [{item_id, category, file, number, type,
+              turns: [{question, expected_sql, expected_tables, expected_columns, needs_context}]}]}
 
+A vague or unsafe item (type ``clarify`` or ``refuse``) has no SQL: its turn holds ``question`` and ``note`` instead.
 It is saved after every item, so nothing is lost if the browser goes away; it only becomes test cases when approved.
 """
 from __future__ import annotations
@@ -24,7 +25,7 @@ from pathlib import Path
 from typing import Callable
 
 from nl2sql_evalkit.core.constants import (
-    CASE_TYPE,
+    ANSWER,
     CATEGORIES,
     CATEGORY_LABELS,
     DEFAULT_PER_CATEGORY,
@@ -32,16 +33,25 @@ from nl2sql_evalkit.core.constants import (
     MAX_TURNS,
     MIN_TURNS,
     SUPPORTED_SUFFIXES,
+    parse_type,
 )
 from nl2sql_evalkit.core.diagnostics import EventLog
 from nl2sql_evalkit.core.exceptions import (
-    DocumentError,
     GenerationBusy,
     InvalidInput,
     NotFoundError,
+    SchemaError,
 )
-from nl2sql_evalkit.services.testcases.document_reader import ReadDocument, read_document
-from nl2sql_evalkit.services.testcases.testcase_generator.checks import check_text
+from nl2sql_evalkit.services.sql_analysis import (
+    parse_statements,
+    read_only_problem,
+    tables_used,
+)
+from nl2sql_evalkit.services.testcases.schema_reader import ReadSchema, read_schema
+from nl2sql_evalkit.services.testcases.testcase_generator.checks import (
+    check_text,
+    expected_columns_of,
+)
 from nl2sql_evalkit.services.testcases.testcase_generator.model_client import GenerationModelClient
 from nl2sql_evalkit.services.testcases.testcase_generator.planning import Task, plan_tasks
 from nl2sql_evalkit.services.testcases.testcase_generator.writer import generate_item
@@ -61,7 +71,7 @@ class GenerationManager:
     batch is saved after each item so progress survives a closed browser.
 
     Args:
-        config: The app config (model names, limits, worker count, batch lifetime).
+        config: The app config (model names, dialect, limits, worker count, batch lifetime).
         store: Where batches and test cases are saved.
         llm: Callable taking chat messages and returning the reply text; defaults to ``GenerationModelClient``.
             Replace it to use your own model client or a fake in tests.
@@ -80,11 +90,11 @@ class GenerationManager:
 
     @property
     def model(self) -> str:
-        """The name of the model that receives the document text: the client's own, else the configured one."""
+        """The name of the model that receives the schema text: the client's own, else the configured one."""
         return getattr(self._llm, "model", None) or self.config.generator_model or self.config.judge_model
 
     def limits(self) -> dict:
-        """What the dialog states up front: limits, the categories, and which model receives the text."""
+        """What the dialog states up front: limits, the categories, the SQL dialect, and which model receives the text."""
         return {
             "max_files": self.config.generate_max_files,
             "max_file_mb": self.config.generate_max_file_mb,
@@ -93,8 +103,9 @@ class GenerationManager:
             "turns_default": DEFAULT_TURNS,
             "categories": [{"key": k, "label": v} for k, v in CATEGORY_LABELS.items()],
             "model": self.model,
+            "dialect": self.config.dialect,
             "ttl_hours": self.config.batch_ttl_hours,
-            "formats": [s.lstrip(".") for s in SUPPORTED_SUFFIXES if s != ".markdown"],
+            "formats": [s.lstrip(".") for s in SUPPORTED_SUFFIXES],
         }
 
     # ---- writing ------------------------------------------------------------------------------
@@ -103,7 +114,7 @@ class GenerationManager:
         """Create a review batch and start writing into it on a background thread; return the new batch at once.
 
         Args:
-            files: ``(name, path)`` pairs: the name to show for each uploaded document and where it is on disk.
+            files: ``(name, path)`` pairs: the name to show for each uploaded schema file and where it is on disk.
             workdir: The temporary folder holding the uploads; deleted once the files have been read.
             per_category: How many questions to write for each category.
             categories: Which categories to write; unknown names are ignored.
@@ -135,8 +146,8 @@ class GenerationManager:
             self.store.save_batch(batch)
             self._active = batch_id
         log = EventLog(self.config, "generation", batch_id)
-        log.info("Generation %s started: %d documents, %d per category, categories %s, %d turns, model %s",
-                 batch_id, len(files), per_category, ", ".join(categories), turns, self.model)
+        log.info("Generation %s started: %d schema files, %d per category, categories %s, %d turns, dialect %s, model %s",
+                 batch_id, len(files), per_category, ", ".join(categories), turns, self.config.dialect, self.model)
         batch["log_file"] = log.file_name
         self.store.save_batch(batch)
         threading.Thread(target=self._run, args=(batch, files, workdir, log), daemon=True, name=f"generate-{batch_id}").start()
@@ -152,9 +163,9 @@ class GenerationManager:
     def _run(self, batch: dict, files: list[tuple[str, Path]], workdir: Path | None, log: EventLog) -> None:
         batch_id = batch["batch_id"]
         try:
-            docs = self._read_documents(batch, files, workdir, log)
-            if docs:
-                self._write_items(batch, docs, log)
+            schemas = self._read_schemas(batch, files, workdir, log)
+            if schemas:
+                self._write_items(batch, schemas, log)
             self._finish(batch)
         except Exception as e:  # never leave a batch stuck on "running"
             issue = log.issue("generation_run", e, f"after {batch['done_tasks']} of {batch['total_tasks']} questions")
@@ -167,31 +178,31 @@ class GenerationManager:
             with self._lock:
                 self._active = None
 
-    def _read_documents(self, batch: dict, files: list[tuple[str, Path]], workdir: Path | None, log: EventLog) -> list[ReadDocument]:
+    def _read_schemas(self, batch: dict, files: list[tuple[str, Path]], workdir: Path | None, log: EventLog) -> list[ReadSchema]:
         """Read every upload (one that cannot be read is reported and skipped), then delete the uploads."""
-        docs: list[ReadDocument] = []
+        schemas: list[ReadSchema] = []
         batch["files"] = []
         try:
             for name, path in files:
                 try:
-                    doc = read_document(path, name)
-                    docs.append(doc)
-                    batch["files"].append({"name": name, "pages": doc.pages, "passages": len(doc.usable())})
-                except DocumentError as e:
+                    schema = read_schema(path, name, self.config.dialect)
+                    schemas.append(schema)
+                    batch["files"].append({"name": name, "tables": len(schema.tables), "relations": len(schema.key_pairs()), "skipped": schema.skipped})
+                except SchemaError as e:
                     log.issue("generation", e, name)
                     batch["files"].append({"name": name, "error": str(e)})
         finally:
             if workdir:
                 shutil.rmtree(workdir, ignore_errors=True)  # nothing of the upload is kept
-        if not docs:
+        if not schemas:
             reasons = " ".join(f["error"] for f in batch["files"] if f.get("error"))
-            batch.update(status="failed", error=reasons or "No document could be read.")
+            batch.update(status="failed", error=reasons or "No schema file could be read.")
         self.store.save_batch(batch)
-        return docs
+        return schemas
 
-    def _write_items(self, batch: dict, docs: list[ReadDocument], log: EventLog) -> None:
+    def _write_items(self, batch: dict, schemas: list[ReadSchema], log: EventLog) -> None:
         batch_id, opts = batch["batch_id"], batch["options"]
-        tasks = plan_tasks(docs, opts["categories"], opts["per_category"])
+        tasks = plan_tasks(schemas, opts["categories"], opts["per_category"])
         batch["total_tasks"] = len(tasks)
         self.store.save_batch(batch)
         lock = threading.Lock()
@@ -200,8 +211,8 @@ class GenerationManager:
             if batch_id in self._cancelled:
                 return None
             with lock:
-                avoid = [t["question"] for it in batch["items"] if it["file"] == task.doc for t in it["turns"]]
-            return generate_item(task, self._llm, turns=opts["turns"], avoid=avoid, sleep=self._sleep)
+                avoid = [t["question"] for it in batch["items"] if it["file"] == task.file for t in it["turns"]]
+            return generate_item(task, self._llm, turns=opts["turns"], avoid=avoid, dialect=self.config.dialect, sleep=self._sleep)
 
         with ThreadPoolExecutor(max_workers=max(1, self.config.generate_workers)) as pool:
             futures = {pool.submit(work, t): t for t in tasks}
@@ -215,13 +226,13 @@ class GenerationManager:
                             item["item_id"] = uuid.uuid4().hex[:8]
                             batch["items"].append(item)
                     except Exception as e:
-                        issue = log.issue("generation", e, f"{CATEGORY_LABELS[task.category]} question from {task.doc}")
-                        batch["errors"].append({"category": task.category, "file": task.doc, "reason": issue.message, "detail": issue.technical})
+                        issue = log.issue("generation", e, f"{CATEGORY_LABELS[task.category]} question from {task.file}")
+                        batch["errors"].append({"category": task.category, "file": task.file, "reason": issue.message, "detail": issue.technical})
                     batch["items"].sort(key=lambda it: (CATEGORIES.index(it["category"]), it["number"]))
                     self.store.save_batch(batch)  # saved after every item: nothing is lost if the browser goes away
 
     def _finish(self, batch: dict) -> None:
-        if batch["status"] == "failed":  # no document could be read
+        if batch["status"] == "failed":  # no schema file could be read
             return
         if batch["batch_id"] in self._cancelled:
             batch["status"] = "cancelled"
@@ -242,19 +253,34 @@ class GenerationManager:
         return batch
 
     def edit_item(self, batch_id: str, item_id: str, turns: list[dict]) -> dict:
-        """Reword the question / expected answer of an item. The evidence and the number of turns stay as they are."""
+        """Reword the question, and the SQL when the item has any. The number of turns stays as it is.
+
+        New SQL has to parse in the configured dialect and be one read-only query; the tables and columns of the test case are
+        read from it again, so they always match the SQL.
+        """
         batch = self._editable(batch_id)
         item = next((i for i in batch["items"] if i["item_id"] == item_id), None)
         if item is None:
             raise NotFoundError("Item not found")
         if len(turns) != len(item["turns"]):
             raise InvalidInput("The number of turns cannot change")
+        has_sql = parse_type(item.get("type")) == ANSWER
+        cleaned = []
         for turn, new in zip(item["turns"], turns):
-            question, answer = str(new.get("question", "")).strip(), str(new.get("expected_sql", "")).strip()
-            problem = check_text(question, answer, standalone=False)
+            question, sql = str(new.get("question", "")).strip(), str(new.get("expected_sql", "")).strip()
+            problem = check_text(question, sql, standalone=False, needs_sql=has_sql, technical=item["category"] != "unsafe")
             if problem:
                 raise InvalidInput(problem[0].upper() + problem[1:])
-            turn["question"], turn["expected_sql"] = question, answer
+            updated = {**turn, "question": question}
+            if has_sql:
+                statements, error = parse_statements(sql, self.config.dialect)
+                problem = f"the SQL does not parse as {self.config.dialect}: {error}" if error else read_only_problem(statements)
+                if problem:
+                    raise InvalidInput(problem[0].upper() + problem[1:] if error else f"The SQL must be one read-only SELECT, but {problem}")
+                updated.update(expected_sql=sql, expected_tables=", ".join(tables_used(statements)),
+                               expected_columns=", ".join(expected_columns_of(statements[0])))
+            cleaned.append(updated)
+        item["turns"] = cleaned
         self.store.save_batch(batch)
         return item
 
@@ -273,7 +299,7 @@ class GenerationManager:
         self.store.save_batch(batch)
 
     def _chat_ids(self, items: list[dict]) -> dict[str, str]:
-        """A short chat id for each item: ``direct-1``, ``multiturn-2``, ... Numbering carries on after the highest one
+        """A short chat id for each item: ``simple-1``, ``followup-2``, ... Numbering carries on after the highest one
         already in the store, so ids never collide with a case that exists."""
         highest: dict[str, int] = {}
         for case in self.store.list_test_cases():
@@ -304,13 +330,14 @@ class GenerationManager:
         for item in chosen:
             for turn_no, turn in enumerate(item["turns"], start=1):
                 rows.append({
-                    "row": len(rows) + 2, "chat_id": chat_ids[item["item_id"]], "turn_no": turn_no, "type": CASE_TYPE,
-                    "question": turn["question"], "expected_sql": turn["expected_sql"],
-                    "expected_tables": item["file"], "groups": [CATEGORY_LABELS[item["category"]]],
+                    "row": len(rows) + 2, "chat_id": chat_ids[item["item_id"]], "turn_no": turn_no, "type": item.get("type") or ANSWER,
+                    "question": turn["question"], "expected_sql": turn.get("expected_sql", ""),
+                    "expected_tables": turn.get("expected_tables", ""), "expected_columns": turn.get("expected_columns", ""),
+                    "groups": [CATEGORY_LABELS[item["category"]]],
                     "origin": {
-                        "kind": "generated", "category": item["category"], "file": item["file"],
-                        "evidence": turn["evidence"], "model": batch.get("model", ""),
+                        "kind": "generated", "category": item["category"], "file": item["file"], "model": batch.get("model", ""),
                         **({"needs_context": turn["needs_context"]} if turn.get("needs_context") else {}),
+                        **({"note": turn["note"]} if turn.get("note") else {}),
                     },
                 })
         result = self.store.import_cases(rows)

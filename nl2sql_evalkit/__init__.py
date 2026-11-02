@@ -22,8 +22,8 @@ With step recording::
 from nl2sql_evalkit.core.exceptions import (
     ConfigError,
     DatasetError,
+    EvalKitError,
     JudgeError,
-    RagevalError,
     RunBusy,
     RunError,
     StoreError,
@@ -36,7 +36,7 @@ __version__ = "0.1.4"
 __all__ = [
     "serve", "step", "note", "__version__",
     # exceptions
-    "RagevalError",
+    "EvalKitError",
     "ConfigError",
     "DatasetError",
     "StoreError", "VersionNotFound",

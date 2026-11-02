@@ -185,7 +185,7 @@ export default function TestCases() {
               <>
                 <button onClick={() => setGenerate({})}
                   className="rounded border border-line bg-surface px-4 py-2 text-sm font-medium hover:bg-surface-2">
-                  Generate from documents
+                  Generate from a schema
                 </button>
                 <button onClick={() => setShowImport(true)}
                   className="rounded border border-line bg-surface px-4 py-2 text-sm font-medium hover:bg-surface-2">
@@ -296,7 +296,7 @@ export default function TestCases() {
                 {cases.length === 0 && realGroupId && statusFilter === "active"
                   ? "This group is empty. Use “Add test cases” to put existing ones in it, or to create a new one."
                   : cases.length === 0 && statusFilter === "active"
-                    ? "Add one with “New test case”, bring many in with Import, or write them from a document with “Generate from documents”."
+                    ? "Add one with “New test case”, bring many in with Import, or write them from your database schema with “Generate from a schema”."
                     : "Nothing matches the current filters."}
               </div>
             </div>
@@ -578,18 +578,14 @@ function TestCaseDrawer({ tc, groups, onClose, onChanged, onDeleted }: {
             {tc.origin?.kind === "generated" && (
               <div>
                 <div className="label mb-1">
-                  Written from your document{tc.origin.category ? ` · ${{ direct: "Direct", indirect: "Indirect", multipart: "Multi-part", multiturn: "Multi-turn" }[tc.origin.category] ?? tc.origin.category}` : ""}
+                  Written from your schema file{tc.origin.category ? ` · ${{ simple: "Simple", join: "Joins", aggregate: "Aggregations", nested: "Subqueries", followup: "Follow-ups", vague: "Vague", unsafe: "Unsafe" }[tc.origin.category] ?? tc.origin.category}` : ""}
                 </div>
                 {tc.origin.needs_context && (
-                  <p className="mb-2 text-xs text-muted">This follow-up builds on: {tc.origin.needs_context}</p>
+                  <p className="text-xs text-muted">This follow-up builds on: {tc.origin.needs_context}</p>
                 )}
-                <div className="space-y-2 rounded bg-surface-2 p-3 text-sm">
-                  {tc.origin.evidence.map((e, i) => (
-                    <blockquote key={i} className="border-l-2 border-line pl-3 italic text-muted">
-                      “{e.quote}” <span className="not-italic">— {e.file}, {e.page}</span>
-                    </blockquote>
-                  ))}
-                </div>
+                {tc.origin.note && (
+                  <p className="text-xs text-muted">{tc.type === "refuse" ? "Why it is unsafe" : "Why it is unclear"}: {tc.origin.note}</p>
+                )}
               </div>
             )}
             <div className="flex flex-wrap gap-2 pt-1">

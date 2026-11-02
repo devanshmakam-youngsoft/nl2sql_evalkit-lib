@@ -5,21 +5,27 @@ import { plural } from "../lib/format";
 import type { GenBatch, GenItem, GenLimits } from "../api/types";
 
 const DESCRIPTIONS: Record<string, string> = {
-  direct: "The answer is stated plainly in one place.",
-  indirect: "Asked in everyday words, or as a situation, rather than the document's own wording.",
-  multipart: "One question with several parts, answered from different places in the document.",
-  multiturn: "A short conversation: each follow-up only makes sense with the earlier answers.",
+  simple: "One table: a look-up, a filter or a sort.",
+  join: "Two or three tables, joined on their keys.",
+  aggregate: "Counts, sums and averages, grouped, sometimes filtered with HAVING.",
+  nested: "Needs a subquery or a WITH, such as “above the average”.",
+  followup: "A short conversation: each follow-up only makes sense with the earlier answers.",
+  vague: "Unclear on purpose: the assistant should ask back, not guess (type clarify).",
+  unsafe: "A request the assistant must refuse, such as changing data (type refuse).",
 };
 
 /** A model-facing rejection reason, in words a person can act on. */
 function friendly(reason: string): string {
   const r = reason.toLowerCase();
-  if (r.includes("does not point at any sentence") || r.includes("appears in the passages")) return "it could not show which sentences of the document the answer comes from, even after retries";
-  if (r.includes("on its own, so") || r.includes("repeats the earlier question") || r.includes("depends_on")) return "it could not write a follow-up that really depends on the earlier answers, even after retries";
+  if (r.includes("does not parse")) return "it could not write SQL that parses in this dialect, even after retries";
+  if (r.includes("read-only")) return "it kept writing SQL that does more than read";
+  if (r.includes("does not exist") || r.includes("not given") || r.includes("does not read from")) return "it kept using tables or columns that are not in the schema";
+  if (r.includes("on its own, so") || r.includes("repeats the earlier question") || r.includes("depends_on")) return "it could not write a follow-up that really depends on the earlier turns, even after retries";
   if (r.includes("too similar")) return "it kept repeating a question that had already been written";
-  if (r.includes("stand on its own")) return "it kept referring to “the document” instead of asking a self-contained question";
-  if (r.includes("four or more words") || r.includes("evidence's own words")) return "it could not phrase the question indirectly enough";
-  if (r.includes("both passage")) return "it could not combine two different parts of the document";
+  if (r.includes("technical words")) return "it kept using technical words (table, column, SQL) in the question";
+  if (r.includes("linked by") || r.includes("join at least")) return "it could not write a join along the keys of the tables";
+  if (r.includes("count, sum")) return "it could not write an aggregation";
+  if (r.includes("subquery")) return "it could not write a query with a subquery";
   if (r.includes("could not be reached")) return `the AI model returned an error (${reason.replace(/^.*could not be reached:\s*/i, "").slice(0, 160)})`;
   return reason;
 }
@@ -31,18 +37,18 @@ function timeLeft(iso: string): string {
   return minutes >= 120 ? `${Math.round(minutes / 60)} hours` : minutes >= 60 ? "an hour" : `${minutes} minutes`;
 }
 
-/** One generated item: a question, or a whole conversation, with its evidence. Text is editable in place. */
+/** One generated item: a question, or a whole conversation, with its SQL. Text is editable in place. */
 function ItemCard({ item, locked, onSave, onRemove }: {
   item: GenItem;
   locked: boolean;
   onSave: (turns: { question: string; expected_sql: string }[]) => Promise<void>;
   onRemove: () => void;
 }) {
-  const [draft, setDraft] = useState(item.turns.map((t) => ({ question: t.question, expected_sql: t.expected_sql })));
+  const [draft, setDraft] = useState(item.turns.map((t) => ({ question: t.question, expected_sql: t.expected_sql ?? "" })));
   const [state, setState] = useState<"" | "saved" | string>("");
-  useEffect(() => setDraft(item.turns.map((t) => ({ question: t.question, expected_sql: t.expected_sql }))), [item]);
+  useEffect(() => setDraft(item.turns.map((t) => ({ question: t.question, expected_sql: t.expected_sql ?? "" }))), [item]);
 
-  const dirty = draft.some((d, i) => d.question !== item.turns[i].question || d.expected_sql !== item.turns[i].expected_sql);
+  const dirty = draft.some((d, i) => d.question !== item.turns[i].question || d.expected_sql !== (item.turns[i].expected_sql ?? ""));
   async function save() {
     if (!dirty) return;
     try {
@@ -62,6 +68,8 @@ function ItemCard({ item, locked, onSave, onRemove }: {
       <div className="mb-2 flex items-center gap-3 text-xs text-muted">
         <span className="mono">{item.file}</span>
         {item.turns.length > 1 && <span>conversation · {item.turns.length} turns</span>}
+        {item.type === "clarify" && <span>the assistant should ask back</span>}
+        {item.type === "refuse" && <span>the assistant should decline</span>}
         <span className="ml-auto" aria-live="polite">
           {state === "saved" ? <span className="text-good">Saved</span> : state ? <span className="text-bad">{state}</span> : null}
         </span>
@@ -80,22 +88,19 @@ function ItemCard({ item, locked, onSave, onRemove }: {
             <textarea id={`${item.item_id}-q${i}`} value={draft[i]?.question ?? ""} rows={2} disabled={locked}
               onChange={(e) => set(i, "question", e.target.value)} onBlur={save}
               className={`${box} font-medium`} />
-            <label className="sr-only" htmlFor={`${item.item_id}-a${i}`}>Expected SQL</label>
-            <textarea id={`${item.item_id}-a${i}`} value={draft[i]?.expected_sql ?? ""} rows={2} disabled={locked}
-              onChange={(e) => set(i, "expected_sql", e.target.value)} onBlur={save}
-              className={`${box} mt-1 text-muted`} />
-            <details className="mt-1 text-xs">
-              <summary className="cursor-pointer select-none text-brand hover:underline">
-                Evidence · {[...new Set(turn.evidence.map((e) => `${e.file} ${e.page}`))].join(", ")}
-              </summary>
-              <div className="mt-1.5 space-y-1.5">
-                {turn.evidence.map((e, k) => (
-                  <blockquote key={k} className="border-l-2 border-line pl-3 italic text-muted">
-                    “{e.quote}” <span className="not-italic">— {e.page}</span>
-                  </blockquote>
-                ))}
-              </div>
-            </details>
+            {item.type !== "clarify" && item.type !== "refuse" ? (
+              <>
+                <label className="sr-only" htmlFor={`${item.item_id}-a${i}`}>Expected SQL</label>
+                <textarea id={`${item.item_id}-a${i}`} value={draft[i]?.expected_sql ?? ""} rows={3} disabled={locked}
+                  onChange={(e) => set(i, "expected_sql", e.target.value)} onBlur={save}
+                  className={`${box} mono mt-1 text-xs text-muted`} />
+                <p className="mt-1 text-xs text-muted">
+                  Tables: <span className="text-fg">{turn.expected_tables || "none"}</span> · columns: <span className="text-fg">{turn.expected_columns || "none"}</span>
+                </p>
+              </>
+            ) : (
+              turn.note && <p className="mt-1 text-xs text-muted">{item.type === "refuse" ? "Why it is unsafe" : "Why it is unclear"}: {turn.note}</p>
+            )}
           </div>
         ))}
       </div>
@@ -104,7 +109,7 @@ function ItemCard({ item, locked, onSave, onRemove }: {
 }
 
 /**
- * Write test cases from documents. Pick files and how many questions, wait while they are written (they are
+ * Write test cases from a database schema. Pick files and how many questions, wait while they are written (they are
  * saved on the server as they appear, so closing this or losing the network loses nothing), then review and
  * approve. Anything not approved is deleted after a day.
  */
@@ -116,7 +121,7 @@ export function GenerateDialog({ resumeId, onClose, onDone }: {
   const [limits, setLimits] = useState<GenLimits | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [perCategory, setPerCategory] = useState(3);
-  const [cats, setCats] = useState<Set<string>>(new Set(["direct", "indirect", "multipart", "multiturn"]));
+  const [cats, setCats] = useState<Set<string>>(new Set(["simple", "join", "aggregate", "nested", "followup", "vague", "unsafe"]));
   const [turns, setTurns] = useState(3);
   const [drag, setDrag] = useState(false);
   const [batchId, setBatchId] = useState<string | null>(resumeId ?? null);
@@ -171,10 +176,10 @@ export function GenerateDialog({ resumeId, onClose, onDone }: {
   const fileProblems = useMemo(() => {
     if (!limits) return [];
     const out: string[] = [];
-    if (files.length > limits.max_files) out.push(`Choose at most ${limits.max_files} documents.`);
+    if (files.length > limits.max_files) out.push(`Choose at most ${limits.max_files} files.`);
     for (const f of files) {
-      if (!limits.formats.some((ext) => f.name.toLowerCase().endsWith("." + ext) || (ext === "md" && f.name.toLowerCase().endsWith(".markdown")))) {
-        out.push(`${f.name}: only PDF, Word (.docx), TXT and Markdown files can be used.`);
+      if (!limits.formats.some((ext) => f.name.toLowerCase().endsWith("." + ext))) {
+        out.push(`${f.name}: only .sql, .ddl and .txt files with CREATE TABLE statements can be used.`);
       } else if (f.size > limits.max_file_mb * 1024 * 1024) {
         out.push(`${f.name} is ${mb(f.size)} MB; the limit is ${limits.max_file_mb} MB per file.`);
       }
@@ -182,7 +187,7 @@ export function GenerateDialog({ resumeId, onClose, onDone }: {
     return out;
   }, [files, limits]);
 
-  const total = [...cats].reduce((n, c) => n + perCategory * (c === "multiturn" ? turns : 1), 0);
+  const total = [...cats].reduce((n, c) => n + perCategory * (c === "followup" ? turns : 1), 0);
   const addFiles = (list: FileList | null) => {
     if (!list) return;
     // copy now: the input's FileList empties as soon as the input is reset, before React runs the updater below
@@ -233,16 +238,16 @@ export function GenerateDialog({ resumeId, onClose, onDone }: {
       <div className="card pop-in flex max-h-[94vh] w-full max-w-4xl flex-col bg-surface" onMouseDown={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-4 border-b border-line px-6 py-4">
           <div>
-            <h2 className="font-serif text-2xl font-medium">Generate test cases from documents</h2>
+            <h2 className="font-serif text-2xl font-medium">Generate test cases from a schema</h2>
             <p className="mt-0.5 text-sm text-muted">
-              {!batchId ? "Upload documents and choose what to write." : status === "running" ? "Writing questions…" : status === "failed" ? "Nothing could be written." : "Review the questions, then add them to the library."}
+              {!batchId ? "Upload your schema (.sql or .ddl) and choose what to write." : status === "running" ? "Writing questions…" : status === "failed" ? "Nothing could be written." : "Review the questions, then add them to the library."}
             </p>
           </div>
           <button onClick={onClose} disabled={busy} className="mono text-xs text-muted hover:text-fg">esc</button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-          {/* ---------- 1. documents and settings ---------- */}
+          {/* ---------- 1. schema files and settings ---------- */}
           {!batchId && limits && (
             <>
               <div
@@ -252,9 +257,9 @@ export function GenerateDialog({ resumeId, onClose, onDone }: {
                 onClick={() => input.current?.click()}
                 className={`flex cursor-pointer flex-col items-center gap-1 rounded border-2 border-dashed p-7 text-center transition ${drag ? "border-brand bg-brand-soft" : "border-line hover:border-brand/60"}`}
               >
-                <span className="text-base font-medium">Drop documents here, or click to choose</span>
-                <span className="text-xs text-muted">PDF, Word, TXT or Markdown · up to {limits.max_files} files · {limits.max_file_mb} MB each</span>
-                <input ref={input} type="file" multiple hidden accept=".pdf,.docx,.txt,.md,.markdown"
+                <span className="text-base font-medium">Drop schema files here, or click to choose</span>
+                <span className="text-xs text-muted">.sql or .ddl with CREATE TABLE statements · up to {limits.max_files} files · {limits.max_file_mb} MB each</span>
+                <input ref={input} type="file" multiple hidden accept=".sql,.ddl,.txt"
                   onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
               </div>
               {files.length > 0 && (
@@ -287,7 +292,7 @@ export function GenerateDialog({ resumeId, onClose, onDone }: {
                     onChange={(e) => setPerCategory(Math.min(limits.per_category_max, Math.max(1, Number(e.target.value) || 1)))}
                     className="mono w-16 rounded border border-line bg-surface-2 px-2 py-1.5 outline-none focus:border-brand" />
                 </label>
-                {cats.has("multiturn") && (
+                {cats.has("followup") && (
                   <label className="flex items-center gap-2">
                     Turns per conversation
                     <select value={turns} onChange={(e) => setTurns(Number(e.target.value))}
@@ -299,11 +304,11 @@ export function GenerateDialog({ resumeId, onClose, onDone }: {
               </div>
               <p className="mt-3 text-sm">
                 This will write about <b>{plural(total, "test case")}</b>
-                {cats.has("multiturn") && <span className="text-muted"> ({plural(perCategory, "conversation")} of {turns} turns count as {perCategory * turns})</span>},
-                shared across your {plural(Math.max(1, files.length), "document")} and grouped by category.
+                {cats.has("followup") && <span className="text-muted"> ({plural(perCategory, "conversation")} of {turns} turns count as {perCategory * turns})</span>},
+                shared across your {plural(Math.max(1, files.length), "file")} and grouped by category.
               </p>
               <p className="mt-2 rounded bg-surface-2 px-3 py-2 text-xs text-muted">
-                The text of your documents is sent to <b className="text-fg">{limits.model}</b> to write the questions. The files themselves are not kept.
+                The tables and columns of your schema (never any data) are sent to <b className="text-fg">{limits.model}</b> to write the questions, for the <b className="text-fg">{limits.dialect}</b> dialect. The files themselves are not kept.
               </p>
             </>
           )}
@@ -312,7 +317,7 @@ export function GenerateDialog({ resumeId, onClose, onDone }: {
           {batchId && !gone && (!batch || status === "running") && (
             <div className="py-4">
               <div className="flex items-baseline justify-between text-sm">
-                <span className="font-medium">{batch && batch.total_tasks ? `Writing questions · ${batch.done_tasks} of ${batch.total_tasks}` : "Reading your documents…"}</span>
+                <span className="font-medium">{batch && batch.total_tasks ? `Writing questions · ${batch.done_tasks} of ${batch.total_tasks}` : "Reading your schema…"}</span>
                 <span className="mono text-muted">{progress}%</span>
               </div>
               <div className="mt-2 h-2 w-full bg-line"><div className="h-full bg-brand transition-all duration-500" style={{ width: `${Math.max(progress, 3)}%` }} /></div>
@@ -322,7 +327,7 @@ export function GenerateDialog({ resumeId, onClose, onDone }: {
                   {batch.files.map((f) => (
                     <li key={f.name} className={f.error ? "text-bad" : "text-muted"}>
                       <span className="text-fg">{f.name}</span>{" "}
-                      {f.error ? `— ${f.error}` : `— ${f.pages ? `${f.pages} pages, ` : ""}${plural(f.passages ?? 0, "passage")} read`}
+                      {f.error ? `— ${f.error}` : `— ${plural(f.tables ?? 0, "table")}, ${plural(f.relations ?? 0, "key")} read${f.skipped?.length ? `, ${plural(f.skipped.length, "statement")} skipped` : ""}`}
                     </li>
                   ))}
                 </ul>
@@ -370,7 +375,7 @@ export function GenerateDialog({ resumeId, onClose, onDone }: {
                   );
                 })}
               </div>
-              <p className="mb-3 text-xs text-muted">{DESCRIPTIONS[tab]} Edit any text directly; open “Evidence” to check it against the document.</p>
+              <p className="mb-3 text-xs text-muted">{DESCRIPTIONS[tab]} Edit any text directly; the tables and columns are read from the SQL.</p>
               <div className="space-y-3">
                 {items.filter((i) => i.category === tab).map((item) => (
                   <ItemCard key={item.item_id} item={item} locked={busy}
@@ -401,7 +406,7 @@ export function GenerateDialog({ resumeId, onClose, onDone }: {
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-6 py-4">
           {!batchId && (
             <>
-              <span className="text-xs text-muted">{files.length === 0 ? "Add at least one document." : `${plural(files.length, "document")} ready.`}</span>
+              <span className="text-xs text-muted">{files.length === 0 ? "Add at least one schema file." : `${plural(files.length, "file")} ready.`}</span>
               <button onClick={start} disabled={busy || files.length === 0 || fileProblems.length > 0 || cats.size === 0}
                 className="rounded bg-brand px-5 py-2 text-sm font-medium text-white disabled:opacity-40 enabled:hover:brightness-110">
                 {busy ? "Uploading…" : "Generate"}

@@ -1,20 +1,25 @@
 """Every prompt the question writer uses, one file each, each exporting one named variable."""
+from nl2sql_evalkit.prompts.testcase_generator.aggregate import aggregate_prompt
 from nl2sql_evalkit.prompts.testcase_generator.common_rules import common_rules
-from nl2sql_evalkit.prompts.testcase_generator.direct import direct_prompt
-from nl2sql_evalkit.prompts.testcase_generator.indirect import indirect_prompt
-from nl2sql_evalkit.prompts.testcase_generator.multipart import multipart_prompt
-from nl2sql_evalkit.prompts.testcase_generator.multiturn import multiturn_prompt
+from nl2sql_evalkit.prompts.testcase_generator.followup import followup_prompt
+from nl2sql_evalkit.prompts.testcase_generator.join import join_prompt
+from nl2sql_evalkit.prompts.testcase_generator.nested import nested_prompt
 from nl2sql_evalkit.prompts.testcase_generator.retry import retry_instruction
-from nl2sql_evalkit.prompts.testcase_generator.single_reply_format import single_reply_format
+from nl2sql_evalkit.prompts.testcase_generator.simple import simple_prompt
+from nl2sql_evalkit.prompts.testcase_generator.unsafe import unsafe_prompt
+from nl2sql_evalkit.prompts.testcase_generator.vague import vague_prompt
 
 CATEGORY_PROMPTS = {
-    "direct": direct_prompt,
-    "indirect": indirect_prompt,
-    "multipart": multipart_prompt,
-    "multiturn": multiturn_prompt,
+    "simple": simple_prompt,
+    "join": join_prompt,
+    "aggregate": aggregate_prompt,
+    "nested": nested_prompt,
+    "followup": followup_prompt,
+    "vague": vague_prompt,
+    "unsafe": unsafe_prompt,
 }
 
 __all__ = [
-    "CATEGORY_PROMPTS", "common_rules", "direct_prompt", "indirect_prompt", "multipart_prompt", "multiturn_prompt",
-    "retry_instruction", "single_reply_format",
+    "CATEGORY_PROMPTS", "aggregate_prompt", "common_rules", "followup_prompt", "join_prompt", "nested_prompt",
+    "retry_instruction", "simple_prompt", "unsafe_prompt", "vague_prompt",
 ]

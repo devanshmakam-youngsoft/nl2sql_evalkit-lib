@@ -256,7 +256,7 @@ nl2sql_evalkit/
 ├── schemas/             the shape of every request and response, same area folders; internal/ for shapes services share
 ├── services/            what the product does
 │   ├── evaluation/      evaluation_runner, sql_judge, step_recorder, run_summarizer, version_recommender
-│   ├── testcases/       testcase_library, testcase_import, testcase_generator, document_reader, spreadsheet_loader
+│   ├── testcases/       testcase_library, testcase_import, testcase_generator, schema_reader, spreadsheet_loader
 │   ├── db_services/     reads and writes the TinyDB JSON store (store.py and one file per kind of record)
 │   ├── llm_client/      one safe way to call any AI model
 │   └── app_info/        the guide page and which dashboard features are on

@@ -7,20 +7,21 @@ from nl2sql_evalkit.schemas.base import ApiResponse
 class GenerationCategory(ApiResponse):
     """One kind of question that can be written."""
 
-    key: str                          # "direct", "indirect", "multipart" or "multiturn"; used when starting a batch
+    key: str                          # "simple", "join", "aggregate", "nested", "followup", "vague" or "unsafe"; used when starting a batch
     label: str                        # the name shown to people, also the group the approved cases are added to
 
 
 class GenerationLimits(ApiResponse):
-    """What the dialog states up front: file limits, the categories, which model gets the text."""
+    """What the dialog states up front: file limits, the categories, the SQL dialect, which model gets the schema."""
 
-    max_files: int                    # documents allowed in one upload
-    max_file_mb: int                  # size limit per document, in megabytes
+    max_files: int                    # schema files allowed in one upload
+    max_file_mb: int                  # size limit per file, in megabytes
     per_category_max: int             # most questions that can be asked for in each category
     per_category_default: int
     turns_default: int                # default number of turns in a multi-turn conversation
     categories: list[GenerationCategory]
-    model: str                        # the model that receives the document text
+    model: str                        # the model that receives the tables and columns
+    dialect: str                      # the SQL dialect the questions are written in and checked against
     ttl_hours: int                    # how long a batch waits for review before it is removed
     formats: list[str]                # accepted file types, as extensions without the dot
 
@@ -34,7 +35,7 @@ class BatchSummary(ApiResponse):
     expires_at: str | None = None     # when an unapproved batch is removed, ISO 8601 UTC
     options: dict[str, Any] | None = None  # {per_category, categories, turns} as they were requested
     model: str | None = None          # the model that wrote the questions
-    files: list[dict[str, Any]] = []  # {name, pages, passages, error} per document; error is set if unreadable
+    files: list[dict[str, Any]] = []  # {name, tables, relations, skipped, error} per file; error is set if unreadable
     total_tasks: int = 0              # questions to write
     done_tasks: int = 0               # questions finished, written or not
     errors: list[dict[str, Any]] = []  # {category, file, reason, detail} per question that could not be written
@@ -51,9 +52,10 @@ class GeneratedItem(ApiResponse):
 
     item_id: str
     category: str                     # a category key such as "direct"
-    file: str | None = None           # the document it was written from
+    file: str | None = None           # the schema file it was written from
+    type: str | None = None           # what the assistant should do with it: "answer", "clarify" or "refuse"
     number: int | None = None         # 1-based position within its category
-    turns: list[dict[str, Any]]       # {question, expected_sql, evidence} per turn; evidence quotes the document
+    turns: list[dict[str, Any]]       # {question, expected_sql, expected_tables, expected_columns} per turn; {question, note} when there is no SQL
 
 
 class BatchDetail(ApiResponse):
@@ -65,7 +67,7 @@ class BatchDetail(ApiResponse):
     expires_at: str | None = None     # when an unapproved batch is removed, ISO 8601 UTC
     options: dict[str, Any] | None = None  # {per_category, categories, turns} as they were requested
     model: str | None = None          # the model that wrote the questions
-    files: list[dict[str, Any]] = []  # {name, pages, passages, error} per document; error is set if unreadable
+    files: list[dict[str, Any]] = []  # {name, tables, relations, skipped, error} per file; error is set if unreadable
     total_tasks: int = 0              # questions to write
     done_tasks: int = 0               # questions finished, written or not
     errors: list[dict[str, Any]] = []  # {category, file, reason, detail} per question that could not be written

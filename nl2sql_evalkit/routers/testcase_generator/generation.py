@@ -1,4 +1,4 @@
-"""Writing test cases from documents: upload, watch progress, review, approve."""
+"""Writing test cases from schema files: upload, watch progress, review, approve."""
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 
 from nl2sql_evalkit.core.config import Config
@@ -34,7 +34,7 @@ router = APIRouter(prefix="/api/generate", tags=["generate"], dependencies=[Depe
 
 @router.get("/limits")
 def limits(manager: GenerationManager = Depends(get_generation_manager)) -> GenerationLimits:
-    """What the dialog needs to state up front: file limits, the categories, which model gets the text."""
+    """What the dialog needs to state up front: file limits, the categories, the SQL dialect, which model gets the schema."""
     return manager.limits()
 
 
@@ -52,23 +52,23 @@ def list_batches(store: EvalStore = Depends(get_store)) -> list[BatchSummary]:
 async def start_generation_batch(
     files: list[UploadFile] = File(...),
     per_category: int = Form(3),
-    categories: str | None = Form(None),   # JSON array; default: all four
+    categories: str | None = Form(None),   # JSON array; default: all of them
     turns: int = Form(3),
     cfg: Config = Depends(get_config),
     manager: GenerationManager = Depends(get_generation_manager),
 ) -> BatchSummary:
-    """Upload documents and start writing test cases from them in the background (answers 202).
+    """Upload schema files (.sql or .ddl with CREATE TABLE statements) and start writing test cases from them in the background (answers 202).
 
     The questions are written by the configured model and wait in a review batch; nothing reaches the library
     until the batch is approved. Only one generation can be going at a time. The accepted file types and the
     limits are given by ``GET /api/generate/limits``.
 
     Args:
-        files: The documents to write questions from.
+        files: The schema files to write questions from. No database is contacted and no data is read.
         per_category: How many questions to write in each category.
-        categories: JSON array with any of ``direct``, ``indirect``, ``multipart`` and ``multiturn``.
-            Defaults to all four.
-        turns: How many turns a multi-turn conversation has (2 to 4).
+        categories: JSON array with any of ``simple``, ``join``, ``aggregate``, ``nested``, ``followup``, ``vague`` and
+            ``unsafe``. Defaults to all of them.
+        turns: How many turns a follow-up conversation has (2 to 4).
 
     Returns:
         The new batch, with status ``running``. Follow it with ``GET /api/generate/{batch_id}``.
@@ -76,7 +76,7 @@ async def start_generation_batch(
     Error answers:
         409 when another generation is running; 413 when a file is over the size limit;
         422 for no file, too many files, an unsupported file type, a bad ``categories`` list, or
-        ``per_category`` or ``turns`` out of range. A document that cannot be read is reported later, on the batch.
+        ``per_category`` or ``turns`` out of range. A file that cannot be read is reported later, on the batch.
     """
     return await start_generation(cfg, manager, files, per_category, categories, turns)
 
@@ -93,12 +93,13 @@ def read_batch(batch_id: str, store: EvalStore = Depends(get_store)) -> BatchDet
 
 @router.patch("/{batch_id}/items/{item_id}")
 def edit_item(batch_id: str, item_id: str, body: ItemEdit, manager: GenerationManager = Depends(get_generation_manager)) -> GeneratedItem:
-    """Reword a generated question or its expected answer during review.
+    """Reword a generated question, or change its SQL, during review.
 
     ``turns`` must hold one entry per turn the item already has, in order; the number of turns cannot change.
     Answers 404 for an unknown batch or item, 409 while the batch is still being written, and 422 when the
-    number of turns differs or a text is outside the length limits (question 12 to 400 characters, expected
-    answer 3 to 1200).
+    number of turns differs, a text is outside the length limits (question 12 to 400 characters, SQL 6 to 4000), or
+    the SQL does not parse in the configured dialect or is not one read-only query. The tables and columns of the item are
+    read from the new SQL.
     """
     return manager.edit_item(batch_id, item_id, [t.model_dump() for t in body.turns])
 
@@ -119,7 +120,8 @@ def approve(batch_id: str, body: Approval | None = None, manager: GenerationMana
 
     The batch is then deleted; anything left out goes with it. The optional body names the items to add
     (``item_ids``); without it every item left in the batch is added.
-    Each item becomes a chat of test cases (one per turn) in the group of its category, created if needed.
+    Each item becomes a chat of test cases (one per turn) in the group of its category, created if needed. Vague items become
+    ``clarify`` cases and unsafe items ``refuse`` cases.
     Answers 404 for an unknown batch, 409 while the batch is still being written, and 422 when there is
     nothing to approve.
     """

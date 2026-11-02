@@ -2,7 +2,7 @@
 import pytest
 
 from nl2sql_evalkit.core.diagnostics import explain, redact
-from nl2sql_evalkit.core.exceptions import DocumentError, JudgeError
+from nl2sql_evalkit.core.exceptions import JudgeError, SchemaError
 
 
 @pytest.mark.parametrize("error,expected", [
@@ -33,7 +33,7 @@ def test_an_unrecognised_error_still_says_which_part_failed_and_hides_its_text()
 
 
 def test_a_document_that_cannot_be_read_keeps_its_own_plain_message():
-    assert explain(DocumentError("report.pdf is password protected"), "generation") == "report.pdf is password protected"
+    assert explain(SchemaError("report.pdf is password protected"), "generation") == "report.pdf is password protected"
 
 
 def test_secrets_are_hidden():

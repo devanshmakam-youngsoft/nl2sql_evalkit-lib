@@ -8,23 +8,14 @@ from nl2sql_evalkit.core.constants.case_types import (
     is_declining,
     parse_type,
 )
-from nl2sql_evalkit.core.constants.document_reading import (
-    MAX_PAGES,
-    MAX_UNPACKED_BYTES,
-    MIN_TEXT_CHARS,
-    MIN_USABLE_CHARS,
-    SUPPORTED_MESSAGE,
-    SUPPORTED_SUFFIXES,
-    TARGET_CHARS,
-)
 from nl2sql_evalkit.core.constants.generator_categories import (
-    CASE_TYPE,
     CATEGORIES,
     CATEGORY_LABELS,
     DEFAULT_PER_CATEGORY,
     DEFAULT_TURNS,
     MAX_TURNS,
     MIN_TURNS,
+    case_type_of,
 )
 from nl2sql_evalkit.core.constants.library import (
     API_TITLE,
@@ -45,14 +36,14 @@ from nl2sql_evalkit.core.constants.recommendation_defaults import (
     DEFAULT_TOLERANCE,
     MIN_SHARED_SHARE,
 )
+from nl2sql_evalkit.core.constants.schema_reading import SUPPORTED_MESSAGE, SUPPORTED_SUFFIXES
 from nl2sql_evalkit.core.constants.sql_dialects import DEFAULT_DIALECT, DIALECTS, parse_dialect
 
 __all__ = [
-    "API_TITLE", "CASE_TYPE", "CATEGORIES", "CATEGORY_LABELS", "DATA_DIR_NAME", "DEFAULT_SQL_WEIGHT",
+    "API_TITLE", "CATEGORIES", "CATEGORY_LABELS", "DATA_DIR_NAME", "DEFAULT_SQL_WEIGHT",
     "DEFAULT_SCHEMA_WEIGHT", "DEFAULT_MIN_QUALITY", "DEFAULT_PER_CATEGORY", "DEFAULT_TOLERANCE",
-    "DEFAULT_TURNS", "DISPLAY_NAME", "LIBRARY_NAME", "LOGGER_NAME", "LOGS_DIR_NAME", "MAX_PAGES",
-    "MAX_TURNS", "MAX_UNPACKED_BYTES", "MIN_SHARED_SHARE", "MIN_TEXT_CHARS", "MIN_TURNS",
-    "MIN_USABLE_CHARS", "SESSION_COOKIE_NAME", "STORE_FILE_NAME", "SUPPORTED_MESSAGE",
-    "SUPPORTED_SUFFIXES", "TARGET_CHARS", "TEMP_FOLDER_PREFIX", "UPLOADS_DIR_NAME", "ANSWER", "CLARIFY", "REFUSE", "TYPES",
-    "is_declining", "parse_type", "DEFAULT_DIALECT", "DIALECTS", "parse_dialect"
+    "DEFAULT_TURNS", "DISPLAY_NAME", "LIBRARY_NAME", "LOGGER_NAME", "LOGS_DIR_NAME", "MAX_TURNS", "MIN_SHARED_SHARE", "MIN_TURNS",
+    "SESSION_COOKIE_NAME", "STORE_FILE_NAME", "SUPPORTED_MESSAGE",
+    "SUPPORTED_SUFFIXES", "TEMP_FOLDER_PREFIX", "UPLOADS_DIR_NAME", "ANSWER", "CLARIFY", "REFUSE", "TYPES",
+    "is_declining", "parse_type", "DEFAULT_DIALECT", "DIALECTS", "parse_dialect", "case_type_of"
 ]

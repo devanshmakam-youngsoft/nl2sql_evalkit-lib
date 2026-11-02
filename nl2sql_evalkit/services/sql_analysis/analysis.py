@@ -65,7 +65,7 @@ def read_only_problem(statements: list[exp.Expression]) -> str:
     return ""
 
 
-def _alias_map(statement: exp.Expression) -> dict[str, str]:
+def alias_map(statement: exp.Expression) -> dict[str, str]:
     """Each alias and each plain table name, mapped to the table's name."""
     names: dict[str, str] = {}
     for table in statement.find_all(exp.Table):
@@ -94,7 +94,7 @@ def columns_used(statements: list[exp.Expression]) -> tuple[list[str], bool]:
     found: dict[str, None] = {}
     star = False
     for statement in statements:
-        aliases = _alias_map(statement)
+        aliases = alias_map(statement)
         for column in statement.find_all(exp.Column):
             if isinstance(column.this, exp.Star):
                 star = True
@@ -110,7 +110,7 @@ def join_keys(statements: list[exp.Expression]) -> list[str]:
     """The pairs of columns the query joins on, each as ``a.x = b.y`` with the two sides in alphabetical order."""
     pairs: dict[str, None] = {}
     for statement in statements:
-        aliases = _alias_map(statement)
+        aliases = alias_map(statement)
 
         def side(column: exp.Column) -> str:
             table = aliases.get(column.table.lower(), column.table.lower()) if column.table else ""

@@ -10,14 +10,14 @@ from fastapi.responses import JSONResponse
 
 from nl2sql_evalkit.core.diagnostics import redact
 from nl2sql_evalkit.core.exceptions.base import (
+    EvalKitError,
     InvalidInput,
     NotFoundError,
-    RagevalError,
     TooLargeError,
 )
 from nl2sql_evalkit.core.exceptions.db_services import ConflictError
-from nl2sql_evalkit.core.exceptions.document_reader import DocumentError
 from nl2sql_evalkit.core.exceptions.evaluation_runner import NoDatasetError, RunBusy
+from nl2sql_evalkit.core.exceptions.schema_reader import SchemaError
 from nl2sql_evalkit.core.exceptions.spreadsheet_loader import DatasetError
 from nl2sql_evalkit.core.exceptions.testcase_generator import GenerationBusy
 
@@ -33,18 +33,18 @@ HANDLED_ERRORS: list[tuple[type[BaseException], int, str]] = [
     (NoDatasetError, 400, "nothing_to_run"),
     (InvalidInput, 422, "invalid_input"),
     (DatasetError, 422, "invalid_file"),
-    (DocumentError, 422, "invalid_file"),
+    (SchemaError, 422, "invalid_file"),
 ]
 
 
-def _describe(error: RagevalError) -> tuple[int, str]:
+def _describe(error: EvalKitError) -> tuple[int, str]:
     for kind, status, code in HANDLED_ERRORS:
         if isinstance(error, kind):
             return status, code
     return 500, "error"
 
 
-async def handle_library_error(request: Request, error: RagevalError) -> JSONResponse:
+async def handle_library_error(request: Request, error: EvalKitError) -> JSONResponse:
     """Turn a library error into a JSON response using its status and code from ``HANDLED_ERRORS``.
 
     An error type not listed there answers 500 ``"error"`` and is logged with its traceback.
@@ -69,5 +69,5 @@ async def handle_unexpected_error(request: Request, error: Exception) -> JSONRes
 
 def register_error_handlers(app: FastAPI) -> None:
     """Install the handlers for library errors and for unexpected exceptions on ``app``."""
-    app.add_exception_handler(RagevalError, handle_library_error)
+    app.add_exception_handler(EvalKitError, handle_library_error)
     app.add_exception_handler(Exception, handle_unexpected_error)

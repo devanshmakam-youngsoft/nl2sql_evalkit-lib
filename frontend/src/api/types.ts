@@ -247,11 +247,11 @@ export interface TestCase {
   updated_at?: string;
   /** Group labels this case carries (a case can have any number). */
   groups: GroupRef[];
-  /** Set on cases written from a document: where each answer comes from. */
-  origin?: { kind: string; file: string; evidence: GenEvidence[]; model?: string; category?: string; needs_context?: string };
+  /** Set on cases written from a schema file: which file and category, and why a vague or unsafe question is one. */
+  origin?: { kind: string; file: string; model?: string; category?: string; needs_context?: string; note?: string };
 }
 
-/** Writing test cases from documents. */
+/** Writing test cases from schema files. */
 export interface GenCategory { key: string; label: string }
 
 export interface GenLimits {
@@ -262,13 +262,14 @@ export interface GenLimits {
   turns_default: number;
   categories: GenCategory[];
   model: string;
+  dialect: string;
   ttl_hours: number;
   formats: string[];
 }
 
-export interface GenEvidence { quote: string; file: string; page: string; passage?: string }
-export interface GenTurn { question: string; expected_sql: string; evidence: GenEvidence[]; needs_context?: string }
-export interface GenItem { item_id: string; category: string; file: string; number: number; turns: GenTurn[] }
+/** One turn of a generated item. A vague or unsafe question has a `note` and no SQL. */
+export interface GenTurn { question: string; expected_sql?: string; expected_tables?: string; expected_columns?: string; note?: string; needs_context?: string }
+export interface GenItem { item_id: string; category: string; file: string; number: number; type?: string; turns: GenTurn[] }
 
 export interface GenBatch {
   batch_id: string;
@@ -277,7 +278,7 @@ export interface GenBatch {
   expires_at: string;
   options: { per_category: number; categories: string[]; turns: number };
   model: string;
-  files: { name: string; pages?: number | null; passages?: number; error?: string }[];
+  files: { name: string; tables?: number; relations?: number; skipped?: string[]; error?: string }[];
   total_tasks: number;
   done_tasks: number;
   items: GenItem[];
