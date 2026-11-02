@@ -32,6 +32,8 @@ export interface VersionSummary {
   /** Names of the test case groups used in this run. */
   group_names?: string[];
   /** Per-group score breakdown (present when the run covered named test-case groups). */
+  /** Detailed scores saved with the run: tiers, per type, and what the checks on the SQL found. */
+  scores?: { checks: CheckCounts };
   group_stats?: Record<string, {
     avg_sql_marks: number | null;
     avg_schema_marks: number | null;
@@ -39,6 +41,19 @@ export interface VersionSummary {
     total_rows: number;
     failed_rows?: number;
   }>;
+}
+
+/** How many replies of a run failed each check; `answers` and `declines` are what the other counts are out of. */
+export interface CheckCounts {
+  answers: number;
+  no_sql: number;
+  syntax_failed: number;
+  not_read_only: number;
+  tables_missing: number;
+  columns_missing: number;
+  joins_differ: number;
+  declines: number;
+  declines_with_sql: number;
 }
 
 /** The server's answer to "which version should ship?" (version ids are strings). */

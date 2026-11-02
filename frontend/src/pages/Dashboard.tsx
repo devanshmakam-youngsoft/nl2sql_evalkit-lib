@@ -3,6 +3,7 @@ import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContai
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { Delta, Mark, NodeTimings, ProgressBar, ScorePill, Stat } from "../components/ScoreWidgets";
+import { FailureRollup } from "../components/FailureRollup";
 import { Recommendation } from "../components/Recommendation";
 import { RunProblems } from "../components/RunProblems";
 import { TechnicalDetails } from "../components/TechnicalDetails";
@@ -318,6 +319,7 @@ export default function Dashboard() {
       )}
 
       {compareMode && compareRuns.length >= 2 && <ComparePanel runs={compareRuns} />}
+      <FailureRollup runs={compareMode && compareRuns.length >= 2 ? compareRuns : activeVersions.slice(-3)} />
 
       <section className="card mt-3 overflow-hidden">
         <div className="flex items-center justify-between border-b border-line px-5 py-4">

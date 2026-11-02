@@ -37,6 +37,10 @@ export const GLOSSARY = {
     label: "Checks",
     hint: "The program reads the SQL without running it: does it parse, is it read-only, does it use the expected tables and columns, and join the way the expected SQL does.",
   },
+  failures: {
+    label: "Where answers fail",
+    hint: "How many replies failed each check, out of the questions that should be answered (or declined). Lower is better. The arrows show the change since the run before.",
+  },
   tiers: {
     label: "How answers scored",
     hint: "Every question's SQL grouped by score: strong (8–10), fair (5–7) or weak (0–4).",

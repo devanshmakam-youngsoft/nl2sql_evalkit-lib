@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { api } from "../api/client";
 import { Mark, ScorePill, SegmentBar, StepTimeBar, Stat } from "../components/ScoreWidgets";
 import { ChatTurn, GroupChips } from "../components/GroupChips";
+import { FailureRollup } from "../components/FailureRollup";
 import { GLOSSARY, Hint, Term } from "../components/Hint";
 import { IssueList } from "../components/IssueList";
 import { Pager, usePaging } from "../components/Pager";
@@ -178,6 +179,8 @@ export default function VersionDetail() {
           <StepTimeBar v={s} />
         </div>
       )}
+
+      <FailureRollup runs={[s]} />
 
       <section className="mt-4">
         <Insights summary={s} />
