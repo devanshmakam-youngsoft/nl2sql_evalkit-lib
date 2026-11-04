@@ -6,7 +6,7 @@ package folder and ``pyproject.toml`` carry the name too, which ``scripts/rename
 
 LIBRARY_NAME = "nl2sql_evalkit"
 
-DISPLAY_NAME = "NL2SQL Evaluator"                       # the heading people see in the dashboard and the browser tab
+DISPLAY_NAME = "Evaluator"                       # the heading people see in the dashboard and the browser tab
 
 DATA_DIR_NAME = f"{LIBRARY_NAME}_data"               # default folder for the store, the logs and the uploads
 STORE_FILE_NAME = "store.json"                       # inside the data folder

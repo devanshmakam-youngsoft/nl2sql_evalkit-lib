@@ -75,13 +75,16 @@ export function Recommendation({ reco, versions, archivedCount, overrides, onCha
   const fastest = find(reco?.fastest ?? null);
   const runnerUp = find(reco?.runner_up ?? null);
   const quality = best && reco ? reco.qualities[String(best.version)] : null;
-  const own = best ? scoresOf(best, groupName) : null;
+  // Nothing reached the minimum score: the best one so far still takes the place of the recommendation, in red.
+  const belowMin = !best && !!reco?.below_minimum && !!reco.best_so_far;
+  const shown = best ?? (belowMin ? find(String(reco!.best_so_far!.version)) : null);
+  const own = shown ? scoresOf(shown, groupName) : null;
   const shared = best && reco ? reco.scores[String(best.version)] : undefined;
   // The headline is the run's own average over everything it ran, the same numbers as its row in the table. When versions
   // ran different test cases the ranking used only the ones they share; the line under the figures says so.
   const bestScores = own;
-  const ranCases = best ? (groupName ? best.group_stats?.[groupName]?.total_rows ?? best.total_rows : best.total_rows) : 0;
-  const ranGroups = best && !groupName ? best.group_names ?? [] : [];
+  const ranCases = shown ? (groupName ? shown.group_stats?.[groupName]?.total_rows ?? shown.total_rows : shown.total_rows) : 0;
+  const ranGroups = shown && !groupName ? shown.group_names ?? [] : [];
   const alone = !reco?.runner_up;     // the only version that could be compared
   const sharedOnly = !!reco && reco.partial.length > 0;
   const hidden = (reco?.not_comparable.length ?? 0) + (reco?.excluded.length ?? 0) + (archivedCount > 0 ? 1 : 0);
@@ -96,48 +99,53 @@ export function Recommendation({ reco, versions, archivedCount, overrides, onCha
       <div className="grid gap-6 p-5 lg:grid-cols-[auto_1fr_minmax(260px,340px)] lg:items-center">
         <div>
           <div className="label">Recommended version{groupName ? ` · ${groupName}` : ""}</div>
-          {best ? (
+          {shown ? (
             <>
-              <div className="num mt-1.5 text-[56px] leading-none"><Mark>v{best.version}</Mark></div>
+              <div className="num mt-1.5 text-[56px] leading-none" style={belowMin ? { color: "var(--bad)" } : undefined}>
+                {belowMin ? <>v{shown.version}</> : <Mark>v{shown.version}</Mark>}
+              </div>
+              {belowMin && reco && (
+                <div className="mt-1.5 max-w-[240px] text-xs font-medium" style={{ color: "var(--bad)" }}>
+                  Below the minimum score of {reco.min_quality}: not recommended yet
+                </div>
+              )}
               <div className="mt-2 text-xs text-muted">
                 <div>{plural(ranCases, "test case")} ran</div>
                 {ranGroups.length > 0 && <GroupNames names={ranGroups} max={3} className="mt-1.5 max-w-[240px]" />}
               </div>
-              <Link to={`/v/${best.version}`} className="mono mt-1 inline-block text-xs text-brand hover:underline">open full results ›</Link>
+              <Link to={`/v/${shown.version}`} className="mono mt-1 inline-block text-xs text-brand hover:underline">open full results ›</Link>
             </>
           ) : (
             <>
               <div className="num mt-2 text-[28px] leading-tight text-muted">{reco ? "None yet" : "…"}</div>
-              {reco?.below_minimum && reco.best_so_far && (
-                <div className="mt-2 text-xs text-muted">
-                  Best so far:{" "}
-                  <Link to={`/v/${reco.best_so_far.version}`} className="mono font-medium text-brand hover:underline">v{reco.best_so_far.version}</Link>
-                  <span className="mono"> · {fmt(reco.best_so_far.quality)}/10</span>
-                </div>
-              )}
             </>
           )}
         </div>
 
-        {best && bestScores && reco ? (
+        {shown && bestScores && reco ? (
           <div>
             <div className="flex flex-wrap gap-x-8 gap-y-3">
               {figure(<Term k="answer" />, fmt(bestScores.answer), "/10", "var(--hl-good)")}
               {reco.basis === "weighted" && figure(<Term k="context" />, fmt(bestScores.schema_use), "/10", "var(--hl)")}
               {figure(<Term k="time" />, fmtSeconds(bestScores.time), "", "var(--hl-bad)")}
             </div>
+            {belowMin && (
+              <p className="mt-3 text-[13px]" style={{ color: "var(--bad)" }}>
+                {reco.reason}
+              </p>
+            )}
             {/* with nothing to compare against there is nothing to explain */}
-            {!alone && (
+            {!alone && !belowMin && (
               <p className="mt-3 text-[13px] text-muted">
                 {reco.reason}{!sharedOnly && <> <span className="mono">overall score {quality?.toFixed(2)}</span></>}
               </p>
             )}
             {/* the figures above are the whole run; when versions ran different test cases only the shared ones were compared */}
-            {!alone && sharedOnly && reco.compared_cases != null && (
+            {!alone && !belowMin && sharedOnly && reco.compared_cases != null && (
               <p className="mt-1 text-xs text-muted">
                 Ranked on the {plural(reco.compared_cases, "test case")} every version ran
                 {" "}({reco.partial.map((p) => `v${p.version} ran ${p.ran}`).join(", ")}):
-                {" "}<span className="mono">v{best.version} {quality?.toFixed(1)}{runnerUp && reco.qualities[String(runnerUp.version)] != null ? ` vs v${runnerUp.version} ${reco.qualities[String(runnerUp.version)]?.toFixed(1)}` : ""} overall</span>.
+                {" "}<span className="mono">v{shown.version} {quality?.toFixed(1)}{runnerUp && reco.qualities[String(runnerUp.version)] != null ? ` vs v${runnerUp.version} ${reco.qualities[String(runnerUp.version)]?.toFixed(1)}` : ""} overall</span>.
               </p>
             )}
             {reco.basis_note && <p className="mt-1 text-xs text-warn">{reco.basis_note}</p>}
