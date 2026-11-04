@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { Delta, Mark, NodeTimings, ProgressBar, ScorePill, Stat } from "../components/ScoreWidgets";
 import { FailureRollup } from "../components/FailureRollup";
+import { GroupNames } from "../components/GroupNames";
 import { Recommendation } from "../components/Recommendation";
 import { RunProblems } from "../components/RunProblems";
 import { TechnicalDetails } from "../components/TechnicalDetails";
@@ -386,13 +387,7 @@ export default function Dashboard() {
                     </td>
                     <td className="px-3 py-4 text-xs text-muted">
                       {fmtDate(v.date)}
-                      {v.group_names && v.group_names.length > 0 && (
-                        <div className="mt-1.5 flex flex-wrap gap-1">
-                          {v.group_names.map((n) => (
-                            <span key={n} className="inline-block rounded bg-surface-2 px-1.5 py-0.5 text-[10px] font-medium text-muted border border-line">{n}</span>
-                          ))}
-                        </div>
-                      )}
+                      {v.group_names && v.group_names.length > 0 && <GroupNames names={v.group_names} max={3} className="mt-1.5 max-w-[220px]" />}
                     </td>
                     <td className="mono px-3 py-4">{v.total_rows}</td>
                     <td className="px-3 py-4"><div className="flex flex-col items-start gap-1"><ScorePill value={scoreOf(v, "avg_sql_marks")} /><Delta {...deltaProps(v, "answer", "avg_sql_marks")} />{sharedNote(v, "answer", isBestFor(v, "answer", "avg_sql_marks", bests.answer))}{!partialOf(v) && isBestFor(v, "answer", "avg_sql_marks", bests.answer) && <BestTag />}</div></td>
@@ -426,14 +421,15 @@ export default function Dashboard() {
                       <span className="live-dot h-1.5 w-1.5 bg-brand" /> in progress
                     </div>
                   </td>
-                  <td className="px-3 py-5 text-xs text-muted">{fmtDate(run.date)}<div className="mt-1 truncate">{run.dataset}</div></td>
-                  <td colSpan={5} className="px-3 py-5">
+                  <td className="max-w-0 px-3 py-5 text-xs text-muted">{fmtDate(run.date)}<div className="mt-1 truncate" title={run.dataset}>{run.dataset}</div></td>
+                  {/* max-w-0 lets the long question be cut with "…" instead of widening the whole table */}
+                  <td colSpan={5} className="max-w-0 px-3 py-5">
                     <div className="mb-2 flex items-center justify-between text-sm">
                       <span className="mono">{run.done}/{run.total} graded</span>
                       <span className="mono text-muted">{run.total ? Math.round((run.done / run.total) * 100) : 0}%</span>
                     </div>
                     <ProgressBar done={run.done} total={run.total} />
-                    <div className="mt-2 truncate text-xs text-muted">{run.current_question ? `now: ${run.current_question}` : "Starting…"}</div>
+                    <div className="mt-2 truncate text-xs text-muted" title={run.current_question ?? undefined}>{run.current_question ? `now: ${run.current_question}` : "Starting…"}</div>
                     <RunProblems run={run} />
                   </td>
                   <td className="px-3 py-5 text-right">
