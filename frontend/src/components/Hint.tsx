@@ -13,6 +13,10 @@ export const GLOSSARY = {
     label: "Tables and columns",
     hint: "Whether the SQL used the tables and columns the test case expects, 0–10: the share of them it used. Blank when a test case expects none.",
   },
+  lookup: {
+    label: "Schema lookup",
+    hint: "Whether the tables and columns the assistant looked at before writing the SQL include the ones the test case expects, 0–10. Shown only when the assistant records what it looked at. A low score means the lookup missed something the question needed, whatever the SQL did. It is not part of the overall score.",
+  },
   time: {
     label: "Response time",
     hint: "How long the assistant took to reply to one question, from asking to final answer. Lower is better.",

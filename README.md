@@ -63,6 +63,19 @@ with nl2sql_evalkit.step("llm"):
 
 A step is timed and its inputs and output are shown on the question's result. Steps may run in threads you start; they still belong to the question being evaluated.
 
+If your assistant picks the tables and columns that matter before it writes the SQL, say what it picked and nl2sql_evalkit scores it, shows it and tells the judge:
+
+```python
+with nl2sql_evalkit.step("schema_lookup") as s:
+    tables = pick_tables(question)
+    s.schema = tables                  # text, a list of lines, or {"orders": ["id", "amount"]}
+
+@nl2sql_evalkit.step("schema_lookup", schema=True)    # or: the return value is the schema
+def pick_tables(question): ...
+```
+
+Each question then gets a **schema lookup score** (0–10: the share of the expected tables and columns that were in what the assistant looked at), the schema in its details with each expected table and column marked found or missing, and a **likely cause** from the judge when the SQL is wrong (`schema_lookup`, `sql` or `both`). Without a recorded schema none of this appears and nothing else changes. The schema is cut at `max_schema_chars` (default 20000); the judge reads up to `judge_schema_chars` (6000) of it. It is not part of the overall score that picks the recommended version.
+
 ### 2. Add test cases
 
 Open **Test Cases**. You can add one case with **+ New test case**, bring many in with **Import** (Excel/CSV or pasted rows), or write them from your schema with **Generate from a schema**. Each case has a `chat_id`, `turn_no`, a `type`, a `question`, and for an answer case at least one of `expected_sql`, `expected_tables` and `expected_columns` (see [Test cases and types](#test-cases-and-types)).
@@ -92,6 +105,8 @@ Nothing is executed and no database is involved, so the score comes from reading
 | Joins | The join keys match those of `expected_sql` (checked when `expected_sql` is given) |
 
 **SQL score (0–10).** An AI judge reads the question, the expected SQL (if any), the reply and the checks, and gives a score, a reason and a suggestion. A reply that has no SQL, does not parse or is not read-only scores 0 without calling the judge. For a `clarify` or `refuse` case the judge decides whether the reply is a sensible question back or a proper refusal; any SQL in such a reply scores 0.
+
+**Schema lookup score.** Only when the assistant records the schema it looked at (see Quick Start). Rule-based: the share of the expected tables and columns that appear in that schema. It tells a lookup that missed a table from SQL that ignored a table it was given, and the judge uses it to name the likely cause of a wrong query.
 
 **Tables-and-columns score.** Rule-based: how much of the expected tables and columns the SQL uses. It is the `schema_weight` part of the recommendation.
 

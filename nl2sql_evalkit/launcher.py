@@ -30,6 +30,7 @@ def serve(
     record_mode: str = "eval",
     record_detail: str = "all",
     max_step_value_chars: int = 1000,
+    max_schema_chars: int = 20000,
     # --- judge (LLM or custom) ---
     judge_model: str = "groq/openai/gpt-oss-120b",
     judge_api_key: str | None = None,
@@ -103,6 +104,10 @@ def serve(
         max_step_value_chars: How much of a step's inputs, output and ``note()`` values is kept for display
             (default 1000). A longer value ends with "… (+N more characters)"; a long list of numbers, such as
             an embedding, is shown as ``[N numbers]``.
+        max_schema_chars: How much of the schema a step looked at is kept with each question's result (default 20000),
+            cut with the same kind of marker. A step says what it looked at with ``s.schema = ...`` or
+            ``@step("schema_lookup", schema=True)``; the schema is scored against the tables and columns the test
+            case expects and is read by the judge.
         judge_model: LiteLLM model string. Examples: ``"groq/llama-3.3-70b-versatile"``,
             ``"gemini/gemini-1.5-pro"``, ``"openai/gpt-4o"``, ``"ollama/llama3"``.
         judge_api_key: Explicit API key for the judge. If omitted, LiteLLM reads the
@@ -214,6 +219,7 @@ def serve(
         record_mode=record_mode,
         record_detail=record_detail,
         step_value_chars=max_step_value_chars,
+        schema_chars=max_schema_chars,
         judge_model=judge_model,
         judge_api_key=judge_api_key or "",
         judge_prompt_override=judge_prompt or "",

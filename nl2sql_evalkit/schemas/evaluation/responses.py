@@ -83,6 +83,7 @@ class VersionSummary(ApiResponse):
     failed_rows: int | None = None    # questions that could not be answered or graded
     avg_sql_marks: float | None = None    # mean answer score, 0 to 10
     avg_schema_marks: float | None = None  # mean tables-and-columns score, 0 to 10; null when none was graded
+    avg_lookup_marks: float | None = None  # mean schema lookup score, 0 to 10; null when no step recorded a schema
     avg_total_time: float | None = None      # mean response time per question, in seconds
     archived: bool | None = None      # true when hidden from the default listing
     stopped: bool | None = None       # true when stopped early; such a run is never recommended or compared
@@ -120,6 +121,11 @@ class ResultRow(ApiResponse):
     sql_suggestion: str | None = None   # the one change the judge suggests
     schema_marks: int | None = None   # 0 to 10; null when the test case expects no tables or columns
     schema_remarks: str | None = None
+    schema_context: str | None = None   # the tables and columns the assistant looked at, when a step recorded them
+    schema_lookup: dict | None = None   # which expected tables and columns that schema had or lacked; see schema_lookup
+    lookup_marks: int | None = None     # 0 to 10; null when no schema was recorded or nothing was expected
+    lookup_remarks: str | None = None
+    sql_cause: str | None = None        # why the judge thinks the SQL is wrong: "schema_lookup", "sql", "both" or "none"
     groups: list[str] | None = None     # the groups the test case belonged to when the run happened
     case_deleted: bool | None = None    # true when the test case has been deleted since
     error_message: str | None = None    # plain-language reason for a failed question

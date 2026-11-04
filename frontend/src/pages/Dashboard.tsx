@@ -78,7 +78,7 @@ export default function Dashboard() {
     if (groupFilter && versions && !availableGroups.includes(groupFilter)) setGroupFilter(null);
   }, [availableGroups, groupFilter, versions]);
 
-  const scoreOf = (v: VersionSummary, key: "avg_sql_marks" | "avg_schema_marks" | "avg_total_time"): number | null => {
+  const scoreOf = (v: VersionSummary, key: "avg_sql_marks" | "avg_schema_marks" | "avg_lookup_marks" | "avg_total_time"): number | null => {
     if (!groupFilter) return (v[key] as number | null | undefined) ?? null;
     return (v.group_stats?.[groupFilter] as Record<string, number | null> | undefined)?.[key] ?? null;
   };
@@ -150,6 +150,8 @@ export default function Dashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeVersions, groupFilter]);
   const latest = activeVersions[activeVersions.length - 1];
+  // the schema lookup column appears only once some version recorded the schema the assistant looked at
+  const showLookup = activeVersions.some((v) => v.avg_lookup_marks != null);
 
   // Changes and BEST marks are measured on the test cases the compared versions share, so a version that
   // ran extra cases is never judged on questions the others did not answer.
@@ -350,6 +352,7 @@ export default function Dashboard() {
                 <SortTh k="questions" cur={sort} onSort={toggleSort}>Questions</SortTh>
                 <SortTh k="answer" cur={sort} onSort={toggleSort}><Term k="answer" avg /></SortTh>
                 <SortTh k="schema_use" cur={sort} onSort={toggleSort}><Term k="context" avg /></SortTh>
+                {showLookup && <th className="px-3 py-3 font-medium"><Term k="lookup" avg /></th>}
                 <SortTh k="time" cur={sort} onSort={toggleSort}><Term k="time" avg /></SortTh>
                 <th className="px-3 py-3 font-medium"><Term k="steps" /></th>
                 <th className="px-3 py-3 font-medium">Actions</th>
@@ -357,10 +360,10 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
-              {!versions && !error && <tr><td colSpan={9} className="px-5 py-12 text-center text-muted">Loading…</td></tr>}
-              {error && <tr><td colSpan={9} className="px-5 py-12 text-center text-bad">Could not reach the evaluator backend: {error}</td></tr>}
+              {!versions && !error && <tr><td colSpan={9 + (showLookup ? 1 : 0)} className="px-5 py-12 text-center text-muted">Loading…</td></tr>}
+              {error && <tr><td colSpan={9 + (showLookup ? 1 : 0)} className="px-5 py-12 text-center text-bad">Could not reach the evaluator backend: {error}</td></tr>}
               {versions && activeVersions.length === 0 && !run && (
-                <tr><td colSpan={9} className="px-5 py-16 text-center">
+                <tr><td colSpan={9 + (showLookup ? 1 : 0)} className="px-5 py-16 text-center">
                   <div className="font-serif text-lg">{versions.length === 0 ? "No runs yet" : "All versions are archived"}</div>
                   <div className="mt-1 text-sm text-muted">
                     {versions.length === 0 ? "Execute a session to record the first baseline." : "Unarchive one below, or execute a new session."}
@@ -392,6 +395,7 @@ export default function Dashboard() {
                     <td className="mono px-3 py-4">{v.total_rows}</td>
                     <td className="px-3 py-4"><div className="flex flex-col items-start gap-1"><ScorePill value={scoreOf(v, "avg_sql_marks")} /><Delta {...deltaProps(v, "answer", "avg_sql_marks")} />{sharedNote(v, "answer", isBestFor(v, "answer", "avg_sql_marks", bests.answer))}{!partialOf(v) && isBestFor(v, "answer", "avg_sql_marks", bests.answer) && <BestTag />}</div></td>
                     <td className="px-3 py-4"><div className="flex flex-col items-start gap-1"><ScorePill value={scoreOf(v, "avg_schema_marks")} /><Delta {...deltaProps(v, "schema_use", "avg_schema_marks")} />{sharedNote(v, "schema_use", isBestFor(v, "schema_use", "avg_schema_marks", bests.schema_use))}{!partialOf(v) && isBestFor(v, "schema_use", "avg_schema_marks", bests.schema_use) && <BestTag />}</div></td>
+                    {showLookup && <td className="px-3 py-4"><ScorePill value={scoreOf(v, "avg_lookup_marks")} /></td>}
                     <td className="px-3 py-4"><div className="flex flex-col items-start gap-1"><div className="mono">{fmtSeconds(scoreOf(v, "avg_total_time"))}</div><Delta {...deltaProps(v, "time", "avg_total_time")} invert digits={2} unit="s" />{sharedNote(v, "time", isBestFor(v, "time", "avg_total_time", bests.time))}{!partialOf(v) && isBestFor(v, "time", "avg_total_time", bests.time) && <BestTag />}</div></td>
                     <td className="px-3 py-4"><NodeTimings v={v} compact /></td>
                     <td className="px-3 py-4 align-middle" onClick={(e) => e.stopPropagation()}>
@@ -423,7 +427,7 @@ export default function Dashboard() {
                   </td>
                   <td className="max-w-0 px-3 py-5 text-xs text-muted">{fmtDate(run.date)}<div className="mt-1 truncate" title={run.dataset}>{run.dataset}</div></td>
                   {/* max-w-0 lets the long question be cut with "…" instead of widening the whole table */}
-                  <td colSpan={5} className="max-w-0 px-3 py-5">
+                  <td colSpan={showLookup ? 6 : 5} className="max-w-0 px-3 py-5">
                     <div className="mb-2 flex items-center justify-between text-sm">
                       <span className="mono">{run.done}/{run.total} graded</span>
                       <span className="mono text-muted">{run.total ? Math.round((run.done / run.total) * 100) : 0}%</span>

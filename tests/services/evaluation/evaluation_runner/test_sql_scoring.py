@@ -8,6 +8,7 @@ import pytest
 from nl2sql_evalkit.core.config import Config
 from nl2sql_evalkit.core.exceptions import JudgeError
 from nl2sql_evalkit.services.db_services import EvalStore
+from nl2sql_evalkit.services.evaluation import step_recorder
 from nl2sql_evalkit.services.evaluation.evaluation_runner import RunManager
 from nl2sql_evalkit.services.evaluation.sql_judge import SqlGrade
 
@@ -27,14 +28,15 @@ REPLIES = {
 class FakeJudge:
     """Stands in for the model: scores 9 and remembers what it was asked about."""
 
-    def __init__(self, fail=False):
-        self.asked, self.fail = [], fail
+    def __init__(self, fail=False, cause="none"):
+        self.asked, self.fail, self.cause, self.schemas = [], fail, cause, []
 
-    def grade_sql(self, question, case, reply, checks):
+    def grade_sql(self, question, case, reply, checks, schema_context="", lookup=None):
         if self.fail:
             raise JudgeError("the model is down")
         self.asked.append((question, case["type"]))
-        return SqlGrade(sql_marks=9, sql_comment="Looks right.", suggestion="Add a LIMIT.")
+        self.schemas.append(schema_context)
+        return SqlGrade(sql_marks=9, sql_comment="Looks right.", suggestion="Add a LIMIT.", cause=self.cause)
 
     def summarize_run(self, stats):
         return None
@@ -146,6 +148,57 @@ def test_the_summary_counts_what_the_checks_found(store, tmp_path):
     _, summary, _ = run_cases(store, tmp_path, cases)
     assert summary["scores"]["checks"] == {
         "answers": 5, "no_sql": 1, "syntax_failed": 1, "not_read_only": 1, "tables_missing": 1, "columns_missing": 0,
-        "joins_differ": 1, "declines": 2, "declines_with_sql": 1,
+        "joins_differ": 1, "declines": 2, "declines_with_sql": 1, "lookup_graded": 0, "lookup_missed": 0,
     }
     assert summary["scores"]["tiers"] == {"high": 3, "mid": 0, "low": 4}
+
+
+# ---- the schema the assistant looked at ---------------------------------------------------------------------
+
+def looks_up(schema):
+    """An assistant that records the schema it looked at in a step, then answers from REPLIES."""
+    def fn(question):
+        with step_recorder.step("schema_lookup") as s:
+            s.schema = schema
+        return REPLIES[question]
+    return fn
+
+
+def test_the_schema_the_assistant_looked_at_is_kept_scored_and_given_to_the_judge(store, tmp_path):
+    judge = FakeJudge(cause="schema_lookup")
+    cases = [("good", "answer", GOLD, "orders, customers", "region, amount")]
+    rows, summary, _ = run_cases(store, tmp_path, cases, judge=judge, fn=looks_up({"orders": ["id", "customer_id", "amount"]}))
+    row = rows["good"]
+    assert row["schema_context"] == "orders(id, customer_id, amount)"
+    assert row["schema_lookup"] == {"graded": True, "tables_found": ["orders"], "tables_missing": ["customers"],
+                                    "columns_found": ["amount"], "columns_missing": ["region"]}
+    assert row["lookup_marks"] == 5 and "customers" in row["lookup_remarks"] and row["sql_cause"] == "schema_lookup"
+    assert judge.schemas == ["orders(id, customer_id, amount)"]
+    assert summary["avg_lookup_marks"] == 5
+    assert summary["scores"]["lookup_marks"] == 5
+    assert summary["scores"]["checks"]["lookup_graded"] == 1 and summary["scores"]["checks"]["lookup_missed"] == 1
+
+
+def test_without_a_recorded_schema_the_lookup_is_not_graded(store, tmp_path):
+    rows, summary, judge = run_cases(store, tmp_path, [("good", "answer", GOLD, "orders, customers", "region, amount")])
+    row = rows["good"]
+    assert row["schema_context"] == "" and row["lookup_marks"] is None and row["lookup_remarks"] == ""
+    assert row["schema_lookup"]["graded"] is False and row["sql_cause"] == "none"
+    assert summary["avg_lookup_marks"] is None and judge.schemas == [""]
+
+
+def test_a_question_that_should_be_declined_has_no_lookup_to_grade(store, tmp_path):
+    rows, _, _ = run_cases(store, tmp_path, [("vague", "clarify", "", "orders", "")], fn=looks_up("orders(id)"))
+    assert rows["vague"]["schema_context"] == "orders(id)" and rows["vague"]["lookup_marks"] is None
+
+
+def test_a_custom_judge_can_name_the_cause(store, tmp_path):
+    def judge_fn(question, expected_sql, reply, checks):
+        return {"sql_marks": 4, "sql_comment": "Wrong join.", "cause": "SQL"}
+
+    manager = RunManager(Config(data_dir=tmp_path), store, lambda q: REPLIES[q], judge_fn=judge_fn)
+    frame = pd.DataFrame([("c0", 1, "answer", "good", GOLD, "orders", "")], columns=COLUMNS)
+    run = manager.start("v1", frame, "test set")
+    while run.status == "running":
+        time.sleep(0.05)
+    assert store.get("v1")["rows"][0]["sql_cause"] == "sql"

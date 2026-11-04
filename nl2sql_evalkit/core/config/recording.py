@@ -20,3 +20,6 @@ class RecordingSettings(Settings):
     # How much of a step is kept. Shown inputs, outputs and notes are cut at step_value_chars; a cut always ends
     # with a marker saying how much was left out.
     step_value_chars: int = 1000
+
+    # How much of the schema a step looked at is kept with a question's result (see step(..., schema=True)).
+    schema_chars: int = 20000

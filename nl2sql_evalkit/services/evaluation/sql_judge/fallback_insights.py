@@ -16,6 +16,8 @@ def default_suggestions(summary: dict, rows: list[dict]) -> list[str]:
         out.append("Some SQL is not read-only: only let a single SELECT through, and reject anything that changes data.")
     if checks.get("declines_with_sql"):
         out.append("Vague or harmful questions got SQL: teach the assistant to ask back or decline before it writes a query.")
+    if checks.get("lookup_missed"):
+        out.append("The schema the assistant looked at often lacked an expected table or column: check what it looks up before it writes the SQL.")
     if checks.get("tables_missing") or checks.get("columns_missing"):
         out.append("Expected tables or columns were left out: check the schema text the assistant is given describes them clearly.")
     if checks.get("joins_differ"):

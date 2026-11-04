@@ -44,6 +44,7 @@ def build_summary(
         "failed_rows": sum(1 for r in rows if r["status"] != "ok"),
         "avg_sql_marks": mean_of(column_of(rows, "sql_marks")),
         "avg_schema_marks": mean_of(column_of(rows, "schema_marks")),
+        "avg_lookup_marks": mean_of(column_of(rows, "lookup_marks")),
         "avg_total_time": mean_of(column_of(rows, "total_time_taken"), 3),
         # Traceability fields — enables "did the questions change?" dashboard warnings.
         "judge_model": judge_model,

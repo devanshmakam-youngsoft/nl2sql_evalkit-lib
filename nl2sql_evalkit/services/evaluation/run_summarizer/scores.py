@@ -17,10 +17,12 @@ def build_scores(rows: list[dict]) -> dict:
         by_type.setdefault(str(r.get("type") or "unknown"), []).append(r)
     answers = [r for r in rows if r.get("sql_checks") and parse_type(r.get("type")) == ANSWER]
     declines = [r for r in rows if r.get("sql_checks") and is_declining(r.get("type"))]
+    looked_up = [r for r in rows if (r.get("schema_lookup") or {}).get("graded")]
     return {
         "graded_rows": len(graded),
         "sql_marks": mean_of(marks),
         "schema_marks": mean_of(column_of(rows, "schema_marks")),
+        "lookup_marks": mean_of(column_of(rows, "lookup_marks")),
         "tiers": {
             "high": sum(1 for m in marks if m >= 8),
             "mid": sum(1 for m in marks if 5 <= m < 8),
@@ -31,6 +33,7 @@ def build_scores(rows: list[dict]) -> dict:
                 "rows": len(rs),
                 "sql_marks": mean_of(column_of(rs, "sql_marks")),
                 "schema_marks": mean_of(column_of(rs, "schema_marks")),
+                "lookup_marks": mean_of(column_of(rs, "lookup_marks")),
             }
             for t, rs in by_type.items()
         },
@@ -48,5 +51,7 @@ def build_scores(rows: list[dict]) -> dict:
             "joins_differ": sum(1 for r in answers if r["sql_checks"]["joins_match"] is False),
             "declines": len(declines),
             "declines_with_sql": sum(1 for r in declines if r["sql_checks"]["returned_sql"]),
+            "lookup_graded": len(looked_up),
+            "lookup_missed": sum(1 for r in looked_up if r["schema_lookup"]["tables_missing"] or r["schema_lookup"]["columns_missing"]),
         },
     }

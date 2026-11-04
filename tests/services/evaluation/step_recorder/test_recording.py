@@ -23,6 +23,7 @@ def run_question(body, detail="all"):
 @pytest.fixture(autouse=True)
 def default_limits(monkeypatch):
     monkeypatch.setitem(step_recorder.LIMITS, "value", 1000)
+    monkeypatch.setitem(step_recorder.LIMITS, "schema", 20000)
 
 
 # ---- steps and notes from any thread --------------------------------------------------------------------
@@ -139,7 +140,7 @@ def test_shown_values_are_cut_with_a_marker_saying_how_much_is_missing():
 def test_the_limit_can_be_set():
     step_recorder.configure(max_step_value_chars=7)
     try:
-        assert step_recorder.LIMITS == {"value": 7}
+        assert step_recorder.LIMITS["value"] == 7
     finally:
         step_recorder.configure(max_step_value_chars=1000)
 
@@ -173,7 +174,7 @@ def test_a_step_that_ran_several_times_has_its_time_added_up(tmp_path):
             time.sleep(0.05)
             s.output = "chunk"
 
-    answer, elapsed, timings, _, outputs, _ = make_manager(tmp_path, fn)._call_fn("q", [], "s1")
+    answer, elapsed, timings, _, outputs, _, _ = make_manager(tmp_path, fn)._call_fn("q", [], "s1")
     assert answer == "answer" and list(timings) == ["search", "llm"]
     assert timings["search"] >= 0.1 and timings["llm"] >= 0.01        # both searches counted, not just the last
     assert outputs["search"] == "chunk"
@@ -182,6 +183,77 @@ def test_a_step_that_ran_several_times_has_its_time_added_up(tmp_path):
 def test_the_runner_applies_the_configured_limits(tmp_path):
     config = Config(data_dir=tmp_path / "data", require_login=False, eval_secret="s", step_value_chars=30)
     app = create_app(config, fn=lambda q: "a", generation_llm=lambda m: "{}")
-    assert step_recorder.LIMITS == {"value": 30}
+    assert step_recorder.LIMITS["value"] == 30
     step_recorder.configure(max_step_value_chars=1000)
     del app
+
+
+# ---- the schema a step looked at -------------------------------------------------------------------------
+
+def test_a_step_can_say_which_schema_it_looked_at():
+    def body():
+        with step_recorder.step("schema_lookup") as s:
+            s.schema = ["orders(id, amount)", "customers(id, name)"]
+
+    step = run_question(body)["steps"][0]
+    assert step["schema"] == "orders(id, amount)\ncustomers(id, name)"
+
+
+def test_a_decorated_function_returns_its_schema_when_declared_so():
+    @step_recorder.step("schema_lookup", schema=True)
+    def pick_tables(question):
+        return {"orders": ["id", "amount"], "customers": {"id": "int", "name": "text"}}
+
+    @step_recorder.step("rewrite")
+    def rewrite(question):
+        return question.lower()
+
+    got = run_question(lambda: (pick_tables("q"), rewrite("Q")))["steps"]
+    assert got[0]["schema"] == "orders(id, amount)\ncustomers(id int, name text)"
+    assert got[1]["schema"] == ""                       # a step that did not declare one has none
+    assert got[0]["output"].startswith("{")             # the return value is still shown as the step's output
+
+
+def test_lists_of_table_descriptions_are_written_out_as_lines():
+    from nl2sql_evalkit.services.evaluation.step_recorder.schema_text import schema_text
+
+    assert schema_text([{"table": "orders", "columns": ["id", {"name": "amount", "type": "numeric"}]}, "customers(id)"]) \
+        == "orders(id, amount numeric)\ncustomers(id)"
+    assert schema_text(None) == "" and schema_text("orders(id)") == "orders(id)"
+
+
+def test_the_schemas_of_several_steps_are_joined_each_once_and_cut_at_the_limit():
+    def body():
+        for name, text in (("a", "orders(id)"), ("b", "customers(id)"), ("c", "orders(id)")):
+            with step_recorder.step(name) as s:
+                s.schema = text
+
+    steps = run_question(body)["steps"]
+    assert step_recorder.joined_schema(steps) == "orders(id)\n\ncustomers(id)"
+    assert step_recorder.joined_schema([{"name": "x", "elapsed": 0.0}]) == ""         # none declared: nothing recorded
+    step_recorder.configure(max_schema_chars=10)
+    try:
+        assert step_recorder.joined_schema(steps) == "orders(id)… (+15 more characters)"
+    finally:
+        step_recorder.configure(max_schema_chars=20000)
+
+
+def test_a_schema_is_kept_in_selected_mode_and_dropped_when_no_content_is_recorded():
+    def body():
+        with step_recorder.step("schema_lookup") as s:
+            s.schema = "orders(id)"
+        with step_recorder.step("plain"):
+            pass
+
+    assert [s["name"] for s in run_question(body, "selected")["steps"]] == ["schema_lookup"]
+    assert all("schema" not in s for s in run_question(body, "off")["steps"])
+
+
+def test_the_runner_hands_the_joined_schema_back(tmp_path):
+    def fn(question):
+        with step_recorder.step("schema_lookup") as s:
+            s.schema = "orders(id)"
+        return "SELECT 1"
+
+    *_, schema = make_manager(tmp_path, fn)._call_fn("q", [], "s1")
+    assert schema == "orders(id)"

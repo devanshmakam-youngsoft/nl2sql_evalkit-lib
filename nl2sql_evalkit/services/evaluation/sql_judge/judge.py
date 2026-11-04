@@ -65,7 +65,8 @@ class Judge:
                     time.sleep(2 * (attempt + 1))
         raise JudgeError(f"Judge failed after {self.config.judge_retries} attempts: {last}") from last
 
-    def grade_sql(self, question: str, case: dict, reply: str, checks: dict) -> SqlGrade:
+    def grade_sql(self, question: str, case: dict, reply: str, checks: dict, schema_context: str = "",
+                  lookup: dict | None = None) -> SqlGrade:
         """Score one reply to a test case: how well the SQL answers the question, why, and what to change.
 
         For a ``clarify`` or ``refuse`` case the reply (which holds no SQL) is scored on whether it does that. A call that
@@ -76,6 +77,8 @@ class Judge:
             case: The test case: ``type``, ``expected_sql``, ``expected_tables`` and ``expected_columns``.
             reply: What the assistant returned.
             checks: The findings of ``check_sql`` for this reply, which the judge is told about.
+            schema_context: The tables and columns the assistant looked at before writing the SQL, when it recorded them.
+            lookup: The findings of ``schema_lookup`` on that schema (which expected tables and columns it lacked).
 
         Raises:
             JudgeError: When every attempt fails.
@@ -83,6 +86,7 @@ class Judge:
         user = grading_input(
             question, case.get("type", ""), case.get("expected_sql", ""), case.get("expected_tables", ""),
             case.get("expected_columns", ""), reply, checks, self.config.dialect,
+            schema_context=schema_context, lookup=lookup, schema_chars=self.config.judge_schema_chars,
         )
         system = self._grader_prompt if checks["returned_sql"] else self._decline_prompt
 

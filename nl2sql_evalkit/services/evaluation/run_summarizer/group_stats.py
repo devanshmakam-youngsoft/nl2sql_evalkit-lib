@@ -26,6 +26,7 @@ def build_group_stats(store, group_names: list[str], rows: list[dict]) -> dict:
             stats[gname] = {
                 "avg_sql_marks": mean_of(column_of(group_rows, "sql_marks")),
                 "avg_schema_marks": mean_of(column_of(group_rows, "schema_marks")),
+                "avg_lookup_marks": mean_of(column_of(group_rows, "lookup_marks")),
                 "avg_total_time": mean_of(column_of(group_rows, "total_time_taken"), 3),
                 "total_rows": len(group_rows),
                 "failed_rows": sum(1 for r in group_rows if r.get("status") != "ok"),

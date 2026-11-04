@@ -6,6 +6,7 @@ from nl2sql_evalkit.services.evaluation.sql_checks.checks import (
     schema_use_marks,
     split_names,
 )
+from nl2sql_evalkit.services.evaluation.sql_checks.lookup import schema_lookup
 from nl2sql_evalkit.services.evaluation.sql_checks.reply import split_reply
 
-__all__ = ["check_sql", "gate", "schema_use_marks", "split_names", "split_reply"]
+__all__ = ["check_sql", "gate", "schema_lookup", "schema_use_marks", "split_names", "split_reply"]

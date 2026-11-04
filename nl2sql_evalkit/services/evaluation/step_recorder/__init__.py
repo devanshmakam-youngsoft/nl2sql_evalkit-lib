@@ -30,6 +30,15 @@ Its name and time, its inputs and its output: a decorated function's return valu
 ``with step(...)``. Displayed inputs, outputs and notes are cut at ``max_step_value_chars`` (default 1,000) with a
 visible marker saying how much was left out.
 
+THE SCHEMA A STEP LOOKED AT
+---------------------------
+A step may say which tables and columns it looked at: ``s.schema = ...`` inside ``with step(...)``, or
+``@step("schema_lookup", schema=True)`` which takes the decorated function's return value. A list or a dict is written
+out as readable lines. The schemas of all the steps that declared one are joined, cut at ``max_schema_chars``
+(default 20,000) with a visible marker, and kept with the question's result. When no step declares a schema nothing
+is recorded and the schema lookup score is simply not given. With ``record_detail="off"`` no content is kept, so
+none is scored either.
+
 SECRET BLANKING
 ---------------
 Any step input parameter whose name contains a secret-related keyword
@@ -44,6 +53,7 @@ RECORDING DETAIL LEVELS
 """
 from nl2sql_evalkit.services.evaluation.step_recorder.limits import (
     LIMITS,
+    clip_schema,
     configure,
     display_text,
 )
@@ -53,8 +63,10 @@ from nl2sql_evalkit.services.evaluation.step_recorder.recorder import (
     collect_question,
     end_question,
 )
+from nl2sql_evalkit.services.evaluation.step_recorder.schema_text import joined_schema
 from nl2sql_evalkit.services.evaluation.step_recorder.steps import step
 
 __all__ = [
-    "LIMITS", "begin_question", "collect_question", "configure", "display_text", "end_question", "note", "step",
+    "LIMITS", "begin_question", "clip_schema", "collect_question", "configure", "display_text", "end_question",
+    "joined_schema", "note", "step",
 ]

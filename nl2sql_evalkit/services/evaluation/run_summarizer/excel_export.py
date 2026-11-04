@@ -41,7 +41,9 @@ def build_results_workbook(data: dict) -> bytes:
     # The question/answer triplet — the heart of every row
     QA_COLS   = ["question", "expected_sql", "expected_tables", "expected_columns", "generated_answer"]
     # Judge scores + comments right after the answers
-    JUDGE_COLS = ["sql_marks", "sql_remarks", "sql_suggestion", "schema_marks", "schema_remarks"]
+    JUDGE_COLS = ["sql_marks", "sql_remarks", "sql_suggestion", "sql_cause", "schema_marks", "schema_remarks"]
+    # The schema the assistant looked at (only when a step recorded one) and how well it covered what was expected
+    LOOKUP_COLS = ["lookup_marks", "lookup_remarks", "schema_context"]
     # What the checks found in the SQL (kept on each row as ``sql_checks``)
     CHECK_COLS = ["syntax_ok", "read_only", "tables_missing", "columns_missing", "joins_match"]
     # Timing
@@ -49,7 +51,7 @@ def build_results_workbook(data: dict) -> bytes:
     # Optional: anything the run flagged
     OPT_PRESENT = [c for c in OPTIONAL_RECEIPT_COLUMNS if any(r.get(c) is not None for r in rows)]
     # Anything else logged that isn't already covered
-    _covered = set(ID_COLS + QA_COLS + JUDGE_COLS + CHECK_COLS + ["sql_checks", "generated_sql"] +
+    _covered = set(ID_COLS + QA_COLS + JUDGE_COLS + CHECK_COLS + LOOKUP_COLS + ["sql_checks", "generated_sql", "schema_lookup"] +
                    ["total_time_taken"] + OPT_PRESENT +
                    ["session_id", "tc_id", "step_inputs", "step_outputs", "node_timings", "version"])
     extra: list[str] = []
@@ -58,7 +60,8 @@ def build_results_workbook(data: dict) -> bytes:
             if k not in _covered and k not in extra:
                 extra.append(k)
 
-    columns = [*ID_COLS, *QA_COLS, *JUDGE_COLS, *CHECK_COLS,
+    has_lookup = any(r.get("schema_context") for r in rows)
+    columns = [*ID_COLS, *QA_COLS, *JUDGE_COLS, *CHECK_COLS, *(LOOKUP_COLS if has_lookup else []),
                *TIME_COLS, *OPT_PRESENT, *extra]
 
     records = []
@@ -70,6 +73,9 @@ def build_results_workbook(data: dict) -> bytes:
             rec[c] = cell_value(r.get(c))
         for c in JUDGE_COLS:
             rec[c] = cell_value(r.get(c))
+        if has_lookup:
+            for c in LOOKUP_COLS:
+                rec[c] = cell_value(r.get(c))
         checks = r.get("sql_checks") or {}
         for c in CHECK_COLS:
             rec[c] = cell_value(checks.get(c))
@@ -94,6 +100,7 @@ def build_results_workbook(data: dict) -> bytes:
             "total_questions": s.get("total_rows"), "failed": s.get("failed_rows"),
             "avg_sql_marks": s.get("avg_sql_marks"),
             "avg_schema_marks": s.get("avg_schema_marks"),
+            **({"avg_lookup_marks": s.get("avg_lookup_marks")} if s.get("avg_lookup_marks") is not None else {}),
             "avg_total_time_s": s.get("avg_total_time"),
             "judge_model": s.get("judge_model"),
             "duration_seconds": s.get("duration_seconds"),
@@ -109,7 +116,7 @@ def build_results_workbook(data: dict) -> bytes:
         from openpyxl.styles import Alignment, Font, PatternFill
         from openpyxl.utils import get_column_letter
         WRAP_COLS = {"question", "expected_sql", "generated_answer",
-                     "sql_remarks", "schema_remarks"}
+                     "sql_remarks", "schema_remarks", "lookup_remarks", "schema_context"}
         HEADER_FILL = PatternFill("solid", fgColor="1A5276")
         HEADER_FONT = Font(bold=True, color="FFFFFF")
 

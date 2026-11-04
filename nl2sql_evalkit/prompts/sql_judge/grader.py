@@ -16,7 +16,12 @@ sql_marks (integer 0-10): how well the SQL answers the Question.
   grouping, columns the Question does not ask for that change the result, tables or columns that do not belong.
 
 sql_comment: one or two sentences saying why, naming the exact part of the SQL that is wrong or right.
-suggestion: the one change that would improve the SQL or the assistant, starting with a verb. Empty only for a 10."""
+suggestion: the one change that would improve the SQL or the assistant, starting with a verb. Empty only for a 10.
+
+When the message has a "Schema the assistant looked at" section, that is all the assistant knew about the database when it
+wrote the SQL. If the SQL is wrong, say in sql_comment whether the schema it was given lacked a table or column it needed
+(then the lookup is to blame and the suggestion is about what the assistant looks up), or the schema had what it needed and
+the SQL ignored or misused it (then the SQL is to blame), or both."""
 
 
 decline_prompt = """You are a strict but fair reviewer of an AI assistant that turns questions into SQL.
@@ -38,4 +43,7 @@ suggestion: the one change that would improve the reply, starting with a verb. E
 grader_format = """
 
 Respond ONLY with a JSON object with these exact keys:
-  sql_marks (integer 0-10), sql_comment, suggestion"""
+  sql_marks (integer 0-10), sql_comment, suggestion, cause
+cause says why the SQL is wrong, and is one of: "schema_lookup" (the schema the assistant looked at lacked a table or column
+that was needed), "sql" (the schema had what was needed and the SQL went wrong anyway), "both", or "none" (the SQL is
+fine, or there is no schema section to tell from)."""

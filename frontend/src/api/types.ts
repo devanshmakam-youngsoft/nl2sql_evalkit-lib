@@ -14,6 +14,8 @@ export interface VersionSummary {
   failed_rows: number;
   avg_sql_marks: number | null;
   avg_schema_marks: number | null;
+  /** Mean schema lookup score; null when no step recorded the schema the assistant looked at. */
+  avg_lookup_marks?: number | null;
   avg_total_time: number | null;
   comment: string;
   /** Problems met during the run, and the name of its log file (see the Download log link). */
@@ -37,6 +39,7 @@ export interface VersionSummary {
   group_stats?: Record<string, {
     avg_sql_marks: number | null;
     avg_schema_marks: number | null;
+    avg_lookup_marks?: number | null;
     avg_total_time: number | null;
     total_rows: number;
     failed_rows?: number;
@@ -54,6 +57,9 @@ export interface CheckCounts {
   joins_differ: number;
   declines: number;
   declines_with_sql: number;
+  /** Replies whose step recorded a schema, and how many of those lacked an expected table or column (older runs have neither). */
+  lookup_graded?: number;
+  lookup_missed?: number;
 }
 
 /** The server's answer to "which version should ship?" (version ids are strings). */
@@ -138,6 +144,13 @@ export interface ResultRow {
   sql_remarks: string | null;
   schema_marks: number | null;
   schema_remarks: string | null;
+  /** The tables and columns the assistant looked at (recorded by a step), what that schema had or lacked, and its score. */
+  schema_context?: string;
+  schema_lookup?: SchemaLookup;
+  lookup_marks?: number | null;
+  lookup_remarks?: string;
+  /** Why the judge thinks the SQL is wrong: "schema_lookup", "sql", "both" or "none". */
+  sql_cause?: string;
   /** Groups this test case belonged to when it ran. */
   groups?: string[];
   /** Set when the test case has been deleted since this version ran (the question and answer here are kept). */
@@ -153,6 +166,15 @@ export interface ResultRow {
   sql_suggestion?: string;
   /** What the checks on the SQL found. The SQL is read, never run. */
   sql_checks?: SqlChecks;
+}
+
+/** Which of the expected tables and columns were in the schema the assistant looked at. `graded` is false when nothing was scored. */
+export interface SchemaLookup {
+  graded: boolean;
+  tables_found: string[];
+  tables_missing: string[];
+  columns_found: string[];
+  columns_missing: string[];
 }
 
 /** The findings of the checks on one reply. `null` means the check did not apply. */

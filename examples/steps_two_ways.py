@@ -1,4 +1,5 @@
-"""The same text-to-SQL pipeline recorded two ways: with `with` blocks, and with decorators. Both record the same two steps."""
+"""The same text-to-SQL pipeline recorded two ways: with `with` blocks, and with decorators. Both record the same two steps,
+and both say which tables and columns the assistant looked at, so that is scored and shown with the result."""
 import nl2sql_evalkit
 
 SCHEMA = {
@@ -21,15 +22,16 @@ def write_sql(question: str, tables: str) -> str:
 
 # Style 1: `with` blocks. You decide exactly where a step starts and ends.
 def pipeline_with_blocks(question: str) -> str:
-    with nl2sql_evalkit.step("schema_lookup"):
+    with nl2sql_evalkit.step("schema_lookup") as s:
         tables = [SCHEMA[name] for name in pick_tables(question)]
+        s.schema = tables                       # what the assistant looked at: a list, text or {"orders": ["id", ...]}
         nl2sql_evalkit.note("tables_given", ", ".join(tables))
     with nl2sql_evalkit.step("llm"):
         return write_sql(question, tables[0])
 
 
 # Style 2: decorators. The inputs and the output of each function are recorded for you.
-@nl2sql_evalkit.step("schema_lookup")
+@nl2sql_evalkit.step("schema_lookup", schema=True)     # the return value is the schema the assistant looked at
 def look_up_tables(question: str) -> str:
     return ", ".join(SCHEMA[name] for name in pick_tables(question))
 

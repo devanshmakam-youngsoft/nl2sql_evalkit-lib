@@ -19,7 +19,16 @@ minutes: 5
     <tr><td>Covers</td><td class="yes">any block, even part of a function</td><td class="no">the whole function</td></tr>
   </tbody>
 </table></div>
-<div class="note"><b>Shown, not scored</b><p>What a step records appears beside the question, which helps when you read a wrong query. The judge does not read it: it grades the SQL your function returns.</p></div>
+<div class="note"><b>Shown, not scored</b><p>A step&rsquo;s inputs and output appear beside the question, which helps when you read a wrong query. The judge does not read them: it grades the SQL your function returns. The one thing you can hand to the judge is the schema the assistant looked at (next section).</p></div>
+
+<h2>Say which schema the assistant looked at</h2>
+<p>Most assistants pick the tables and columns that matter before they write the SQL. If yours does, say what it picked and the evaluator will check it, show it and tell the judge. Two ways, matching the two styles above:</p>
+<ul>
+  <li><b><code>with</code> block:</b> <code>s.schema = ...</code> inside <code>with nl2sql_evalkit.step("schema_lookup") as s:</code>. Give it text, a list of lines such as <code>["orders(id, amount)", "customers(id, name)"]</code>, or a dict such as <code>{"orders": ["id", "amount"]}</code>.</li>
+  <li><b>Decorator:</b> <code>@nl2sql_evalkit.step("schema_lookup", schema=True)</code> takes the function&rsquo;s return value as the schema.</li>
+</ul>
+<p>This gives you three things on every question: the <b>schema lookup score</b> (0&ndash;10, the share of the expected tables and columns that were in what the assistant looked at), the schema itself in the question&rsquo;s details with each expected table and column marked found or missing, and a <b>likely cause</b> from the judge when the SQL is wrong: the lookup missed something, the SQL went wrong with the schema it had, or both. If several steps declare a schema they are joined. If none does, nothing changes and the lookup score is not given. It is read, never run, and it is not part of the overall score that picks the recommended version.</p>
+<div class="note"><b>Size</b><p>The schema is cut at 20,000 characters (<code>serve(max_schema_chars=...)</code>), and with <code>record_detail="off"</code> no content is kept, so no lookup score is given.</p></div>
 
 <h2>Which one should I use?</h2>
 <div class="cards">

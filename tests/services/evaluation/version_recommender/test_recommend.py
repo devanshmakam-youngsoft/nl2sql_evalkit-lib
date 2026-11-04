@@ -88,7 +88,7 @@ def test_summary_saves_detailed_scores():
     ]
     scores = build_scores(rows)
     assert scores["tiers"] == {"high": 1, "mid": 1, "low": 1}
-    assert scores["by_type"]["rag"] == {"rows": 2, "sql_marks": 7.5, "schema_marks": 6.0}
+    assert scores["by_type"]["rag"] == {"rows": 2, "sql_marks": 7.5, "schema_marks": 6.0, "lookup_marks": None}
     assert scores["by_type"]["chat"]["schema_marks"] is None
     assert scores["time"] == {"avg": 2.0, "p95": 3.0}
     assert scores["checks"]["answers"] == 0 and scores["checks"]["declines"] == 0      # these rows carry no checks

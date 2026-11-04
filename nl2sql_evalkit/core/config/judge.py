@@ -11,6 +11,7 @@ class JudgeSettings(Settings):
     judge_prompt_override: str = ""  # replaces the built-in grading rubric when set; the JSON reply format is always added
     judge_temperature: float | None = None   # None: the model's own default is used
     judge_retries: int = 3
+    judge_schema_chars: int = 6000   # how much of the schema the assistant looked at the judge reads per question
 
     # Override the LLM summary prompt (the one that writes the run's watch-outs and suggestions).
     summary_prompt: str = ""

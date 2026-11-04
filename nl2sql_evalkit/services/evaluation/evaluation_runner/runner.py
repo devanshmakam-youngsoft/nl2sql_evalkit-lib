@@ -22,8 +22,18 @@ from nl2sql_evalkit.services.evaluation.evaluation_runner.function_adapter impor
 )
 from nl2sql_evalkit.services.evaluation.evaluation_runner.run import Run, light_row
 from nl2sql_evalkit.services.evaluation.run_summarizer import build_group_stats, build_summary
-from nl2sql_evalkit.services.evaluation.sql_checks import check_sql, gate, schema_use_marks
-from nl2sql_evalkit.services.evaluation.sql_judge import Judge, finish_insights, stats_for_llm
+from nl2sql_evalkit.services.evaluation.sql_checks import (
+    check_sql,
+    gate,
+    schema_lookup,
+    schema_use_marks,
+)
+from nl2sql_evalkit.services.evaluation.sql_judge import (
+    Judge,
+    finish_insights,
+    parse_cause,
+    stats_for_llm,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +96,7 @@ class RunManager:
         self._history_fmt   = config.history_format
         self._record_detail = config.record_detail
         self._record_mode   = config.record_mode
-        step_recorder.configure(max_step_value_chars=config.step_value_chars)
+        step_recorder.configure(max_step_value_chars=config.step_value_chars, max_schema_chars=config.schema_chars)
 
         # Detect once at startup — inspection is expensive; cache the result.
         self._sig = detect_call_style(fn, self._s_aliases, self._h_aliases)
@@ -166,8 +176,9 @@ class RunManager:
 
     def _call_fn(
         self, question: str, history: list[dict], session_id: str
-    ) -> tuple[str, float, dict, dict, dict, dict]:
-        """Call the developer's function; return (answer, elapsed, node_timings, step_inputs, step_outputs, flags)."""
+    ) -> tuple[str, float, dict, dict, dict, dict, str]:
+        """Call the developer's function; return (answer, elapsed, node_timings, step_inputs, step_outputs, flags,
+        schema_context), the last being the schema the steps declared they looked at (empty when none did)."""
         _recording_active = self._record_mode != "off"
         if _recording_active:
             step_recorder.begin_question(detail=self._record_detail)
@@ -213,17 +224,17 @@ class RunManager:
             node_timings[s["name"]] = round(node_timings.get(s["name"], 0.0) + s["elapsed"], 3)
         step_inputs  = {s["name"]: s.get("inputs", {}) for s in steps}
         step_outputs = {s["name"]: s.get("output",  "") for s in steps}
-        return answer, elapsed, node_timings, step_inputs, step_outputs, flags
+        return answer, elapsed, node_timings, step_inputs, step_outputs, flags, step_recorder.joined_schema(steps)
 
     def _grade_sql(self, row, out: dict, case_type: str, run: Run, where: str) -> dict:
         """The SQL score of one reply with the reason and a suggestion: 0 for a failed question or a reply that fails a basic
         check, else judge_fn if provided, otherwise the LLM judge."""
         if out["status"] != "ok":
-            return {"sql_marks": 0, "sql_comment": "No reply: the function raised an error.", "suggestion": ""}
+            return {"sql_marks": 0, "sql_comment": "No reply: the function raised an error.", "suggestion": "", "cause": "none"}
         checks = out["sql_checks"]
         stopped = gate(checks, case_type, self.config.dialect)
         if stopped:
-            return {"sql_marks": stopped[0], "sql_comment": stopped[1], "suggestion": stopped[2]}
+            return {"sql_marks": stopped[0], "sql_comment": stopped[1], "suggestion": stopped[2], "cause": "none"}
         reply = out.get("generated_answer") or ""
         if self._judge_fn is not None:
             try:
@@ -231,14 +242,17 @@ class RunManager:
                 if not isinstance(raw, dict):
                     raw = {"sql_marks": int(raw)}
                 return {"sql_marks": int(raw.get("sql_marks", 0)), "sql_comment": str(raw.get("sql_comment", "")),
-                        "suggestion": str(raw.get("suggestion", ""))}
+                        "suggestion": str(raw.get("suggestion", "")), "cause": parse_cause(raw.get("cause"))}
             except Exception as e:
                 issue = run.log.issue("custom_judge", e, where)
-                return {"sql_marks": 0, "sql_comment": issue.message, "suggestion": ""}
+                return {"sql_marks": 0, "sql_comment": issue.message, "suggestion": "", "cause": "none"}
         case = {"type": case_type, "expected_sql": row.expected_sql,
                 "expected_tables": out.get("expected_tables", ""), "expected_columns": out.get("expected_columns", "")}
-        grade = self.judge.grade_sql(row.question, case, reply, checks)
-        return {"sql_marks": grade.sql_marks, "sql_comment": grade.sql_comment, "suggestion": grade.suggestion}
+        lookup = out.get("schema_lookup") or {}
+        grade = self.judge.grade_sql(row.question, case, reply, checks, schema_context=out.get("schema_context", ""),
+                                     lookup=lookup)
+        return {"sql_marks": grade.sql_marks, "sql_comment": grade.sql_comment, "suggestion": grade.suggestion,
+                "cause": grade.cause}
 
     def _process_row(self, row, session_id: str, history: list[dict], run: Run) -> dict:
         where = f"Question {run.done + 1} of {run.total} (chat {row.chat_id}, turn {row.turn_no})"
@@ -269,7 +283,7 @@ class RunManager:
                 out[col_n] = getattr(row, col_n)
 
         try:
-            answer, elapsed, node_timings, step_inputs, step_outputs, flags = \
+            answer, elapsed, node_timings, step_inputs, step_outputs, flags, schema_context = \
                 self._call_fn(row.question, history, session_id)
             out.update(
                 generated_answer=answer,
@@ -277,6 +291,7 @@ class RunManager:
                 node_timings=node_timings,
                 step_inputs=step_inputs,
                 step_outputs=step_outputs,
+                schema_context=schema_context,
             )
             if flags:
                 out["flags"] = flags
@@ -288,6 +303,7 @@ class RunManager:
                 error_message=issue.message,
                 error_detail=issue.technical,
                 generated_answer=None,
+                schema_context="",
                 node_timings={},
                 step_inputs={},
                 step_outputs={},
@@ -301,6 +317,11 @@ class RunManager:
             out["sql_checks"], out["generated_sql"] = checks, checks["sql"]
             out["schema_marks"], out["schema_remarks"] = schema_use_marks(
                 checks, out.get("expected_tables", ""), out.get("expected_columns", ""), case_type)
+            # did the schema the assistant looked at hold what the question needed (only when a step recorded one)
+            lookup = schema_lookup(out.get("schema_context", ""), out.get("expected_tables", ""),
+                                   out.get("expected_columns", ""), case_type)
+            out["lookup_marks"], out["lookup_remarks"] = lookup.pop("marks"), lookup.pop("remarks")
+            out["schema_lookup"] = lookup
 
         # Extra / custom metrics
         if out["status"] == "ok" and self._extra_metrics:
@@ -315,7 +336,8 @@ class RunManager:
         # The SQL score (gates, then LLM judge or custom judge_fn)
         try:
             grade = self._grade_sql(row, out, case_type, run, where)
-            out.update(sql_marks=grade["sql_marks"], sql_remarks=grade["sql_comment"], sql_suggestion=grade["suggestion"])
+            out.update(sql_marks=grade["sql_marks"], sql_remarks=grade["sql_comment"], sql_suggestion=grade["suggestion"],
+                       sql_cause=grade["cause"])
         except Exception as e:
             issue = run.log.issue("grading", e, where)
             if out["status"] == "ok":
@@ -372,9 +394,10 @@ class RunManager:
                 rows.append(result)
                 run.done += 1
                 run.log.info(
-                    "Question %d of %d | chat %s turn %s | %s | answer %s, tables and columns %s | %ss",
+                    "Question %d of %d | chat %s turn %s | %s | answer %s, tables and columns %s, schema lookup %s | %ss",
                     run.done, run.total, row.chat_id, row.turn_no, result["status"],
-                    result.get("sql_marks"), result.get("schema_marks"), result.get("total_time_taken", "-"),
+                    result.get("sql_marks"), result.get("schema_marks"), result.get("lookup_marks"),
+                    result.get("total_time_taken", "-"),
                 )
                 run.emit("progress", row=light_row(result))
 

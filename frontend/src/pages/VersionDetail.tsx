@@ -6,6 +6,7 @@ import { ChatTurn, GroupChips } from "../components/GroupChips";
 import { FailureRollup } from "../components/FailureRollup";
 import { GLOSSARY, Hint, Term } from "../components/Hint";
 import { IssueList } from "../components/IssueList";
+import { CauseTag, SchemaLookupBlock } from "../components/SchemaLookupBlock";
 import { Pager, usePaging } from "../components/Pager";
 import { TechnicalDetails } from "../components/TechnicalDetails";
 import { TopBar } from "../components/TopBar";
@@ -141,9 +142,10 @@ export default function VersionDetail() {
         {s.notes && <Meta label="Run note"><span className="italic">{s.notes}</span></Meta>}
       </dl>
 
-      <section className="mt-6 grid grid-cols-2 gap-4">
+      <section className={`mt-6 grid gap-4 ${s.avg_lookup_marks != null ? "grid-cols-3" : "grid-cols-2"}`}>
         <Stat label={<Term k="answer" />} value={<ScorePill value={s.avg_sql_marks} />} />
         <Stat label={<Term k="context" />} value={<ScorePill value={s.avg_schema_marks} />} />
+        {s.avg_lookup_marks != null && <Stat label={<Term k="lookup" />} value={<ScorePill value={s.avg_lookup_marks} />} />}
       </section>
 
       {bands.total > 0 && (
@@ -460,7 +462,7 @@ function RowDrawer({ row, onClose }: { row: ResultRow; onClose: () => void }) {
   }, [onClose]);
 
   const failed = row.sql_checks ? failedChecks(row.sql_checks, row.type) : null;
-  const hasRemarks = !!(row.sql_remarks || row.schema_remarks || row.sql_suggestion);
+  const hasRemarks = !!(row.sql_remarks || row.schema_remarks || row.lookup_remarks || row.sql_suggestion || (row.sql_cause && row.sql_cause !== "none"));
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onMouseDown={onClose}>
@@ -482,7 +484,7 @@ function RowDrawer({ row, onClose }: { row: ResultRow; onClose: () => void }) {
         </div>
 
         {/* 2. The verdict at a glance */}
-        <div className="mt-5 grid grid-cols-3 gap-3">
+        <div className={`mt-5 grid gap-3 ${row.lookup_marks != null ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"}`}>
           <div className="rounded border border-line p-3.5">
             <div className="mb-1.5 text-xs text-muted"><Term k="answer" /></div>
             <ScorePill value={row.sql_marks} digits={0} />
@@ -491,6 +493,12 @@ function RowDrawer({ row, onClose }: { row: ResultRow; onClose: () => void }) {
             <div className="mb-1.5 text-xs text-muted"><Term k="context" /></div>
             {row.schema_marks == null ? <span className="text-sm text-muted">n/a</span> : <ScorePill value={row.schema_marks} digits={0} />}
           </div>
+          {row.lookup_marks != null && (
+            <div className="rounded border border-line p-3.5">
+              <div className="mb-1.5 text-xs text-muted"><Term k="lookup" /></div>
+              <ScorePill value={row.lookup_marks} digits={0} />
+            </div>
+          )}
           <div className="rounded border border-line p-3.5">
             <div className="mb-1.5 text-xs text-muted"><Term k="checks" /></div>
             {failed == null
@@ -510,6 +518,7 @@ function RowDrawer({ row, onClose }: { row: ResultRow; onClose: () => void }) {
         {(row.expected_sql || !(row.type === "clarify" || row.type === "refuse")) && <Block title="Expected SQL">{row.expected_sql || "—"}</Block>}
         {row.expected_tables && <Block title="Expected tables">{row.expected_tables}</Block>}
         {row.expected_columns && <Block title="Expected columns">{row.expected_columns}</Block>}
+        <SchemaLookupBlock row={row} />
 
         {/* 4. Why it scored that way */}
         {hasRemarks && (
@@ -518,6 +527,8 @@ function RowDrawer({ row, onClose }: { row: ResultRow; onClose: () => void }) {
             <div className="space-y-2 rounded border border-line p-3.5 text-sm leading-relaxed">
               {row.sql_remarks && <p><span className="font-semibold">{GLOSSARY.answer.label}:</span> {row.sql_remarks}</p>}
               {row.schema_remarks && <p><span className="font-semibold">{GLOSSARY.context.label}:</span> {row.schema_remarks}</p>}
+              {row.lookup_remarks && <p><span className="font-semibold">{GLOSSARY.lookup.label}:</span> {row.lookup_remarks}</p>}
+              {row.sql_cause && row.sql_cause !== "none" && <p><span className="font-semibold">Likely cause:</span> <CauseTag cause={row.sql_cause} /></p>}
               {row.sql_suggestion && <p><span className="font-semibold">Suggestion:</span> {row.sql_suggestion}</p>}
             </div>
           </div>

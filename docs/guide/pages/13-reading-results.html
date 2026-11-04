@@ -10,6 +10,7 @@ minutes: 6
   <tbody>
     <tr><td><b>SQL score</b> (0&ndash;10)</td><td>The AI judge reads the question, the expected SQL and the reply, and says whether the query would answer the question, with a reason and a suggestion. A reply that fails a basic check is scored 0 without asking the judge (see below).</td></tr>
     <tr><td><b>Tables and columns</b> (0&ndash;10)</td><td>Worked out without AI: the share of the expected tables, and of the expected columns, that the query uses. Left out when the test case expects none.</td></tr>
+    <tr><td><b>Schema lookup</b> (0&ndash;10)</td><td>Only when your assistant records which tables and columns it looked at (<a href="#/with-or-decorator">see steps</a>). Worked out without AI: the share of the expected tables and columns that were in what it looked at. A low score means the lookup missed something the question needed, whatever the SQL did. It is not part of the overall score.</td></tr>
     <tr><td><b>Response time</b> and the step bar</td><td>From question to final reply, and how that time splits across your steps.</td></tr>
     <tr><td><b>Score tiers</b></td><td>How many questions were strong (8&ndash;10), fair (5&ndash;7) or weak (0&ndash;4).</td></tr>
     <tr><td><b>Where answers fail</b></td><td>How many replies failed each check. See below.</td></tr>
@@ -31,13 +32,14 @@ minutes: 6
 <p>No SQL, SQL that does not parse and SQL that is not read-only score 0 and the judge is not asked. For <code>clarify</code> and <code>refuse</code> questions the rule is turned round: any SQL in the reply scores 0, and a reply with only words goes to the judge, which checks it really asks or declines.</p>
 
 <h2>Where answers fail</h2>
-<p>The version page and the dashboard show, for each check, how many replies failed it out of the questions that should be answered (and, for declines, how many wrote SQL when they should not have). On the dashboard it compares your latest versions side by side, with an arrow for the change since the run before, so you can see that v3 fixed the joins but broke the columns. Lower is better.</p>
+<p>The version page and the dashboard show, for each check, how many replies failed it out of the questions that should be answered (and, for declines, how many wrote SQL when they should not have). When the assistant records its schema, a row also counts the questions where what it looked at lacked an expected table or column. On the dashboard it compares your latest versions side by side, with an arrow for the change since the run before, so you can see that v3 fixed the joins but broke the columns. Lower is better.</p>
 
 <h2>Watch-outs and suggestions</h2>
 <p>At the end of each run the judge model writes plain-language findings: each thing to look at, paired with the next step to try. They name the group or question and use the numbers as evidence, rather than repeating the headline scores. If the model cannot be reached, a plain summary built from the checks is shown instead. Change what the model looks for with <code>summary_prompt</code> (<a href="#/your-judge">Your judge</a>).</p>
 
 <h2>One question at a time</h2>
-<p>Click any row to open that question: the reply, the SQL read from it, the expected SQL, each check with what it found, the judge&rsquo;s reason and suggestion, the time per step, and your notes. This is where wrong queries get explained.</p>
+<p>Click any row to open that question: the reply, the SQL read from it, the expected SQL, the schema the assistant looked at (when recorded) with each expected table and column marked found or missing, each check with what it found, the judge&rsquo;s reason and suggestion, the time per step, and your notes. This is where wrong queries get explained.</p>
+<p>When the SQL is wrong and a schema was recorded, the judge also says <b>why</b>: <em>the schema lookup missed something</em> (fix what the assistant looks up), <em>the SQL went wrong</em> with the schema it had (fix how it writes), or <em>both</em>. It is shown as the likely cause, so you do not start by changing the wrong part.</p>
 <ul>
   <li>Filter by type, group or score tier, and sort by score or time.</li>
   <li>A question whose test case has been deleted since is marked, and keeps its own copy of the text.</li>

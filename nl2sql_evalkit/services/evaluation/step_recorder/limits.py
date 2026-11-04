@@ -1,13 +1,15 @@
 """How much of a step is kept: displayed inputs, outputs and notes."""
 import json
 
-LIMITS = {"value": 1000}
+LIMITS = {"value": 1000, "schema": 20000}
 
 
-def configure(max_step_value_chars: int | None = None) -> None:
-    """Set how much is kept of the shown step inputs, outputs and notes."""
+def configure(max_step_value_chars: int | None = None, max_schema_chars: int | None = None) -> None:
+    """Set how much is kept: the shown step inputs, outputs and notes, and the schema a step looked at."""
     if max_step_value_chars:
         LIMITS["value"] = int(max_step_value_chars)
+    if max_schema_chars:
+        LIMITS["schema"] = int(max_schema_chars)
 
 
 def _clip(text: str, limit: int) -> str:
@@ -15,6 +17,11 @@ def _clip(text: str, limit: int) -> str:
     if len(text) <= limit:
         return text
     return f"{text[:limit]}\u2026 (+{len(text) - limit} more characters)"
+
+
+def clip_schema(text: str) -> str:
+    """Cut the schema text to the configured limit (``max_schema_chars``), ending with a marker when something was left out."""
+    return _clip(text, LIMITS["schema"])
 
 
 def _is_number_list(v) -> bool:

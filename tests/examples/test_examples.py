@@ -128,6 +128,8 @@ def test_the_two_step_styles_record_the_same_steps_and_the_same_sql(served_funct
     assert decorated["step_inputs"]["schema_lookup"] == {"question": "How many orders are there?"}
     assert decorated["step_outputs"]["schema_lookup"] == SCHEMA_ORDERS
     assert blocks["step_inputs"]["schema_lookup"] == {} and blocks["flags"]["tables_given"] == SCHEMA_ORDERS
+    # both say which schema the assistant looked at, so it is kept with the result
+    assert blocks["schema_context"] == decorated["schema_context"] == SCHEMA_ORDERS
 
 
 def test_steps_two_ways_example_is_served(serve_example):
