@@ -64,6 +64,7 @@ def create_app(
     fn: Callable,
     *,
     judge_fn: Callable | None = None,
+    reply_judge_fn: Callable | None = None,
     extra_metrics: dict | None = None,
     on_complete: Callable | None = None,
     session_id_fn: Callable | None = None,
@@ -78,6 +79,7 @@ def create_app(
         config: All options. The store, logs and uploads are placed under ``config.data_dir``.
         fn: The pipeline function under evaluation, called once per test question.
         judge_fn: Replaces the LLM judge when given.
+        reply_judge_fn: Replaces the LLM judge for the written reply (the reply score) when given.
         extra_metrics: Extra scoring functions to run on every answer, by metric name.
         on_complete: Called once after each run finishes, with the run's summary and result rows.
         session_id_fn: Returns the session ID to use for a ``chat_id``; defaults to a random UUID per chat.
@@ -98,7 +100,8 @@ def create_app(
     app.state.store = EvalStore(config.store_path)
     app.state.manager = RunManager(
         config, app.state.store, fn,
-        judge_fn=judge_fn, extra_metrics=extra_metrics, on_complete=on_complete, session_id_fn=session_id_fn,
+        judge_fn=judge_fn, reply_judge_fn=reply_judge_fn, extra_metrics=extra_metrics, on_complete=on_complete,
+        session_id_fn=session_id_fn,
     )
     app.state.generator = GenerationManager(config, app.state.store, llm=generation_llm)
 

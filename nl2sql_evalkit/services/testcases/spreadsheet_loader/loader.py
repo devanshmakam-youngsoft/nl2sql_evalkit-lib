@@ -10,7 +10,7 @@ REQUIRED_COLUMNS = ["chat_id", "turn_no", "type", "question"]
 
 
 # Optional: kept automatically if present in the file (no extra_columns config needed).
-OPTIONAL_COLUMNS = ["expected_sql", "expected_tables", "expected_columns"]
+OPTIONAL_COLUMNS = ["expected_sql", "expected_tables", "expected_columns", "reply_style"]
 
 
 def load_dataset(

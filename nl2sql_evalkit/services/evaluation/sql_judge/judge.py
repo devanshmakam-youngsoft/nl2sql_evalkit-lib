@@ -24,12 +24,15 @@ from nl2sql_evalkit.prompts.sql_judge import (
     decline_prompt,
     grader_format,
     grader_prompt,
+    reply_format,
+    reply_prompt,
     run_summary_format,
     run_summary_prompt,
 )
 from nl2sql_evalkit.services.evaluation.sql_judge.grading_input import grading_input
 from nl2sql_evalkit.services.evaluation.sql_judge.insights import check_insights, parse_insights
-from nl2sql_evalkit.services.evaluation.sql_judge.schemas import SqlGrade
+from nl2sql_evalkit.services.evaluation.sql_judge.reply_input import reply_input
+from nl2sql_evalkit.services.evaluation.sql_judge.schemas import ReplyGrade, SqlGrade
 from nl2sql_evalkit.services.llm_client import complete
 
 logger = logging.getLogger(__name__)
@@ -46,6 +49,7 @@ class Judge:
         self.config = config
         self._grader_prompt = (config.judge_prompt_override or grader_prompt) + grader_format
         self._decline_prompt = decline_prompt + grader_format
+        self._reply_prompt = reply_prompt + reply_format
 
     def _call(self, messages: list[dict], json_mode: bool = False) -> str:
         return complete(
@@ -93,6 +97,31 @@ class Judge:
         def _invoke() -> SqlGrade:
             raw = self._call([{"role": "system", "content": system}, {"role": "user", "content": user}], json_mode=True)
             return SqlGrade(**json.loads(raw))
+
+        return self._with_retries(_invoke)
+
+    def grade_reply(self, question: str, reply_style: str, reply_text: str, sql: str = "", case_type: str = "answer") -> ReplyGrade:
+        """Score the written reply of one question against the style the developer asked for, with the reason and a suggestion.
+
+        Nothing is run, so the judge reads the reply for style, consistency with the question and the SQL, and clarity; it
+        cannot check figures against data. A call that fails, or a reply that is not valid JSON or not a valid
+        ``ReplyGrade``, is retried up to ``judge_retries`` times.
+
+        Args:
+            question: The question that was asked.
+            reply_style: How the reply should read, written by the developer.
+            reply_text: The written reply (the summary, or the message when the assistant asked back or declined).
+            sql: The SQL that came with the reply, empty when there is none.
+            case_type: ``answer``, ``clarify`` or ``refuse``: what the assistant should have done.
+
+        Raises:
+            JudgeError: When every attempt fails.
+        """
+        user = reply_input(question, reply_style, reply_text, sql, case_type, self.config.judge_reply_chars)
+
+        def _invoke() -> ReplyGrade:
+            raw = self._call([{"role": "system", "content": self._reply_prompt}, {"role": "user", "content": user}], json_mode=True)
+            return ReplyGrade(**json.loads(raw))
 
         return self._with_retries(_invoke)
 

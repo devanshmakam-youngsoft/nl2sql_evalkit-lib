@@ -18,6 +18,8 @@ def default_suggestions(summary: dict, rows: list[dict]) -> list[str]:
         out.append("Vague or harmful questions got SQL: teach the assistant to ask back or decline before it writes a query.")
     if checks.get("lookup_missed"):
         out.append("The schema the assistant looked at often lacked an expected table or column: check what it looks up before it writes the SQL.")
+    if checks.get("reply_weak"):
+        out.append("Some written replies are off the requested style: add the style to the instructions the assistant answers with and run those questions again.")
     if checks.get("tables_missing") or checks.get("columns_missing"):
         out.append("Expected tables or columns were left out: check the schema text the assistant is given describes them clearly.")
     if checks.get("joins_differ"):

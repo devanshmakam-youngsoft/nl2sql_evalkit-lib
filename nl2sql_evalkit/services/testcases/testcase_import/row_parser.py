@@ -122,6 +122,7 @@ def parse_rows(df: pd.DataFrame, mapping: dict[str, str | None]) -> tuple[list[d
             "expected_sql": get("expected_sql"),
             "expected_tables": get("expected_tables"),
             "expected_columns": get("expected_columns"),
+            "reply_style": get("reply_style"),
             "groups": split_labels(get("groups")),
         })
     return rows, problems

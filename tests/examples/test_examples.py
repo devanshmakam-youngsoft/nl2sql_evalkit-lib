@@ -261,6 +261,7 @@ def test_the_sample_test_case_file_imports_as_described(served_function):
     assert (follow_up["chat_id"], follow_up["turn_no"], follow_up["expected_columns"]) == ("sales-1", 2, "region, amount")
     assert cases["Total sales per region"]["expected_tables"] == "orders, customers"
     assert cases["How many orders are still open?"]["expected_sql"].startswith("SELECT COUNT(*)")
+    assert cases["Total sales per region"]["reply_style"].startswith("Friendly") and cases["Show me the best customers"]["reply_style"] == ""
     assert sorted(g["name"] for g in client.get("/api/groups").json()) == ["Attacks", "Orders", "Sales", "Vague"]
 
 
@@ -363,3 +364,38 @@ def test_the_same_assistant_gives_a_different_version_when_one_setting_changes(s
     row = evaluate(serve_example("versions_workflow.py"), [("c1", 1, "Sales per region?", "SELECT 1")])[0]
     assert row["sql_checks"]["star"] == (with_columns == "0")      # version 1 only knows the table names, so it selects everything
     assert row["sql_checks"]["tables_used"] == (["orders"] if with_columns == "0" else ["orders", "customers"])
+
+
+# ---- reply_style.py ----------------------------------------------------------------------------------------------
+
+STYLE = "Friendly, two sentences at most, say how many rows, no SQL words"
+
+
+def test_the_written_reply_is_scored_against_the_reply_style(serve_example):
+    app = serve_example("reply_style.py")
+    assert app.state.config.reply_style == STYLE
+    manager = app.state.manager
+    asked = []
+
+    def grade_reply(question, reply_style, reply_text, sql="", case_type="answer"):
+        asked.append((reply_style, reply_text, sql))
+        return SimpleNamespace(reply_marks=9, reply_comment="Friendly.", suggestion="")
+
+    manager._llm_judge = SimpleNamespace(summarize_run=lambda stats: None, grade_reply=grade_reply)
+    row = evaluate(app, [("c1", 1, "How many customers per region?", "SELECT region FROM customers")])[0]
+    assert row["generated_answer"].startswith("SELECT region, COUNT(*)") and row["reply_text"] == "You have customers in 4 regions, and the north has the most."
+    assert (row["reply_style"], row["reply_marks"], row["reply_remarks"]) == (STYLE, 9, "Friendly.") and asked[0][0] == STYLE
+
+
+def test_the_own_reply_judge_in_the_example_grades_as_described():
+    judge = runpy.run_path(str(EXAMPLES / "reply_style.py"))["short_and_plain"]
+    assert judge("q", STYLE, "You have 4 regions. The north leads.", "")["reply_marks"] == 10
+    assert judge("q", STYLE, "One. Two. Three.", "")["reply_marks"] == 4
+    assert judge("q", STYLE, "Run SELECT on the table.", "")["reply_marks"] == 4
+
+
+def test_the_example_reply_judge_can_replace_the_model(served_function):
+    module = runpy.run_path(str(EXAMPLES / "reply_style.py"))
+    app = served_function(module["my_assistant"], config_options={"reply_style": STYLE}, reply_judge_fn=module["short_and_plain"])
+    row = evaluate(app, [("c1", 1, "How many customers per region?", "SELECT region FROM customers")])[0]
+    assert row["reply_marks"] == 10 and row["reply_remarks"] == "Short and plain."

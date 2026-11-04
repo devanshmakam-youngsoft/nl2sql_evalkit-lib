@@ -108,6 +108,8 @@ Nothing is executed and no database is involved, so the score comes from reading
 
 **Schema lookup score.** Only when the assistant records the schema it looked at (see Quick Start). Rule-based: the share of the expected tables and columns that appear in that schema. It tells a lookup that missed a table from SQL that ignored a table it was given, and the judge uses it to name the likely cause of a wrong query.
 
+**Reply score.** Optional: besides the SQL, the assistant's written reply (a summary or a plain-language answer) is scored against a **reply style** you write, such as `"Friendly, two sentences, say how many rows"`. Set it per test case (the `reply_style` column, or the *Reply style* field), or for every question with `serve(reply_style=...)`; a test case's own style wins. The reply is read from a dict result (`{"sql": ..., "summary": ...}`; keys in `reply_keys`) or is the text around fenced SQL, and for a `clarify` or `refuse` case it is the message. The AI judge gives 0-10 with a reason and a suggestion, checking the style, that the reply fits the question and the SQL, and that a non-technical reader understands it. No written reply scores 0 without calling the judge. Nothing is run, so it cannot check figures against data. Pass `reply_judge_fn(question, reply_style, reply_text, sql)` to score it yourself (see [examples/reply_style.py](examples/reply_style.py)). Without a reply style nothing changes; the score is shown on the dashboard but is not part of the overall score that picks the recommended version.
+
 **Tables-and-columns score.** Rule-based: how much of the expected tables and columns the SQL uses. It is the `schema_weight` part of the recommendation.
 
 **Your own judge.** Pass `judge_fn(question, expected_sql, reply, checks)` to `serve()` to score with your own code instead of the AI judge. It returns `{"sql_marks": 0-10, "sql_comment": "...", "suggestion": "..."}`; `checks` holds what the checks found (`syntax_ok`, `read_only`, `tables_missing`, `columns_missing`, `star`, `joins_match`, `joins_missing`, ...). See [examples/custom_judge.py](examples/custom_judge.py). `judge_prompt` changes the AI judge's rubric instead (see [examples/custom_judge_prompt.py](examples/custom_judge_prompt.py)).
@@ -135,6 +137,8 @@ The most used `serve()` parameters (the full list, with every default, is in the
 | `judge_api_key` | `None` | Otherwise LiteLLM reads the provider's environment variable |
 | `judge_fn` | `None` | Your own scoring function instead of the AI judge |
 | `judge_prompt` | `None` | Your own rubric for the AI judge |
+| `reply_style` | `None` | How every written reply should read; when set, replies are scored too (a test case's own style wins) |
+| `reply_judge_fn` | `None` | Your own scoring function for the written reply |
 | `generator_model` | `None` | Model that writes test cases from schema files; defaults to `judge_model` |
 | `sql_weight` / `schema_weight` | `0.6` / `0.4` | How the recommendation weighs the SQL score and the tables-and-columns score |
 | `recommendation_tolerance` | `0.25` | Versions this close to the best count as tied; the fastest wins |
@@ -155,6 +159,8 @@ Each case has a **type**:
 | `answer` (default) | Write SQL | at least one of `expected_sql`, `expected_tables`, `expected_columns` |
 | `clarify` | Ask a question back, because the request is vague | only the question |
 | `refuse` | Decline, because the request is unsafe (delete, drop, update ...) | only the question |
+
+A case may also have a `reply_style` (optional text) that says how the assistant's written reply should read; it adds the reply score described above.
 
 `expected_tables` and `expected_columns` are comma separated lists (`orders, customers`; `region, amount` or `orders.amount`). Follow-up questions are cases with the same `chat_id` and a higher `turn_no`; a run includes the earlier turns of each selected conversation so a follow-up has what it builds on.
 
@@ -192,7 +198,7 @@ The schema is read in your `dialect`: tables, columns, types, primary keys, fore
 **Test Cases → Import** takes an Excel or CSV file, or rows pasted from a spreadsheet, in three steps: pick the file, check what will happen, then choose where the cases go. Nothing is saved until the last step. A sample is in [examples/test_cases.csv](examples/test_cases.csv).
 
 - **Check first.** You see how many rows are new, will be updated, are already there, or can't be imported — with the row number and reason for each one that can't — before anything is saved. Nothing is silently corrected: a turn of "abc" is reported, not turned into 1.
-- **Only the question column is required.** Without a chat column every question becomes its own chat; without a turn column turns are numbered in file order within each chat. The columns are `chat_id`, `turn_no`, `type`, `question`, `expected_sql`, `expected_tables`, `expected_columns` and `groups`; common header names are recognised, and the dialog lets you point any column at the right field.
+- **Only the question column is required.** Without a chat column every question becomes its own chat; without a turn column turns are numbered in file order within each chat. The columns are `chat_id`, `turn_no`, `type`, `question`, `expected_sql`, `expected_tables`, `expected_columns`, `reply_style` (optional) and `groups`; common header names are recognised, and the dialog lets you point any column at the right field.
 - **Groups are optional.** The default is *No group*. Pick existing groups or a new one for the whole file, and/or add a `groups` column (`Billing; Refunds`) to label rows individually — missing groups are created.
 - **Safe to repeat.** Importing the same file again changes nothing; an edited expected SQL becomes a new version of the existing case. If a row has the same chat and turn as an existing case but a different question you can add it as a new case or update the existing one.
 - **Fix and re-import.** The rows that couldn't be imported can be downloaded with the reason next to each. A template (with a short guide) is available in the dialog.

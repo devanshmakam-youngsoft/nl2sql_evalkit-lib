@@ -58,5 +58,5 @@ def light_row(r: dict) -> dict:
     """Return a result row reduced to its ids, question, marks and status: all a progress event carries."""
     return {
         k: r.get(k)
-        for k in ("chat_id", "turn_no", "type", "question", "sql_marks", "schema_marks", "lookup_marks", "status")
+        for k in ("chat_id", "turn_no", "type", "question", "sql_marks", "schema_marks", "lookup_marks", "reply_marks", "status")
     }

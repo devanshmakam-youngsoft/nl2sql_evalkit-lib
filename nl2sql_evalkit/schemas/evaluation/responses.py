@@ -84,6 +84,7 @@ class VersionSummary(ApiResponse):
     avg_sql_marks: float | None = None    # mean answer score, 0 to 10
     avg_schema_marks: float | None = None  # mean tables-and-columns score, 0 to 10; null when none was graded
     avg_lookup_marks: float | None = None  # mean schema lookup score, 0 to 10; null when no step recorded a schema
+    avg_reply_marks: float | None = None   # mean reply score, 0 to 10; null when no reply was scored against a reply style
     avg_total_time: float | None = None      # mean response time per question, in seconds
     archived: bool | None = None      # true when hidden from the default listing
     stopped: bool | None = None       # true when stopped early; such a run is never recommended or compared
@@ -126,6 +127,11 @@ class ResultRow(ApiResponse):
     lookup_marks: int | None = None     # 0 to 10; null when no schema was recorded or nothing was expected
     lookup_remarks: str | None = None
     sql_cause: str | None = None        # why the judge thinks the SQL is wrong: "schema_lookup", "sql", "both" or "none"
+    reply_style: str | None = None      # how the written reply should read (the test case's, or the default from serve())
+    reply_text: str | None = None       # the written reply that came with the SQL (a message when it asked back or declined)
+    reply_marks: int | None = None      # 0 to 10; null when no reply style applied to the question
+    reply_remarks: str | None = None
+    reply_suggestion: str | None = None  # the one change the judge suggests for the reply
     groups: list[str] | None = None     # the groups the test case belonged to when the run happened
     case_deleted: bool | None = None    # true when the test case has been deleted since
     error_message: str | None = None    # plain-language reason for a failed question

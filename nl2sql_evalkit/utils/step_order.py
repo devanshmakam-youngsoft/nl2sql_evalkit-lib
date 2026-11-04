@@ -1,7 +1,7 @@
 """The pipeline steps ("nodes") a run recorded, and the order they ran in."""
 from nl2sql_evalkit.utils.score_math import is_nan
 
-METRIC_AVGS = {"sql_marks", "schema_marks", "lookup_marks", "total_time"}
+METRIC_AVGS = {"sql_marks", "schema_marks", "lookup_marks", "reply_marks", "total_time"}
 
 
 def node_order(rows: list[dict]) -> list[str]:

@@ -3,6 +3,8 @@ import asyncio
 import inspect
 from typing import Any, Callable
 
+from nl2sql_evalkit.services.evaluation.sql_checks import split_reply
+
 
 def detect_call_style(fn: Callable, session_aliases: list[str], history_aliases: list[str]) -> str:
     """Returns 'session_id' | 'history' | 'question' based on fn's parameter names.
@@ -56,6 +58,35 @@ def answer_text_of(result, answer_keys: list[str]) -> str:
         if val is not None:
             return str(val)
     return str(result)
+
+
+def reply_text_of(result, answer_keys: list[str], reply_keys: list[str], answer: str) -> str:
+    """The written reply that came with the SQL: what the assistant says to the user.
+
+    A dict or object result is searched for ``reply_keys`` in order, skipping the key the SQL itself was read from, so
+    ``{"sql": ..., "summary": ...}`` gives the summary. Otherwise it is the text of the answer that is not SQL: a message
+    sent alone (a question back, a refusal) is all of it, and a message around fenced SQL is what is left of it.
+
+    Args:
+        result: What ``fn()`` returned.
+        answer_keys: The keys the SQL (the answer) is read from, as used for ``answer``.
+        reply_keys: The keys the written reply is read from.
+        answer: The answer text already read from ``result``.
+    """
+    if hasattr(result, "model_dump"):
+        result = result.model_dump()
+    if isinstance(result, dict):
+        fields = result
+    elif isinstance(result, str) or result is None:
+        fields = {}
+    else:
+        fields = {key: getattr(result, key, None) for key in (*answer_keys, *reply_keys)}
+    used = next((k for k in answer_keys if fields.get(k) not in (None, "")), None)
+    for key in reply_keys:
+        value = fields.get(key)
+        if key != used and value not in (None, "") and str(value).strip():
+            return str(value).strip()
+    return split_reply(answer)[1]
 
 
 def call_sync(fn: Callable, *args, **kwargs) -> Any:

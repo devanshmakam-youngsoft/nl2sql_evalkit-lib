@@ -37,6 +37,10 @@ def serve(
     judge_prompt: str | None = None,
     judge_retries: int = 3,
     judge_fn: Callable | None = None,
+    # --- the written reply (the summary the assistant gives next to its SQL) ---
+    reply_style: str | None = None,
+    reply_keys: list[str] | None = None,
+    reply_judge_fn: Callable | None = None,
     # --- writing test cases from documents ---
     generator_model: str | None = None,
     # --- scoring / recommendation ---
@@ -121,6 +125,20 @@ def serve(
                 def my_judge(question, expected_sql, reply, checks) -> dict:
                     return {"sql_marks": 8, "sql_comment": "Good.", "suggestion": ""}
 
+        reply_style: How every written reply should read, for example ``"Friendly, two sentences, say how many rows"``.
+            When it is set, the written reply that comes with the SQL (or the message of a question back or a refusal) is
+            scored too: the **reply score**, 0 to 10, by the judge model. A test case can have its own reply style, which wins
+            over this one. Without either, replies are not scored. The reply is read from a ``dict`` result under
+            ``reply_keys``, or is the text around the SQL. It does not change the overall score used to recommend a version.
+        reply_keys: Keys tried (in order, after the key the SQL came from) when ``fn()`` returns a dict, to find the written
+            reply. Default: ``summary``, ``response``, ``reply``, ``message``, ``explanation``, ``final_response``.
+        reply_judge_fn: Callable that replaces the judge model for the reply score. It gets the question, the reply style,
+            the written reply and the SQL, and returns the score::
+
+                def my_reply_judge(question, reply_style, reply_text, sql) -> dict:
+                    return {"reply_marks": 8, "reply_comment": "Friendly and short.", "suggestion": ""}
+
+            It is not called when the assistant wrote no reply (that scores 0).
         generator_model: LiteLLM model that writes test cases from uploaded documents (Test Cases →
             Generate from documents). Defaults to ``judge_model``. The text of the documents is sent to it,
             so choose a model you are allowed to send them to (a local ``ollama/...`` model works).
@@ -209,6 +227,10 @@ def serve(
     cfg_extra["dialect"] = parse_dialect(dialect)
     if generator_model:
         cfg_extra["generator_model"] = generator_model
+    if reply_style is not None:
+        cfg_extra["reply_style"] = reply_style
+    if reply_keys is not None:
+        cfg_extra["reply_keys"] = reply_keys
 
     config = Config(
         backend_port=port,
@@ -245,6 +267,7 @@ def serve(
     app = create_app(
         config, fn=fn,
         judge_fn=judge_fn,
+        reply_judge_fn=reply_judge_fn,
         extra_metrics=extra_metrics,
         on_complete=on_complete,
         session_id_fn=session_id_fn,

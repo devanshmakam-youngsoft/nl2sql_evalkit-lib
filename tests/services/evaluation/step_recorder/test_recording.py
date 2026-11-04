@@ -174,7 +174,7 @@ def test_a_step_that_ran_several_times_has_its_time_added_up(tmp_path):
             time.sleep(0.05)
             s.output = "chunk"
 
-    answer, elapsed, timings, _, outputs, _, _ = make_manager(tmp_path, fn)._call_fn("q", [], "s1")
+    answer, elapsed, timings, _, outputs, _, _, _ = make_manager(tmp_path, fn)._call_fn("q", [], "s1")
     assert answer == "answer" and list(timings) == ["search", "llm"]
     assert timings["search"] >= 0.1 and timings["llm"] >= 0.01        # both searches counted, not just the last
     assert outputs["search"] == "chunk"
@@ -255,5 +255,5 @@ def test_the_runner_hands_the_joined_schema_back(tmp_path):
             s.schema = "orders(id)"
         return "SELECT 1"
 
-    *_, schema = make_manager(tmp_path, fn)._call_fn("q", [], "s1")
+    *_, schema, _ = make_manager(tmp_path, fn)._call_fn("q", [], "s1")
     assert schema == "orders(id)"

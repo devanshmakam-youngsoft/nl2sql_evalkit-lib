@@ -16,6 +16,8 @@ export interface VersionSummary {
   avg_schema_marks: number | null;
   /** Mean schema lookup score; null when no step recorded the schema the assistant looked at. */
   avg_lookup_marks?: number | null;
+  /** Mean reply score; null when no reply was scored against a reply style. */
+  avg_reply_marks?: number | null;
   avg_total_time: number | null;
   comment: string;
   /** Problems met during the run, and the name of its log file (see the Download log link). */
@@ -40,6 +42,7 @@ export interface VersionSummary {
     avg_sql_marks: number | null;
     avg_schema_marks: number | null;
     avg_lookup_marks?: number | null;
+    avg_reply_marks?: number | null;
     avg_total_time: number | null;
     total_rows: number;
     failed_rows?: number;
@@ -60,6 +63,9 @@ export interface CheckCounts {
   /** Replies whose step recorded a schema, and how many of those lacked an expected table or column (older runs have neither). */
   lookup_graded?: number;
   lookup_missed?: number;
+  /** Written replies scored against a reply style, and how many of those scored under 5 (older runs have neither). */
+  reply_graded?: number;
+  reply_weak?: number;
 }
 
 /** The server's answer to "which version should ship?" (version ids are strings). */
@@ -151,6 +157,12 @@ export interface ResultRow {
   lookup_remarks?: string;
   /** Why the judge thinks the SQL is wrong: "schema_lookup", "sql", "both" or "none". */
   sql_cause?: string;
+  /** The reply style the question was scored with, the written reply, and its score with the reason and a suggestion. */
+  reply_style?: string;
+  reply_text?: string;
+  reply_marks?: number | null;
+  reply_remarks?: string;
+  reply_suggestion?: string;
   /** Groups this test case belonged to when it ran. */
   groups?: string[];
   /** Set when the test case has been deleted since this version ran (the question and answer here are kept). */
@@ -275,6 +287,8 @@ export interface TestCase {
   expected_sql: string;
   expected_tables?: string;
   expected_columns?: string;
+  /** How the assistant's written reply should read; when set, the reply is scored too. */
+  reply_style?: string;
   type: string;
   status: "active" | "inactive";
   version: number;

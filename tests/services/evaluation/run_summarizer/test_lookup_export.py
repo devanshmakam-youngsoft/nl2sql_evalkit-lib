@@ -26,3 +26,16 @@ def test_the_schema_columns_are_in_the_report_when_a_schema_was_recorded():
 def test_the_report_is_unchanged_when_no_schema_was_recorded():
     names, _ = headers([{**ROW, "schema_context": ""}])
     assert "lookup_marks" not in names and "schema_context" not in names
+
+
+def test_the_reply_columns_are_in_the_report_only_when_a_reply_was_scored():
+    names, body = headers([{**ROW, "reply_style": "Friendly", "reply_text": "Hi there.", "reply_marks": 8,
+                            "reply_remarks": "Good.", "reply_suggestion": "Add a number."}], {"avg_reply_marks": 8})
+    assert {"reply_style", "reply_text", "reply_marks", "reply_remarks", "reply_suggestion"} <= set(names)
+    row = dict(zip(names, body[0]))
+    assert row["reply_text"] == "Hi there." and row["reply_marks"] == 8 and row["reply_suggestion"] == "Add a number."
+
+
+def test_the_report_is_unchanged_when_no_reply_was_scored_even_though_replies_are_kept():
+    names, _ = headers([{**ROW, "reply_text": "Hi there."}])
+    assert not {"reply_style", "reply_text", "reply_marks"} & set(names)

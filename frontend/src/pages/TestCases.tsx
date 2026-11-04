@@ -424,6 +424,7 @@ function TestCaseDrawer({ tc, groups, onClose, onChanged, onDeleted }: {
     expected_sql: tc.expected_sql,
     expected_tables: tc.expected_tables ?? "",
     expected_columns: tc.expected_columns ?? "",
+    reply_style: tc.reply_style ?? "",
     type: tc.type,
   });
   const [history, setHistory] = useState<TestCase[] | null>(null);
@@ -460,6 +461,7 @@ function TestCaseDrawer({ tc, groups, onClose, onChanged, onDeleted }: {
       if (form.expected_sql !== tc.expected_sql) updates.expected_sql = form.expected_sql;
       if (form.expected_tables !== (tc.expected_tables ?? "")) updates.expected_tables = form.expected_tables;
       if (form.expected_columns !== (tc.expected_columns ?? "")) updates.expected_columns = form.expected_columns;
+      if (form.reply_style !== (tc.reply_style ?? "")) updates.reply_style = form.reply_style;
       if (form.type !== tc.type) updates.type = form.type;
       if (Object.keys(updates).length === 0) { setEditing(false); return; }
       await api.editTestCase(tc.tc_id, updates);
@@ -557,6 +559,12 @@ function TestCaseDrawer({ tc, groups, onClose, onChanged, onDeleted }: {
               <input value={form.expected_columns} placeholder="region, amount"
                 onChange={(e) => setForm((f) => ({ ...f, expected_columns: e.target.value }))} className={input} />
             </Field>
+            <Field label="Reply style (optional)">
+              <textarea value={form.reply_style} rows={2} placeholder="Friendly, two sentences, say how many rows"
+                onChange={(e) => setForm((f) => ({ ...f, reply_style: e.target.value }))}
+                className="w-full rounded border border-line bg-surface-2 p-2.5 text-sm outline-none focus:border-brand" />
+              <p className="mt-1 text-xs text-muted">How the assistant&apos;s written reply should read. When it is filled in, the reply is scored too.</p>
+            </Field>
             {err && <p className="text-xs text-bad">{err}</p>}
             <div className="flex gap-2 pt-1">
               <button onClick={save} disabled={saving}
@@ -575,6 +583,7 @@ function TestCaseDrawer({ tc, groups, onClose, onChanged, onDeleted }: {
             {tc.expected_sql && <ReadField label="Expected SQL">{tc.expected_sql}</ReadField>}
             {tc.expected_tables && <ReadField label="Expected tables">{tc.expected_tables}</ReadField>}
             {tc.expected_columns && <ReadField label="Expected columns">{tc.expected_columns}</ReadField>}
+            {tc.reply_style && <ReadField label="Reply style">{tc.reply_style}</ReadField>}
             {tc.origin?.kind === "generated" && (
               <div>
                 <div className="label mb-1">
@@ -687,6 +696,7 @@ function NewTestCaseModal({
     expected_sql: "",
     expected_tables: "",
     expected_columns: "",
+    reply_style: "",
   });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
@@ -722,6 +732,7 @@ function NewTestCaseModal({
         expected_sql: form.expected_sql.trim(),
         expected_tables: form.expected_tables.trim(),
         expected_columns: form.expected_columns.trim(),
+        reply_style: form.reply_style.trim(),
       });
       onSaved();
     } catch (e: unknown) {
@@ -782,6 +793,11 @@ function NewTestCaseModal({
           <Field label="Expected columns (comma-separated)">
             <input value={form.expected_columns} onChange={set("expected_columns")} placeholder="region, amount"
               className="w-full rounded border border-line bg-surface-2 px-3 py-2 text-sm outline-none focus:border-brand" />
+          </Field>
+          <Field label="Reply style (optional)">
+            <textarea value={form.reply_style} onChange={set("reply_style")} rows={2} placeholder="Friendly, two sentences, say how many rows"
+              className="w-full rounded border border-line bg-surface-2 p-2.5 text-sm outline-none focus:border-brand" />
+            <p className="mt-1 text-xs text-muted">How the assistant&apos;s written reply should read. When it is filled in, the reply is scored too.</p>
           </Field>
           {err && <p className="text-xs text-bad">{err}</p>}
           <div className="flex gap-2 pt-1">

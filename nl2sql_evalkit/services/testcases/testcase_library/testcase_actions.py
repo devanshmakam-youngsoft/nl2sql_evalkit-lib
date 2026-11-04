@@ -23,5 +23,6 @@ def create_test_case(store: EvalStore, body: CreateTestCase) -> dict:
         raise NotFoundError(f"Group {group_id!r} not found in library")
     return store.create_test_case(
         chat_id=body.chat_id, turn_no=body.turn_no, question=body.question, expected_sql=body.expected_sql,
-        type=body.type, expected_tables=body.expected_tables, expected_columns=body.expected_columns, group_id=group_id,
+        type=body.type, expected_tables=body.expected_tables, expected_columns=body.expected_columns,
+        reply_style=body.reply_style, group_id=group_id,
     )

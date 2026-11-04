@@ -107,6 +107,7 @@ class GroupsRepository(StoreBase):
                 "expected_sql": str(r.expected_sql),
                 "expected_tables": clean_cell(getattr(r, "expected_tables", "")),
                 "expected_columns": clean_cell(getattr(r, "expected_columns", "")),
+                "reply_style": clean_cell(getattr(r, "reply_style", "")),
                 "groups": [],
             }
             for i, r in enumerate(df.itertuples(index=False))

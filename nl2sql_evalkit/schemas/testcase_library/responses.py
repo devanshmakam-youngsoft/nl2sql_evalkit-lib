@@ -22,6 +22,7 @@ class LibraryTestCase(ApiResponse):
     expected_sql: str | None = None   # the gold query
     expected_tables: str | None = None  # the tables the SQL must use, separated by commas
     expected_columns: str | None = None  # the columns the SQL must use, separated by commas (table.column or just column)
+    reply_style: str | None = None    # how the written reply should read; when set, the reply is scored too
     type: str | None = None           # "answer", "clarify" or "refuse"
     status: str | None = None         # "active", or "inactive" (inactive cases do not run)
     created_at: str | None = None     # ISO 8601 UTC

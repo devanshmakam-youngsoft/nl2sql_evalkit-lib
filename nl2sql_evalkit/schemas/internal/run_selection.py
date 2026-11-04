@@ -39,7 +39,7 @@ def cases_to_dataframe(cases: list[dict], group_names_of: dict[str, list[str]] |
             "tc_id": tc["tc_id"],
             "groups": tuple((group_names_of or {}).get(tc["tc_id"], ())),
         }
-        for column in ("expected_tables", "expected_columns"):
+        for column in ("expected_tables", "expected_columns", "reply_style"):
             value = clean_cell(tc.get(column, ""))
             if value:
                 row[column] = value

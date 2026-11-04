@@ -86,6 +86,7 @@ class CaseImportRepository(StoreBase):
                     "expected_sql": r["expected_sql"],
                     "expected_tables": clean_cell(r.get("expected_tables", "")),
                     "expected_columns": clean_cell(r.get("expected_columns", "")),
+                    "reply_style": clean_cell(r.get("reply_style", "")),
                     "type": r.get("type") or "answer",
                 }
                 target: str | None = tc_id

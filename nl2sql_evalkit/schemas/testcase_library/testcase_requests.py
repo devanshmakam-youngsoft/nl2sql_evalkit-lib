@@ -11,6 +11,7 @@ class TestCaseUpdate(BaseModel):
     expected_sql: str | None = None     # the gold query
     expected_tables: str | None = None  # the tables the SQL must use, separated by commas
     expected_columns: str | None = None  # the columns the SQL must use, separated by commas (table.column or just column)
+    reply_style: str | None = None      # how the written reply should read; when set, the reply is scored too
     type: str | None = None             # "answer", "clarify" or "refuse"
 
 
@@ -49,5 +50,6 @@ class CreateTestCase(BaseModel):
     type: str = "answer"            # what the assistant should do: "answer" (return SQL), "clarify" (ask back) or "refuse"
     expected_tables: str = ""       # the tables the SQL must use, separated by commas
     expected_columns: str = ""      # the columns the SQL must use, separated by commas (table.column or just column)
+    reply_style: str = ""           # how the written reply should read, for example "Friendly, two sentences"; empty scores the SQL only
     group_id: str | None = None     # also put the test case in this group
     dataset_id: str | None = None  # backward-compat alias

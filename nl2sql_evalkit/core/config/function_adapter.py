@@ -11,6 +11,12 @@ class FunctionAdapterSettings(Settings):
         "content", "message", "generated_text", "generation", "completion",
     ]
 
+    # Written reply extraction: keys tried, after the SQL, when fn() returns a dict/object. The reply is scored against the
+    # reply style, so a function that returns {"sql": ..., "summary": ...} has its summary read as the reply.
+    reply_keys: list[str] = [
+        "summary", "response", "reply", "message", "explanation", "final_response",
+    ]
+
     # Signature detection: parameter name aliases
     history_params: list[str] = [
         "history", "chat_history", "messages", "conversation", "turns", "context",

@@ -17,6 +17,10 @@ export const GLOSSARY = {
     label: "Schema lookup",
     hint: "Whether the tables and columns the assistant looked at before writing the SQL include the ones the test case expects, 0–10. Shown only when the assistant records what it looked at. A low score means the lookup missed something the question needed, whatever the SQL did. It is not part of the overall score.",
   },
+  reply: {
+    label: "Reply score",
+    hint: "How well the assistant's written reply follows the reply style you asked for, 0–10: tone, format and length, and whether it fits the question and the SQL. Shown only when a reply style is set. It does not change the overall score used to recommend a version yet.",
+  },
   time: {
     label: "Response time",
     hint: "How long the assistant took to reply to one question, from asking to final answer. Lower is better.",

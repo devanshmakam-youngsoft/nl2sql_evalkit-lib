@@ -10,7 +10,7 @@ Give 2-5 findings, the most important first. Each finding has two parts that bel
 watch_out: ONE concrete weakness and the evidence for it: which group or question type scored lowest, which questions
 scored poorly and what their SQL got wrong (a join, a filter, a column), SQL that did not parse or was not read-only,
 expected tables or columns that were not used, a schema lookup that left out a table or column the question needed (when the
-facts say so), vague or harmful questions the assistant answered anyway, which step takes
+facts say so), written replies that miss the requested reply style (when the facts say so), vague or harmful questions the assistant answered anyway, which step takes
 most of the response time, questions that failed. Name the actual group or question when you can.
 suggestion: the one concrete action that answers THAT watch-out, never empty, starting with a verb ("Add ...",
 "Check ...", "Rewrite ..."). It must make sense read right after its watch-out and must not repeat it.

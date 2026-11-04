@@ -18,11 +18,13 @@ def build_scores(rows: list[dict]) -> dict:
     answers = [r for r in rows if r.get("sql_checks") and parse_type(r.get("type")) == ANSWER]
     declines = [r for r in rows if r.get("sql_checks") and is_declining(r.get("type"))]
     looked_up = [r for r in rows if (r.get("schema_lookup") or {}).get("graded")]
+    replies = [r["reply_marks"] for r in rows if r.get("reply_marks") is not None]
     return {
         "graded_rows": len(graded),
         "sql_marks": mean_of(marks),
         "schema_marks": mean_of(column_of(rows, "schema_marks")),
         "lookup_marks": mean_of(column_of(rows, "lookup_marks")),
+        "reply_marks": mean_of(replies),
         "tiers": {
             "high": sum(1 for m in marks if m >= 8),
             "mid": sum(1 for m in marks if 5 <= m < 8),
@@ -34,6 +36,7 @@ def build_scores(rows: list[dict]) -> dict:
                 "sql_marks": mean_of(column_of(rs, "sql_marks")),
                 "schema_marks": mean_of(column_of(rs, "schema_marks")),
                 "lookup_marks": mean_of(column_of(rs, "lookup_marks")),
+                "reply_marks": mean_of(column_of(rs, "reply_marks")),
             }
             for t, rs in by_type.items()
         },
@@ -53,5 +56,7 @@ def build_scores(rows: list[dict]) -> dict:
             "declines_with_sql": sum(1 for r in declines if r["sql_checks"]["returned_sql"]),
             "lookup_graded": len(looked_up),
             "lookup_missed": sum(1 for r in looked_up if r["schema_lookup"]["tables_missing"] or r["schema_lookup"]["columns_missing"]),
+            "reply_graded": len(replies),
+            "reply_weak": sum(1 for m in replies if m < 5),
         },
     }

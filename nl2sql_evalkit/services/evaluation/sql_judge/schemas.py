@@ -16,6 +16,14 @@ def parse_cause(value) -> str:
     return "none"
 
 
+class ReplyGrade(BaseModel):
+    """The judge's mark for one written reply (out of 10): how well it follows the requested style, why, and what to change."""
+
+    reply_marks: int = Field(ge=0, le=10)
+    reply_comment: str
+    suggestion: str = ""
+
+
 class SqlGrade(BaseModel):
     """The judge's mark for one reply (out of 10), the reason, and what to change."""
 

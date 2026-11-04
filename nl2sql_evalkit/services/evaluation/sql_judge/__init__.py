@@ -4,6 +4,6 @@ from nl2sql_evalkit.services.evaluation.sql_judge.fallback_insights import finis
 from nl2sql_evalkit.services.evaluation.sql_judge.insights import check_insights, parse_insights
 from nl2sql_evalkit.services.evaluation.sql_judge.judge import Judge
 from nl2sql_evalkit.services.evaluation.sql_judge.run_summary_input import stats_for_llm
-from nl2sql_evalkit.services.evaluation.sql_judge.schemas import SqlGrade, parse_cause
+from nl2sql_evalkit.services.evaluation.sql_judge.schemas import ReplyGrade, SqlGrade, parse_cause
 
-__all__ = ["Judge", "JudgeError", "SqlGrade", "check_insights", "finish_insights", "parse_cause", "parse_insights", "stats_for_llm"]
+__all__ = ["Judge", "JudgeError", "ReplyGrade", "SqlGrade", "check_insights", "finish_insights", "parse_cause", "parse_insights", "stats_for_llm"]

@@ -148,7 +148,7 @@ def test_the_summary_counts_what_the_checks_found(store, tmp_path):
     _, summary, _ = run_cases(store, tmp_path, cases)
     assert summary["scores"]["checks"] == {
         "answers": 5, "no_sql": 1, "syntax_failed": 1, "not_read_only": 1, "tables_missing": 1, "columns_missing": 0,
-        "joins_differ": 1, "declines": 2, "declines_with_sql": 1, "lookup_graded": 0, "lookup_missed": 0,
+        "joins_differ": 1, "declines": 2, "declines_with_sql": 1, "lookup_graded": 0, "lookup_missed": 0, "reply_graded": 0, "reply_weak": 0,
     }
     assert summary["scores"]["tiers"] == {"high": 3, "mid": 0, "low": 4}
 

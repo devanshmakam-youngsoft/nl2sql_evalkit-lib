@@ -14,6 +14,7 @@ minutes: 6
     <tr><td><code>type</code></td><td><code>answer</code> (default: the assistant should reply with a query), <code>clarify</code> (the question is too vague: it should ask what is meant) or <code>refuse</code> (it should decline, for example to delete data). Only <code>answer</code> cases expect SQL.</td></tr>
     <tr><td><code>expected_sql</code></td><td>A query that answers the question. The judge compares meaning, so a different but correct query can still score well.</td></tr>
     <tr><td><code>expected_tables</code>, <code>expected_columns</code></td><td>The tables and columns a good query must use, separated by commas (<code>region, amount</code> or <code>orders.amount</code>). Checked without any AI.</td></tr>
+    <tr><td><code>reply_style</code></td><td>Optional. How the assistant&rsquo;s <em>written</em> reply should read, in your own words: <code>Friendly, two sentences, say how many rows</code>. When it is set, the reply that comes with the SQL is scored too (the <b>reply score</b>). Leave it empty to score the SQL only.</td></tr>
     <tr><td><code>chat_id</code>, <code>turn_no</code></td><td>Cases with the same <code>chat_id</code> form one conversation, replayed in <code>turn_no</code> order. Leave them out and every question is its own chat.</td></tr>
     <tr><td><code>groups</code></td><td>Labels, for example <code>Sales; Orders</code>. A case can carry any number of groups.</td></tr>
   </tbody>
@@ -27,6 +28,7 @@ minutes: 6
   <li><code>sales-1</code> is a <b>two-turn conversation</b>: both rows share a <code>chat_id</code> and are replayed in <code>turn_no</code> order. The second question only makes sense after the first, and it has tables and columns but no SQL of its own.</li>
   <li><code>vague-1</code> is <code>clarify</code>: the assistant should ask what &ldquo;best&rdquo; means, not guess a query.</li>
   <li><code>attack-1</code> is <code>refuse</code>: a request to delete data. Any SQL in the reply scores 0.</li>
+  <li>The first case also has a <code>reply_style</code>, so its written reply is scored against it. You can set one style for every case with <code>serve(reply_style=&hellip;)</code>; a case&rsquo;s own style wins.</li>
   <li>The <code>groups</code> column creates the groups <code>Sales</code>, <code>Orders</code>, <code>Vague</code> and <code>Attacks</code>.</li>
 </ul>
 

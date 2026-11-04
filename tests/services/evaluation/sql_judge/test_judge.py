@@ -165,3 +165,59 @@ def test_the_run_findings_mention_schema_lookups_that_missed_something():
     assert "in 3 of 4 questions the schema the assistant looked at did not include an expected table or column" in text
     assert "avg schema lookup marks: 5.0/10" in text and "(cause: schema lookup)" in text
     assert any("looked at often lacked an expected table or column" in s for s in default_suggestions(summary, rows))
+
+
+# ---- the written reply ---------------------------------------------------------------------------------------
+
+GOOD_REPLY = json.dumps({"reply_marks": 7, "reply_comment": "Friendly, but three sentences.", "suggestion": "Cut it to two sentences."})
+
+
+def test_the_judge_reads_the_question_the_style_the_reply_and_the_sql_and_returns_a_reply_grade(judge_replying):
+    judge, calls = judge_replying(GOOD_REPLY)
+    grade = judge.grade_reply("Totals per region?", "Friendly, two sentences", "Here are the totals. North leads.", "SELECT region FROM orders")
+    assert (grade.reply_marks, grade.reply_comment, grade.suggestion) == (7, "Friendly, but three sentences.", "Cut it to two sentences.")
+    system, user = (m["content"] for m in calls[0])
+    assert "written reply" in system and "must not invent figures" in system and "Respond ONLY with a JSON object" in system
+    assert "reply_marks" in system and "sql_marks" not in system
+    for line in ("Question: Totals per region?", "The assistant should: write SQL", "Reply style:\nFriendly, two sentences",
+                 "Assistant's reply:\nHere are the totals. North leads.", "SQL the assistant wrote:\nSELECT region FROM orders"):
+        assert line in user
+
+
+def test_a_reply_to_a_vague_or_harmful_question_says_what_the_assistant_should_have_done(judge_replying):
+    judge, calls = judge_replying(GOOD_REPLY, GOOD_REPLY)
+    judge.grade_reply("Best customers?", "Short", "Which do you mean?", "", "clarify")
+    judge.grade_reply("Delete orders", "Short", "I cannot.", "", "refuse")
+    assert "ask a clarifying question" in calls[0][1]["content"] and "SQL the assistant wrote:\nnone" in calls[0][1]["content"]
+    assert "The assistant should: decline" in calls[1][1]["content"]
+
+
+def test_a_long_reply_is_cut_for_the_judge_with_a_marker(judge_replying):
+    judge, calls = judge_replying(GOOD_REPLY, judge_reply_chars=10)
+    judge.grade_reply("q", "Short", "y" * 25)
+    assert "y" * 10 + "… (+15 more characters)" in calls[0][1]["content"]
+
+
+def test_a_bad_reply_grade_from_the_model_is_asked_for_again_and_marks_are_bounded(judge_replying):
+    judge, calls = judge_replying("not json", json.dumps({"reply_marks": 12, "reply_comment": "too high"}), GOOD_REPLY)
+    judge.config.judge_retries = 3
+    assert judge.grade_reply("q", "Short", "Hi.").reply_marks == 7
+    assert len(calls) == 3
+
+
+def test_a_judge_that_never_grades_the_reply_properly_raises_after_its_attempts(judge_replying):
+    judge, calls = judge_replying("nope", "still nope")
+    with pytest.raises(JudgeError, match="after 2 attempts"):
+        judge.grade_reply("q", "Short", "Hi.")
+    assert len(calls) == 2
+
+
+def test_a_missing_reply_suggestion_is_an_empty_one(judge_replying):
+    judge, _ = judge_replying(json.dumps({"reply_marks": 10, "reply_comment": "Exactly the style."}))
+    assert judge.grade_reply("q", "Short", "Hi.").suggestion == ""
+
+
+def test_a_custom_sql_rubric_does_not_change_the_reply_prompt(judge_replying):
+    judge, calls = judge_replying(GOOD_REPLY, judge_prompt_override="MY RUBRIC")
+    judge.grade_reply("q", "Short", "Hi.")
+    assert not calls[0][0]["content"].startswith("MY RUBRIC")

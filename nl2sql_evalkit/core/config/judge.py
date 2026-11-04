@@ -12,6 +12,8 @@ class JudgeSettings(Settings):
     judge_temperature: float | None = None   # None: the model's own default is used
     judge_retries: int = 3
     judge_schema_chars: int = 6000   # how much of the schema the assistant looked at the judge reads per question
+    judge_reply_chars: int = 4000    # how much of the written reply the judge reads per question
+    reply_style: str = ""            # how every written reply should read (a test case's own reply style wins); empty: replies are not scored
 
     # Override the LLM summary prompt (the one that writes the run's watch-outs and suggestions).
     summary_prompt: str = ""

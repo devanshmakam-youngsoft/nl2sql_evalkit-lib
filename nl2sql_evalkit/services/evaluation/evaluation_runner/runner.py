@@ -19,6 +19,7 @@ from nl2sql_evalkit.services.evaluation.evaluation_runner.function_adapter impor
     detect_call_style,
     format_history,
     parameter_name_for,
+    reply_text_of,
 )
 from nl2sql_evalkit.services.evaluation.evaluation_runner.run import Run, light_row
 from nl2sql_evalkit.services.evaluation.run_summarizer import build_group_stats, build_summary
@@ -50,6 +51,11 @@ class RunManager:
         (no SQL, SQL that does not parse, SQL that is not read-only) is scored 0 without calling it.  The judge model
         is still used for the run's written findings.
 
+    * ``reply_judge_fn(question, reply_style, reply_text, sql) -> dict``
+        Replaces the LLM judge for scoring the written reply against the reply style. The dict must contain
+        ``reply_marks`` (int 0–10); optional keys: ``reply_comment``, ``suggestion``. Called only for questions that
+        have a reply style, and not when the assistant wrote no reply (that scores 0).
+
     * ``extra_metrics: dict[str, Callable[[str, str], float]]``
         Additional metrics run alongside built-ins.
         Each callable receives ``(expected_sql, generated_answer)``
@@ -75,6 +81,7 @@ class RunManager:
         fn: Callable,
         *,
         judge_fn: Callable | None = None,
+        reply_judge_fn: Callable | None = None,
         extra_metrics: dict[str, Callable] | None = None,
         on_complete: Callable | None = None,
         session_id_fn: Callable | None = None,
@@ -85,12 +92,14 @@ class RunManager:
 
         # --- callable hooks ---
         self._judge_fn      = judge_fn
+        self._reply_judge_fn = reply_judge_fn
         self._extra_metrics = extra_metrics or {}
         self._on_complete   = on_complete
         self._session_id_fn = session_id_fn or (lambda chat_id: str(uuid.uuid4()))
 
         # --- config-derived ---
         self._answer_keys   = list(config.answer_keys)
+        self._reply_keys    = list(config.reply_keys)
         self._s_aliases     = set(config.session_params)
         self._h_aliases     = set(config.history_params)
         self._history_fmt   = config.history_format
@@ -176,9 +185,10 @@ class RunManager:
 
     def _call_fn(
         self, question: str, history: list[dict], session_id: str
-    ) -> tuple[str, float, dict, dict, dict, dict, str]:
+    ) -> tuple[str, float, dict, dict, dict, dict, str, str]:
         """Call the developer's function; return (answer, elapsed, node_timings, step_inputs, step_outputs, flags,
-        schema_context), the last being the schema the steps declared they looked at (empty when none did)."""
+        schema_context, reply_text): the schema the steps declared they looked at (empty when none did) and the
+        written reply that came with the SQL (empty when there is none)."""
         _recording_active = self._record_mode != "off"
         if _recording_active:
             step_recorder.begin_question(detail=self._record_detail)
@@ -224,7 +234,8 @@ class RunManager:
             node_timings[s["name"]] = round(node_timings.get(s["name"], 0.0) + s["elapsed"], 3)
         step_inputs  = {s["name"]: s.get("inputs", {}) for s in steps}
         step_outputs = {s["name"]: s.get("output",  "") for s in steps}
-        return answer, elapsed, node_timings, step_inputs, step_outputs, flags, step_recorder.joined_schema(steps)
+        reply_text = reply_text_of(result, self._answer_keys, self._reply_keys, answer)
+        return answer, elapsed, node_timings, step_inputs, step_outputs, flags, step_recorder.joined_schema(steps), reply_text
 
     def _grade_sql(self, row, out: dict, case_type: str, run: Run, where: str) -> dict:
         """The SQL score of one reply with the reason and a suggestion: 0 for a failed question or a reply that fails a basic
@@ -254,6 +265,29 @@ class RunManager:
         return {"sql_marks": grade.sql_marks, "sql_comment": grade.sql_comment, "suggestion": grade.suggestion,
                 "cause": grade.cause}
 
+    def _grade_reply(self, row, out: dict, style: str, case_type: str, run: Run, where: str) -> dict:
+        """The reply score of one written reply against its reply style: 0 for a failed question or no written reply, else
+        reply_judge_fn if provided, otherwise the LLM judge. A failure of the judge is raised for the caller to record."""
+        if out["status"] != "ok":
+            return {"reply_marks": 0, "reply_comment": "No reply: the function raised an error.", "suggestion": ""}
+        text = out.get("reply_text", "")
+        if not text.strip():
+            return {"reply_marks": 0, "reply_comment": "The assistant returned no written reply.",
+                    "suggestion": "Return a written reply next to the SQL, in the requested style."}
+        sql = out.get("generated_sql", "")
+        if self._reply_judge_fn is not None:
+            try:
+                raw = call_sync(self._reply_judge_fn, row.question, style, text, sql)
+                if not isinstance(raw, dict):
+                    raw = {"reply_marks": int(raw)}
+                return {"reply_marks": max(0, min(10, int(raw.get("reply_marks", 0)))),
+                        "reply_comment": str(raw.get("reply_comment", "")), "suggestion": str(raw.get("suggestion", ""))}
+            except Exception as e:
+                issue = run.log.issue("custom_judge", e, f"{where}, reply")
+                return {"reply_marks": 0, "reply_comment": issue.message, "suggestion": ""}
+        grade = self.judge.grade_reply(row.question, style, text, sql, case_type)
+        return {"reply_marks": grade.reply_marks, "reply_comment": grade.reply_comment, "suggestion": grade.suggestion}
+
     def _process_row(self, row, session_id: str, history: list[dict], run: Run) -> dict:
         where = f"Question {run.done + 1} of {run.total} (chat {row.chat_id}, turn {row.turn_no})"
         out = {
@@ -271,10 +305,14 @@ class RunManager:
         groups = getattr(row, "groups", None)
         if groups is not None:
             out["groups"] = list(groups)  # the groups this case belonged to when it ran
-        for field in ("expected_tables", "expected_columns"):
+        for field in ("expected_tables", "expected_columns", "reply_style"):
             value = str(getattr(row, field, "") or "").strip()
             if value and value.lower() != "nan":
                 out[field] = value
+        # the test case's own reply style wins over the default given to serve()
+        style = out.get("reply_style") or self.config.reply_style.strip()
+        if style:
+            out["reply_style"] = style
 
         # Carry any extra columns from the row into the receipt
         for col in self.config.extra_columns:
@@ -283,7 +321,7 @@ class RunManager:
                 out[col_n] = getattr(row, col_n)
 
         try:
-            answer, elapsed, node_timings, step_inputs, step_outputs, flags, schema_context = \
+            answer, elapsed, node_timings, step_inputs, step_outputs, flags, schema_context, reply_text = \
                 self._call_fn(row.question, history, session_id)
             out.update(
                 generated_answer=answer,
@@ -292,6 +330,7 @@ class RunManager:
                 step_inputs=step_inputs,
                 step_outputs=step_outputs,
                 schema_context=schema_context,
+                reply_text=reply_text,
             )
             if flags:
                 out["flags"] = flags
@@ -304,6 +343,7 @@ class RunManager:
                 error_detail=issue.technical,
                 generated_answer=None,
                 schema_context="",
+                reply_text="",
                 node_timings={},
                 step_inputs={},
                 step_outputs={},
@@ -343,6 +383,18 @@ class RunManager:
             if out["status"] == "ok":
                 out["status"] = "grading_failed"
             out.update(sql_remarks=issue.message, error_message=issue.message, error_detail=issue.technical)
+
+        # The reply score: only for a question that has a reply style
+        if style:
+            try:
+                reply_grade = self._grade_reply(row, out, style, case_type, run, where)
+                out.update(reply_marks=reply_grade["reply_marks"], reply_remarks=reply_grade["reply_comment"],
+                           reply_suggestion=reply_grade["suggestion"])
+            except Exception as e:
+                issue = run.log.issue("grading", e, f"{where}, reply")
+                if out["status"] == "ok":
+                    out["status"] = "grading_failed"
+                out.update(reply_remarks=issue.message, error_message=issue.message, error_detail=issue.technical)
 
         return out
 
@@ -394,9 +446,9 @@ class RunManager:
                 rows.append(result)
                 run.done += 1
                 run.log.info(
-                    "Question %d of %d | chat %s turn %s | %s | answer %s, tables and columns %s, schema lookup %s | %ss",
+                    "Question %d of %d | chat %s turn %s | %s | answer %s, tables and columns %s, schema lookup %s, reply %s | %ss",
                     run.done, run.total, row.chat_id, row.turn_no, result["status"],
-                    result.get("sql_marks"), result.get("schema_marks"), result.get("lookup_marks"),
+                    result.get("sql_marks"), result.get("schema_marks"), result.get("lookup_marks"), result.get("reply_marks"),
                     result.get("total_time_taken", "-"),
                 )
                 run.emit("progress", row=light_row(result))

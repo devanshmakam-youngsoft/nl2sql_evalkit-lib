@@ -7,7 +7,7 @@ MAX_ROWS = 20_000
 MAX_BYTES = 10 * 1024 * 1024
 
 
-FIELDS = ("chat_id", "turn_no", "type", "question", "expected_sql", "expected_tables", "expected_columns", "groups")
+FIELDS = ("chat_id", "turn_no", "type", "question", "expected_sql", "expected_tables", "expected_columns", "reply_style", "groups")
 
 
 FIELD_LABELS = {
@@ -18,6 +18,7 @@ FIELD_LABELS = {
     "expected_sql": "Expected SQL",
     "expected_tables": "Expected tables",
     "expected_columns": "Expected columns",
+    "reply_style": "Reply style",
     "groups": "Groups",
 }
 
@@ -31,5 +32,6 @@ ALIASES: dict[str, tuple[str, ...]] = {
     "expected_sql": ("expected_sql", "gold_sql", "sql", "expected_query", "gold_query", "reference_sql", "ground_truth_sql", "expected"),
     "expected_tables": ("expected_tables", "tables", "expected_table", "table", "gold_tables", "required_tables"),
     "expected_columns": ("expected_columns", "columns", "expected_column", "column", "gold_columns", "required_columns"),
+    "reply_style": ("reply_style", "response_style", "style", "reply_instruction", "reply_guidance", "persona", "tone"),
     "groups": ("groups", "group", "tags", "tag", "labels", "label"),
 }
